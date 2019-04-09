@@ -1,0 +1,33 @@
+<RCC>
+    <qresource prefix="/">
+        <file>main.qml</file>
+        <file>ControlBar.qml</file>
+        <file>deployment.pri</file>
+        <file>ImageButton.qml</file>
+        <file>PlaybackControl.qml</file>
+        <file>qml.qrc</file>
+        <file>qt-multimediaplayer.pro</file>
+        <file>SeekControl.qml</file>
+        <file>Slider.qml</file>
+        <file>VolumeControl.qml</file>
+        <file>images/PauseButton.png</file>
+        <file>images/PlayButton.png</file>
+        <file>images/StopButton.png</file>
+        <file>images/VolumeDown.png</file>
+        <file>images/VolumeUp.png</file>
+        <file>images/icon_BackArrow.png</file>
+        <file>images/icon_Folder.png</file>
+        <file>images/icon_Menu.png</file>
+        <file>images/Slider_bar.png</file>
+        <file>images/Slider_handle.png</file>
+        <file>FileOpen.qml</file>
+        <file>Button.qml</file>
+        <file>FileBrowser.qml</file>
+        <file>filereader.h</file>
+        <file>ContentImage.qml</file>
+        <file>Content.qml</file>
+        <file>ContentVideo.qml</file>
+        <file>trace.h</file>
+        <file>images/qt-logo.png</file>
+    </qresource>
+</RCC>
