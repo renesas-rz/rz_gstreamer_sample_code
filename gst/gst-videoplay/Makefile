@@ -1,4 +1,4 @@
-PROGRAM = GST_VideoPlay
+PROGRAM = gst-videoplay
 
 DEPENDENCY = gstreamer-1.0
 

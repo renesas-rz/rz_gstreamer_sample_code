@@ -1,4 +1,4 @@
-PROGRAM = GST_ReceiveStreamingVideo
+PROGRAM = gst-receivestreamingvideo
 
 DEPENDENCY = gstreamer-1.0
 

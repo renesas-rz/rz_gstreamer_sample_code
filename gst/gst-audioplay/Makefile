@@ -1,4 +1,4 @@
-PROGRAM = GST_AudioPlay
+PROGRAM = gst-audioplay
 
 DEPENDENCY = gstreamer-1.0
 

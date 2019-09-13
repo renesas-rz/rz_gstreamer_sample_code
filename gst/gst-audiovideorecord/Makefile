@@ -1,4 +1,4 @@
-PROGRAM = GST_AudioVideoRecord
+PROGRAM = gst-audiovideorecord
 
 DEPENDENCY = gstreamer-1.0
 

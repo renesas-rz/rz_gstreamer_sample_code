@@ -1,4 +1,4 @@
-PROGRAM = GST_AudioEncode
+PROGRAM = gst-audioencode
 
 DEPENDENCY = gstreamer-1.0
 

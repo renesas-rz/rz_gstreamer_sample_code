@@ -1,4 +1,4 @@
-PROGRAM = GST_MultipleDisplays2
+PROGRAM = gst-multipledisplays2
 
 DEPENDENCY = gstreamer-1.0
 

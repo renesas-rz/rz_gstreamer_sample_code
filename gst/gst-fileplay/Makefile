@@ -1,4 +1,4 @@
-PROGRAM = GST_FilePlay
+PROGRAM = gst-fileplay
 
 DEPENDENCY = gstreamer-1.0
 

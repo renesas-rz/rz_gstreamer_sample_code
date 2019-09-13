@@ -1,4 +1,4 @@
-PROGRAM = GST_CameraDisplay
+PROGRAM = gst-cameradisplay
 
 DEPENDENCY = gstreamer-1.0
 

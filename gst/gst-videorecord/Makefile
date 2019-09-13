@@ -1,4 +1,4 @@
-PROGRAM = GST_VideoRecord
+PROGRAM = gst-videorecord
 
 DEPENDENCY = gstreamer-1.0
 

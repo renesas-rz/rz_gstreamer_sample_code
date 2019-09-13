@@ -1,4 +1,4 @@
-PROGRAM = GST_SendStreamingVideo
+PROGRAM = gst-sendstreamingvideo
 
 DEPENDENCY = gstreamer-1.0
 

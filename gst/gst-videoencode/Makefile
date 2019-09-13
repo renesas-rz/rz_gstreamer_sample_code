@@ -1,4 +1,4 @@
-PROGRAM = GST_VideoEncode
+PROGRAM = gst-videoencode
 
 DEPENDENCY = gstreamer-1.0
 

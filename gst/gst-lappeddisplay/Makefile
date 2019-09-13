@@ -1,4 +1,4 @@
-PROGRAM = GST_LappedDisplay
+PROGRAM = gst-lappeddisplay
 
 DEPENDENCY = gstreamer-1.0
 
