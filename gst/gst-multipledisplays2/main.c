@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <gst/gst.h>
+#include <stdlib.h>
 
 #define INPUT_VIDEO_FILE_1         "/home/media/videos/vga1.h264"
 #define INPUT_VIDEO_FILE_2         "/home/media/videos/vga2.h264"
