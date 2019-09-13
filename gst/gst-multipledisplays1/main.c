@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <gst/gst.h>
+#include <stdlib.h>
 
 #define INPUT_VIDEO_FILE           "/home/media/videos/vga1.h264"
 #define LOCATION_FILE_WESTON_INFO  "/home/media/data_westoninfo.txt"
@@ -108,7 +109,6 @@ main (int argc, char *argv[])
   GstElement *queue_1, *video_sink_1;
   GstElement *queue_2, *video_sink_2;
 
-  GstCaps *caps;
   GstPad *req_pad_1, *sink_pad, *req_pad_2;
   GstBus *bus;
   GstMessage *msg;
