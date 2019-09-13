@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <gst/gst.h>
+#include <stdlib.h>
 
 #define INPUT_FILE                 "/home/media/videos/sintel_trailer-720p.mp4"
 #define LOCATION_FILE_WESTON_INFO  "/home/media/data_westoninfo.txt"
