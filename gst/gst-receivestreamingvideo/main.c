@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <gst/gst.h>
+#include <stdlib.h>
 
 #define LOCATION_FILE_WESTON_INFO  "/home/media/data_westoninfo.txt"
 #define COMMAND_GET_WESTON_INFO    "weston-info >& /home/media/data_westoninfo.txt"
