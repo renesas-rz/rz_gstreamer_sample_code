@@ -5,9 +5,7 @@
 #include <stdbool.h>
 #include <wayland-client.h>
 
-#define INPUT_FILE           "/home/media/videos/vga1.h264"
-#define POSITION_X           0
-#define POSITION_Y           0
+#define INPUT_FILE "/home/media/videos/vga1.h264"
 
 /* These structs contain information needed to get a list of available screens */
 struct screen_t
@@ -362,8 +360,8 @@ main (int argc, char *argv[])
   g_object_set (G_OBJECT (source), "location", input_file, NULL);
 
   /* Set position for displaying (0, 0) */
-  g_object_set (G_OBJECT (sink), "position-x", POSITION_X, "position-y",
-      POSITION_Y, NULL);
+  g_object_set (G_OBJECT (sink), "position-x", main_screen->x, "position-y",
+      main_screen->y, NULL);
 
   /* Set out-width and out-height for the out video */
   g_object_set (G_OBJECT (sink), "out-width", main_screen->width,
