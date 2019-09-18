@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include <wayland-client.h>
 
-#define INPUT_FILE                 "/home/media/videos/vga1.h264"
+#define INPUT_FILE           "/home/media/videos/vga1.h264"
 #define POSITION_X           0
 #define POSITION_Y           0
 
@@ -288,6 +288,31 @@ get_main_screen(struct wayland_t *handler)
   return NULL;
 }
 
+/*
+ *
+ * name: is_file_exist
+ * Check if the input file exists or not?
+ *
+ */
+bool
+is_file_exist(const char *path)
+{
+  bool result = false;
+  FILE *fd = NULL;
+
+  if (path != NULL)
+  {
+    fd = fopen(path, "r");
+    if (fd != NULL)
+    {
+      result = true;
+      fclose(fd);
+    }
+  }
+
+  return result;
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -297,8 +322,6 @@ main (int argc, char *argv[])
   GstElement *pipeline, *source, *parser, *decoder, *sink;
   GstBus *bus;
   GstMessage *msg;
-
-  const gchar *input_file = INPUT_FILE;
 
   /* Get a list of available screen */
   wayland_handler = get_available_screens();
@@ -314,6 +337,13 @@ main (int argc, char *argv[])
 
   /* Initialization */
   gst_init (&argc, &argv);
+
+  const gchar *input_file = INPUT_FILE;
+  if (!is_file_exist(input_file))
+  {
+    g_printerr("Cannot file input file: %s. Exiting.\n", input_file);
+    return -1;
+  }
 
   /* Create gstreamer elements */
   pipeline = gst_pipeline_new ("video-play");
