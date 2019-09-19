@@ -340,7 +340,7 @@ main (int argc, char *argv[])
   const gchar *input_file = INPUT_FILE;
   if (!is_file_exist(input_file))
   {
-    g_printerr("Cannot file input file: %s. Exiting.\n", input_file);
+    g_printerr("Cannot find input file: %s. Exiting.\n", input_file);
     destroy_wayland(wayland_handler);
     return -1;
   }
