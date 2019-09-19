@@ -290,12 +290,39 @@ get_required_monitors(struct wayland_t *handler, struct screen_t *screens[], int
   return result;
 }
 
+/*
+ *
+ * name: is_file_exist
+ * Check if the input file exists or not?
+ *
+ */
+bool
+is_file_exist(const char *path)
+{
+  bool result = false;
+  FILE *fd = NULL;
+
+  if (path != NULL)
+  {
+    fd = fopen(path, "r");
+    if (fd != NULL)
+    {
+      result = true;
+      fclose(fd);
+    }
+  }
+
+  return result;
+}
+
 int
 main (int argc, char *argv[])
 {
   struct wayland_t *wayland_handler = NULL;
   struct screen_t *screens[REQUIRED_SCREEN_NUMBERS];
   int screen_numbers = 0;
+
+  const char *input_video_file = INPUT_VIDEO_FILE;
 
   GstElement *pipeline, *source, *parser, *decoder, *tee;
   GstElement *queue_1, *video_sink_1;
@@ -327,7 +354,14 @@ main (int argc, char *argv[])
   /* Extract required monitors */
   get_required_monitors(wayland_handler, screens, REQUIRED_SCREEN_NUMBERS);
 
-  const char *input_video_file = INPUT_VIDEO_FILE;
+  /* Check input file */
+  if (!is_file_exist(input_video_file))
+  {
+    g_printerr("Cannot find input file: %s. Exiting.\n", input_video_file);
+
+    destroy_wayland(wayland_handler);
+    return -1;
+  }
 
   /* Initialization */
   gst_init (&argc, &argv);
