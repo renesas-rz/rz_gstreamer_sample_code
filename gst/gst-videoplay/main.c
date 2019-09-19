@@ -341,6 +341,7 @@ main (int argc, char *argv[])
   if (!is_file_exist(input_file))
   {
     g_printerr("Cannot file input file: %s. Exiting.\n", input_file);
+    destroy_wayland(wayland_handler);
     return -1;
   }
 
