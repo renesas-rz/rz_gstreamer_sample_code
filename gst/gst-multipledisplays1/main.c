@@ -325,9 +325,10 @@ main (int argc, char *argv[])
   const char *input_video_file = INPUT_VIDEO_FILE;
 
   GstElement *pipeline, *source, *parser, *decoder, *tee;
-  GstElement *queue_1, *video_sink_1;
-  GstElement *queue_2, *video_sink_2;
+  GstElement *filter_1, *capsfilter_1, *queue_1, *video_sink_1;
+  GstElement *filter_2, *capsfilter_2, *queue_2, *video_sink_2;
 
+  GstCaps *caps_1, *caps_2;
   GstPad *req_pad_1, *sink_pad, *req_pad_2;
   GstBus *bus;
   GstMessage *msg;
@@ -374,16 +375,20 @@ main (int argc, char *argv[])
   tee = gst_element_factory_make ("tee", "tee-element");
 
   /* Elements for Video Display 1 */
+  filter_1 = gst_element_factory_make ("vspmfilter", "vspm-filter-1");
+  capsfilter_1 = gst_element_factory_make ("capsfilter", "caps-filter-1");
   queue_1 = gst_element_factory_make ("queue", "queue-1");
   video_sink_1 = gst_element_factory_make ("waylandsink", "video-output-1");
 
   /* Elements for Video Display 2 */
+  filter_2 = gst_element_factory_make ("vspmfilter", "vspm-filter-2");
+  capsfilter_2 = gst_element_factory_make ("capsfilter", "caps-filter-2");
   queue_2 = gst_element_factory_make ("queue", "queue-2");
   video_sink_2 = gst_element_factory_make ("waylandsink", "video-output-2");
 
   if (!pipeline || !source || !parser || !decoder || !tee
-      || !queue_1 || !video_sink_1
-      || !queue_2 || !video_sink_2) {
+      || !filter_1 || !capsfilter_1 || !queue_1 || !video_sink_1
+      || !filter_2 || !capsfilter_2 || !queue_2 || !video_sink_2) {
     g_printerr ("One element could not be created. Exiting.\n");
 
     destroy_wayland(wayland_handler);
@@ -398,21 +403,39 @@ main (int argc, char *argv[])
   /* Set display position and size for Display 1  */
   g_object_set (G_OBJECT (video_sink_1),
        "position-x", screens[PRIMARY_SCREEN_INDEX]->x,
-       "position-y", screens[PRIMARY_SCREEN_INDEX]->y,
-       "out-width", screens[PRIMARY_SCREEN_INDEX]->width,
-       "out-height", screens[PRIMARY_SCREEN_INDEX]->height, NULL);
+       "position-y", screens[PRIMARY_SCREEN_INDEX]->y, NULL);
 
   /* Set display position and size for Display 2 */
   g_object_set (G_OBJECT (video_sink_2),
        "position-x", screens[SECONDARY_SCREEN_INDEX]->x,
-       "position-y", screens[SECONDARY_SCREEN_INDEX]->y,
-       "out-width", screens[SECONDARY_SCREEN_INDEX]->width,
-       "out-height", screens[SECONDARY_SCREEN_INDEX]->height, NULL);
+       "position-y", screens[SECONDARY_SCREEN_INDEX]->y, NULL);
+
+  /* Set property "dmabuf-use" of vspmfilter to true */
+  /* Without it, waylandsink will display broken video */
+  g_object_set (G_OBJECT (filter_1), "dmabuf-use", TRUE, NULL);
+  g_object_set (G_OBJECT (filter_2), "dmabuf-use", TRUE, NULL);
+
+  /* Create simple cap which contains video's resolutions */
+  caps_1 = gst_caps_new_simple ("video/x-raw",
+      "width", G_TYPE_INT, screens[PRIMARY_SCREEN_INDEX]->width,
+      "height", G_TYPE_INT, screens[PRIMARY_SCREEN_INDEX]->height, NULL);
+
+  caps_2 = gst_caps_new_simple ("video/x-raw",
+      "width", G_TYPE_INT, screens[SECONDARY_SCREEN_INDEX]->width,
+      "height", G_TYPE_INT, screens[SECONDARY_SCREEN_INDEX]->height, NULL);
+
+  /* Add caps_1 to capsfilter_1 element */
+  g_object_set (G_OBJECT (capsfilter_1), "caps", caps_1, NULL);
+  gst_caps_unref (caps_1);
+
+  /* Add caps_2 to capsfilter_2 element */
+  g_object_set (G_OBJECT (capsfilter_2), "caps", caps_2, NULL);
+  gst_caps_unref (caps_2);
 
   /* Add all elements into the pipeline */
   gst_bin_add_many (GST_BIN (pipeline), source, parser, decoder, tee,
-      queue_1, video_sink_1,
-      queue_2, video_sink_2, NULL);
+      filter_1, capsfilter_1, queue_1, video_sink_1,
+      filter_2, capsfilter_2, queue_2, video_sink_2, NULL);
 
   /* Link elements together */
   if (gst_element_link_many (source, parser, decoder, tee, NULL) != TRUE) {
@@ -422,7 +445,7 @@ main (int argc, char *argv[])
     destroy_wayland(wayland_handler);
     return -1;
   }
-  if (gst_element_link_many (queue_1, video_sink_1,
+  if (gst_element_link_many (filter_1, capsfilter_1, queue_1, video_sink_1,
           NULL) != TRUE) {
     g_printerr ("Elements of Video Display-1 could not be linked.\n");
     gst_object_unref (pipeline);
@@ -430,7 +453,7 @@ main (int argc, char *argv[])
     destroy_wayland(wayland_handler);
     return -1;
   }
-  if (gst_element_link_many (queue_2, video_sink_2,
+  if (gst_element_link_many (filter_2, capsfilter_2, queue_2, video_sink_2,
           NULL) != TRUE) {
     g_printerr ("Elements of Video Display-2 could not be linked.\n");
     gst_object_unref (pipeline);
@@ -446,7 +469,7 @@ main (int argc, char *argv[])
 
   /* Get request pad and manually link for Video Display 1 */
   req_pad_1 = gst_element_request_pad (tee, tee_src_pad_template, NULL, NULL);
-  sink_pad = gst_element_get_static_pad (queue_1, "sink");
+  sink_pad = gst_element_get_static_pad (filter_1, "sink");
   if (gst_pad_link (req_pad_1, sink_pad) != GST_PAD_LINK_OK) {
     g_print ("tee link failed!\n");
   }
@@ -454,7 +477,7 @@ main (int argc, char *argv[])
 
   /* Get request pad and manually link for Video Display 2 */
   req_pad_2 = gst_element_request_pad (tee, tee_src_pad_template, NULL, NULL);
-  sink_pad = gst_element_get_static_pad (queue_2, "sink");
+  sink_pad = gst_element_get_static_pad (filter_2, "sink");
   if (gst_pad_link (req_pad_2, sink_pad) != GST_PAD_LINK_OK) {
     g_print ("tee link failed!\n");
   }
