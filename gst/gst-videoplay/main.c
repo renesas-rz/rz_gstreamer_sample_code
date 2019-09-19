@@ -317,7 +317,8 @@ main (int argc, char *argv[])
   struct wayland_t *wayland_handler = NULL;
   struct screen_t *main_screen = NULL;
 
-  GstElement *pipeline, *source, *parser, *decoder, *sink;
+  GstElement *pipeline, *source, *parser, *decoder, *filter, *capsfilter, *sink;
+  GstCaps *caps;
   GstBus *bus;
   GstMessage *msg;
 
@@ -348,9 +349,11 @@ main (int argc, char *argv[])
   source = gst_element_factory_make ("filesrc", "file-source");
   parser = gst_element_factory_make ("h264parse", "h264-parser");
   decoder = gst_element_factory_make ("omxh264dec", "h264-decoder");
+  filter = gst_element_factory_make ("vspmfilter", "vspm-filter");
+  capsfilter = gst_element_factory_make ("capsfilter", "caps-filter");
   sink = gst_element_factory_make ("waylandsink", "video-output");
 
-  if (!pipeline || !source || !parser || !decoder || !sink) {
+  if (!pipeline || !source || !parser || !decoder || !filter || !capsfilter || !sink) {
     g_printerr ("One element could not be created. Exiting.\n");
     destroy_wayland(wayland_handler);
     return -1;
@@ -363,17 +366,26 @@ main (int argc, char *argv[])
   g_object_set (G_OBJECT (sink), "position-x", main_screen->x, "position-y",
       main_screen->y, NULL);
 
-  /* Set out-width and out-height for the out video */
-  g_object_set (G_OBJECT (sink), "out-width", main_screen->width,
-      "out-height", main_screen->height, NULL);
+  /* Set property "dmabuf-use" of vspmfilter to true */
+  /* Without it, waylandsink will display broken video */
+  g_object_set (G_OBJECT (filter), "dmabuf-use", TRUE, NULL);
+
+  /* Create simple cap which contains video's resolution */
+  caps = gst_caps_new_simple ("video/x-raw",
+      "width", G_TYPE_INT, main_screen->width,
+      "height", G_TYPE_INT, main_screen->height, NULL);
+
+  /* Add cap to capsfilter element */
+  g_object_set (G_OBJECT (capsfilter), "caps", caps, NULL);
+  gst_caps_unref (caps);
 
   /* Add all elements into the pipeline */
   /* pipeline---[ file-source + h264-parser + h264-decoder + video-output ] */
-  gst_bin_add_many (GST_BIN (pipeline), source, parser, decoder, sink, NULL);
+  gst_bin_add_many (GST_BIN (pipeline), source, parser, decoder, filter, capsfilter, sink, NULL);
 
   /* Link the elements together */
   /* file-source -> h264-parser -> h264-decoder -> video-output */
-  if (gst_element_link_many (source, parser, decoder, sink, NULL) != TRUE) {
+  if (gst_element_link_many (source, parser, decoder, filter, capsfilter, sink, NULL) != TRUE) {
     g_printerr ("Elements could not be linked.\n");
     gst_object_unref (pipeline);
     destroy_wayland(wayland_handler);
