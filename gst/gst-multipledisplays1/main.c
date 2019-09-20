@@ -352,9 +352,6 @@ main (int argc, char *argv[])
     return -1;
   }
 
-  /* Extract required monitors */
-  get_required_monitors(wayland_handler, screens, REQUIRED_SCREEN_NUMBERS);
-
   /* Check input file */
   if (!is_file_exist(input_video_file))
   {
@@ -363,6 +360,9 @@ main (int argc, char *argv[])
     destroy_wayland(wayland_handler);
     return -1;
   }
+
+  /* Extract required monitors */
+  get_required_monitors(wayland_handler, screens, REQUIRED_SCREEN_NUMBERS);
 
   /* Initialization */
   gst_init (&argc, &argv);
