@@ -367,8 +367,8 @@ create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
   video_source = gst_element_factory_make ("filesrc", NULL);
   video_parser = gst_element_factory_make ("h264parse", NULL);
   video_decoder = gst_element_factory_make ("omxh264dec", NULL);
-  filter = gst_element_factory_make ("vspmfilter", "vspm-filter");
-  capsfilter = gst_element_factory_make ("capsfilter", "caps-filter");
+  filter = gst_element_factory_make ("vspmfilter", NULL);
+  capsfilter = gst_element_factory_make ("capsfilter", NULL);
   video_sink = gst_element_factory_make ("waylandsink", NULL);
 
   if (!*p_video_pipeline || !video_source || !video_parser || !video_decoder
