@@ -355,17 +355,21 @@ create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
 {
   GstBus *bus;
   guint video_bus_watch_id;
-  GstElement *video_source, *video_parser, *video_decoder, *video_sink;
+  GstElement *video_source, *video_parser, *video_decoder,
+             *filter, *capsfilter, *video_sink;
+  GstCaps *caps;
 
   /* Create GStreamer elements for video play */
   *p_video_pipeline = gst_pipeline_new (NULL);
   video_source = gst_element_factory_make ("filesrc", NULL);
   video_parser = gst_element_factory_make ("h264parse", NULL);
   video_decoder = gst_element_factory_make ("omxh264dec", NULL);
+  filter = gst_element_factory_make ("vspmfilter", "vspm-filter");
+  capsfilter = gst_element_factory_make ("capsfilter", "caps-filter");
   video_sink = gst_element_factory_make ("waylandsink", NULL);
 
   if (!*p_video_pipeline || !video_source || !video_parser || !video_decoder
-      || !video_sink) {
+      || !filter || !capsfilter || !video_sink) {
     g_printerr ("One video element could not be created. Exiting.\n");
     return 0;
   }
@@ -378,19 +382,31 @@ create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
   /* Add all elements into the video pipeline */
   /* file-source | h264-parser | h264-decoder | video-output */
   gst_bin_add_many (GST_BIN (*p_video_pipeline), video_source, video_parser,
-      video_decoder, video_sink, NULL);
+      video_decoder, filter, capsfilter, video_sink, NULL);
 
   /* Set up for the video pipeline */
   /* Set the input file location of the file source element */
   g_object_set (G_OBJECT (video_source), "location", input_file, NULL);
   g_object_set (G_OBJECT (video_sink), "position-x", screen->x, "position-y",
-      screen->y, "out-width", screen->width, "out-height", screen->height,
-      NULL);
+      screen->y, NULL);
+
+  /* Set property "dmabuf-use" of vspmfilter to true */
+  /* Without it, waylandsink will display broken video */
+  g_object_set (G_OBJECT (filter), "dmabuf-use", TRUE, NULL);
+
+  /* Create simple cap which contains video's resolution */
+  caps = gst_caps_new_simple ("video/x-raw",
+      "width", G_TYPE_INT, screen->width,
+      "height", G_TYPE_INT, screen->height, NULL);
+
+  /* Add cap to capsfilter element */
+  g_object_set (G_OBJECT (capsfilter), "caps", caps, NULL);
+  gst_caps_unref (caps);
 
   /* Link the elements together */
   /* file-source -> h264-parser -> h264-decoder -> video-output */
   if (!gst_element_link_many (video_source, video_parser, video_decoder,
-          video_sink, NULL)) {
+          filter, capsfilter, video_sink, NULL)) {
     g_printerr ("Video elements could not be linked.\n");
     gst_object_unref (*p_video_pipeline);
     return 0;
