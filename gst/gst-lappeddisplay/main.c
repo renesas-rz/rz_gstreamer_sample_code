@@ -508,21 +508,19 @@ main (int argc, char *argv[])
     return -1;
   }
 
-  /* Scale width and height of the out video to match with screen*/
-  int rate_x = main_screen->width / 5;
-  int rate_y = main_screen->height / 5;
-
   /* Initialization */
   gst_init (&argc, &argv);
   shared_data.loop = g_main_loop_new (NULL, FALSE);
   shared_data.loop_reference = 0; 	/* Counter */
   g_mutex_init (&shared_data.mutex);
 
+  /* The video will be half the size of the screen */
+  temp.width = main_screen->width / 2;
+  temp.height = main_screen->height / 2;
+
   /* Create first pipeline */
   temp.x = 0;
   temp.y = 0;
-  temp.width = (main_screen->width / 3) + rate_x;
-  temp.height = (main_screen->height / 3) + rate_y;
   video_bus_watch_id_1 =
       create_video_pipeline (&video_pipeline_1, input_video_file_1,
       &temp, &shared_data);
@@ -534,10 +532,8 @@ main (int argc, char *argv[])
   }
 
   /* Create second pipeline */
-  temp.x = (main_screen->width / 3) - rate_x;
-  temp.y = (main_screen->height / 3) - rate_y;
-  temp.width = (main_screen->width / 3) + rate_x;
-  temp.height = (main_screen->height / 3) + rate_y;
+  temp.x = main_screen->width / 4;
+  temp.y = main_screen->height / 4;
   video_bus_watch_id_2 =
       create_video_pipeline (&video_pipeline_2, input_video_file_2,
       &temp, &shared_data);
@@ -549,10 +545,8 @@ main (int argc, char *argv[])
   }
 
   /* Create third pipeline */
-  temp.x = ((main_screen->width * 2) / 3) -  rate_x;
-  temp.y = ((main_screen->height * 2) / 3) - rate_y;
-  temp.width = (main_screen->width / 3) + rate_x;
-  temp.height = (main_screen->height / 3) + rate_y;
+  temp.x = main_screen->width / 2;
+  temp.y = main_screen->height / 2;
   video_bus_watch_id_3 =
       create_video_pipeline (&video_pipeline_3, input_video_file_3,
       &temp, &shared_data);
