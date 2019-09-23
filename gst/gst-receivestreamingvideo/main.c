@@ -331,8 +331,8 @@ main (int argc, char *argv[])
   struct screen_t *main_screen = NULL;
 
   GstElement *pipeline, *source, *depayloader, *parser,
-      *decoder, *sink;
-  GstCaps *src_caps;
+      *decoder, *filter, *capsfilter, *sink;
+  GstCaps *caps;
   GstBus *bus;
   guint bus_watch_id;
 
@@ -359,10 +359,12 @@ main (int argc, char *argv[])
   depayloader = gst_element_factory_make ("rtph264depay", "h264-depay");
   parser = gst_element_factory_make ("h264parse", "h264-parser");
   decoder = gst_element_factory_make ("omxh264dec", "h264-decoder");
+  filter = gst_element_factory_make ("vspmfilter", "vspm-filter");
+  capsfilter = gst_element_factory_make ("capsfilter", "caps-filter");
   sink = gst_element_factory_make ("waylandsink", "video-sink");
 
   if (!pipeline || !source || !depayloader || !parser
-      || !decoder || !sink) {
+      || !decoder || !filter || !capsfilter || !sink) {
     g_printerr ("One element could not be created. Exiting.\n");
     destroy_wayland(wayland_handler);
     return -1;
@@ -375,8 +377,8 @@ main (int argc, char *argv[])
   /* For valid RTP packets encapsulated in GstBuffers,
      we use the caps with mime type application/x-rtp.
      Select listening port: 5000 */
-  src_caps = gst_caps_new_empty_simple ("application/x-rtp");
-  g_object_set (G_OBJECT (source), "port", PORT, "caps", src_caps, NULL);
+  caps = gst_caps_new_empty_simple ("application/x-rtp");
+  g_object_set (G_OBJECT (source), "port", PORT, "caps", caps, NULL);
 
   /* Set max-lateness maximum number of nanoseconds that a buffer can be late
      before it is dropped (-1 unlimited).
@@ -386,19 +388,29 @@ main (int argc, char *argv[])
   /* Set position for displaying (0, 0) */
   g_object_set (G_OBJECT (sink), "position-x", main_screen->x, "position-y", main_screen->y, NULL);
 
-  /* Set out-width and out-height for the out video */
-  g_object_set (G_OBJECT (sink), "out-width", main_screen->width, "out-height", main_screen->height, NULL);
-
   /* unref cap after use */
-  gst_caps_unref (src_caps);
+  gst_caps_unref (caps);
+
+  /* Set property "dmabuf-use" of vspmfilter to true */
+  /* Without it, waylandsink will display broken video */
+  g_object_set (G_OBJECT (filter), "dmabuf-use", TRUE, NULL);
+
+  /* Create simple cap which contains video's resolution */
+  caps = gst_caps_new_simple ("video/x-raw",
+      "width", G_TYPE_INT, main_screen->width,
+      "height", G_TYPE_INT, main_screen->height, NULL);
+
+  /* Add cap to capsfilter element */
+  g_object_set (G_OBJECT (capsfilter), "caps", caps, NULL);
+  gst_caps_unref (caps);
 
   /* Add all elements into the pipeline */
   gst_bin_add_many (GST_BIN (pipeline), source, depayloader,
-      parser, decoder, sink, NULL);
+      parser, decoder, filter, capsfilter, sink, NULL);
 
   /* Link the elements together */
   if (gst_element_link_many (source, depayloader, parser,
-          decoder, sink, NULL) != TRUE) {
+          decoder, filter, capsfilter, sink, NULL) != TRUE) {
     g_printerr ("Elements could not be linked.\n");
     gst_object_unref (pipeline);
     destroy_wayland(wayland_handler);
