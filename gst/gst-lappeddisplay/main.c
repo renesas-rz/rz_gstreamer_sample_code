@@ -422,6 +422,31 @@ play_pipeline (GstElement * pipeline, CustomData * p_shared_data)
   return result;
 }
 
+/*
+ *
+ * name: is_file_exist
+ * Check if the input file exists or not?
+ *
+ */
+bool
+is_file_exist(const char *path)
+{
+  bool result = false;
+  FILE *fd = NULL;
+
+  if (path != NULL)
+  {
+    fd = fopen(path, "r");
+    if (fd != NULL)
+    {
+      result = true;
+      fclose(fd);
+    }
+  }
+
+  return result;
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -450,6 +475,19 @@ main (int argc, char *argv[])
   if (main_screen == NULL)
   {
     g_printerr("Cannot find any available screens. Exiting.\n");
+    destroy_wayland(wayland_handler);
+    return -1;
+  }
+
+  /* Check input file */
+  if (!is_file_exist(input_video_file_1) || !is_file_exist(input_video_file_2) ||
+      !is_file_exist(input_video_file_3))
+  {
+    g_printerr("Make sure the following (H264-encoded) files exist:\n");
+    g_printerr("  %s\n", input_video_file_1);
+    g_printerr("  %s\n", input_video_file_2);
+    g_printerr("  %s\n", input_video_file_3);
+
     destroy_wayland(wayland_handler);
     return -1;
   }
