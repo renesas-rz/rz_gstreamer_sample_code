@@ -1,6 +1,6 @@
 PROGRAM = gst-receivestreamingvideo
 
-DEPENDENCY = gstreamer-1.0
+DEPENDENCY = gstreamer-1.0 wayland-client
 
 CFLAGS = -Wall -g $(shell pkg-config $(DEPENDENCY) --cflags)
 LIBS = $(shell pkg-config $(DEPENDENCY) --libs)
