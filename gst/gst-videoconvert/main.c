@@ -79,9 +79,6 @@ main (int argc, char *argv[])
   /* Set input video device file of the source element - v4l2src */
   g_object_set (G_OBJECT (source), "location", input_file, NULL);
 
-  /* enable outbuf-alloc of vspmfilter for encoding */
-  g_object_set (G_OBJECT (converter), "outbuf-alloc", TRUE, NULL);
-
   /* Set target-bitrate property of the encoder element - omxh264enc */
   g_object_set (G_OBJECT (encoder), "target-bitrate", BITRATE_OMXH264ENC, NULL);
 
