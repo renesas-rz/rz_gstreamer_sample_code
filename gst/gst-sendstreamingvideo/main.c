@@ -5,6 +5,11 @@
 #define PAYLOAD_TYPE  96
 #define TIME          3  /* Send SPS and PPS Insertion every 3 second */
 
+/* Macros for program's arguments */
+#define ARG_PROGRAM_NAME 0
+#define ARG_IP_ADDRESS   1
+#define ARG_COUNT        2
+
 static void
 on_pad_added (GstElement * element, GstPad * pad, gpointer data)
 {
@@ -31,9 +36,10 @@ main (int argc, char *argv[])
   GstCaps *parser_caps;
 
   const gchar *input_file = INPUT_FILE;
+  if (argc != ARG_COUNT) {
+    g_print ("Invalid arugments.\n");
+    g_print ("Format: %s <IP address>.\n", argv[ARG_PROGRAM_NAME]);
 
-  if (argv[1] == NULL) {
-    g_print ("No input! Please insert the streaming IP for this app\n");
     return -1;
   }
 
@@ -69,7 +75,7 @@ main (int argc, char *argv[])
   g_object_set (G_OBJECT (payloader), "pt", PAYLOAD_TYPE, "config-interval", TIME, NULL); 
 
   /* Listening to port 5000 of the host */
-  g_object_set (G_OBJECT (sink), "host", argv[1], "port", PORT, NULL);
+  g_object_set (G_OBJECT (sink), "host", argv[ARG_IP_ADDRESS], "port", PORT, NULL);
 
   /* create simple caps */
   parser_caps =
