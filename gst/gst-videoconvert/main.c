@@ -10,12 +10,12 @@ static void
 on_pad_added (GstElement * element, GstPad * pad, gpointer data)
 {
   GstPad *sinkpad;
-  GstElement *decoder = (GstElement *) data;
+  GstElement *parser = (GstElement *) data;
 
-  /* We can now link this pad with the H.264-decoder sink pad */
-  g_print ("Dynamic pad created, linking demuxer/decoder\n");
+  /* We can now link this pad with the H.264 parser sink pad */
+  g_print ("Dynamic pad created, linking demuxer/parser\n");
 
-  sinkpad = gst_element_get_static_pad (decoder, "sink");
+  sinkpad = gst_element_get_static_pad (parser, "sink");
   /* Link the input pad and the new request pad */
   gst_pad_link (pad, sinkpad);
 
@@ -44,8 +44,8 @@ link_to_multiplexer (GstPad * tolink_pad, GstElement * mux)
 int
 main (int argc, char *argv[])
 {
-  GstElement *pipeline, *source, *demuxer, *decoder, *converter,
-      *conv_capsfilter, *encoder, *parser, *muxer, *sink;
+  GstElement *pipeline, *source, *demuxer, *parser1, *decoder,
+      *converter, *conv_capsfilter, *encoder, *parser2, *muxer, *sink;
   GstBus *bus;
   GstMessage *msg;
   GstPad *srcpad;
@@ -61,16 +61,17 @@ main (int argc, char *argv[])
   pipeline = gst_pipeline_new ("video-convert");
   source = gst_element_factory_make ("filesrc", "video-src");
   demuxer = gst_element_factory_make ("qtdemux", "mp4-demuxer");
+  parser1 = gst_element_factory_make ("h264parse", "h264-parser-1");
   decoder = gst_element_factory_make ("omxh264dec", "video-decoder");
   converter = gst_element_factory_make ("vspfilter", "video-converter");
   conv_capsfilter = gst_element_factory_make ("capsfilter", "convert_caps");
   encoder = gst_element_factory_make ("omxh264enc", "video-encoder");
-  parser = gst_element_factory_make ("h264parse", "h264-parser");
+  parser2 = gst_element_factory_make ("h264parse", "h264-parser-2");
   muxer = gst_element_factory_make ("qtmux", "mp4-muxer");
   sink = gst_element_factory_make ("filesink", "file-output");
 
-  if (!pipeline || !source || !demuxer || !decoder || !converter
-      || !conv_capsfilter || !encoder || !parser || !muxer || !sink) {
+  if (!pipeline || !source || !demuxer || !parser1 || !decoder || !converter
+      || !conv_capsfilter || !encoder || !parser2 || !muxer || !sink) {
     g_printerr ("One element could not be created. Exiting.\n");
     return -1;
   }
@@ -99,8 +100,8 @@ main (int argc, char *argv[])
   gst_caps_unref (conv_caps);
 
   /* Add all elements into the pipeline */
-  gst_bin_add_many (GST_BIN (pipeline), source, demuxer, decoder, converter,
-      conv_capsfilter, encoder, parser, muxer, sink, NULL);
+  gst_bin_add_many (GST_BIN (pipeline), source, demuxer, parser1, decoder,
+      converter, conv_capsfilter, encoder, parser2, muxer, sink, NULL);
 
   /* Link the elements together */
   if (gst_element_link (source, demuxer) != TRUE) {
@@ -108,8 +109,8 @@ main (int argc, char *argv[])
     gst_object_unref (pipeline);
     return -1;
   }
-  if (gst_element_link_many (decoder, converter, conv_capsfilter, encoder,
-          parser, NULL) != TRUE) {
+  if (gst_element_link_many (parser1, decoder, converter, conv_capsfilter, encoder,
+          parser2, NULL) != TRUE) {
     g_printerr ("Elements could not be linked.\n");
     gst_object_unref (pipeline);
     return -1;
@@ -121,10 +122,10 @@ main (int argc, char *argv[])
     return -1;
   }
   /* Dynamic link */
-  g_signal_connect (demuxer, "pad-added", G_CALLBACK (on_pad_added), decoder);
+  g_signal_connect (demuxer, "pad-added", G_CALLBACK (on_pad_added), parser1);
 
   /* link srcpad of h264parse to request pad of qtmuxer */
-  srcpad = gst_element_get_static_pad (parser, "src");
+  srcpad = gst_element_get_static_pad (parser2, "src");
   link_to_multiplexer (srcpad, muxer);
   gst_object_unref (srcpad);
 
