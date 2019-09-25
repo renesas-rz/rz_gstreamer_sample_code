@@ -272,13 +272,13 @@ main (int argc, char *argv[])
 
   /* Set the audio pipeline to "playing" state */
   if (audio_bus_watch_id) {
-    g_print ("Now playing audio file %s:\n", input_audio_file);
+    g_print ("Now playing audio file: %s\n", input_audio_file);
     play_pipeline (audio_pipeline, &shared_data);
   }
 
   /* Set the video pipeline to "playing" state */
   if (video_bus_watch_id) {
-    g_print ("Now playing video file %s:\n", input_video_file);
+    g_print ("Now playing video file: %s\n", input_video_file);
     play_pipeline (video_pipeline, &shared_data);
   }
 
