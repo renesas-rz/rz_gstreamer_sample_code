@@ -1,4 +1,6 @@
 #include <gst/gst.h>
+#include <stdbool.h>
+#include <stdio.h>
 
 #define INPUT_FILE  "/home/media/audios/Rondo_Alla_Turka.ogg"
 #define FORMAT      "S16LE"
@@ -19,6 +21,31 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
   gst_object_unref (sinkpad);
 }
 
+/*
+ *
+ * name: is_file_exist
+ * Check if the input file exists or not?
+ *
+ */
+bool
+is_file_exist(const char *path)
+{
+  bool result = false;
+  FILE *fd = NULL;
+
+  if (path != NULL)
+  {
+    fd = fopen(path, "r");
+    if (fd != NULL)
+    {
+      result = true;
+      fclose(fd);
+    }
+  }
+
+  return result;
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -28,6 +55,11 @@ main (int argc, char *argv[])
   GstMessage *msg;
 
   const gchar *input_file = INPUT_FILE;
+  if (!is_file_exist(input_file))
+  {
+    g_printerr("Cannot find input file: %s. Exiting.\n", input_file);
+    return -1;
+  }
 
   /* Initialization */
   gst_init (&argc, &argv);
