@@ -1,8 +1,8 @@
 #include <gst/gst.h>
 
 #define FORMAT           "S16LE"
-#define INPUT_VIDEO_FILE "/home/root/videos/vga1.h264"
-#define INPUT_AUDIO_FILE "/home/root/audios/Rondo_Alla_Turka.ogg"
+#define INPUT_VIDEO_FILE "/home/media/videos/vga1.h264"
+#define INPUT_AUDIO_FILE "/home/media/audios/Rondo_Alla_Turka.ogg"
 
 typedef struct _CustomData
 {
