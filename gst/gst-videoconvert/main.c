@@ -160,7 +160,7 @@ main (int argc, char *argv[])
   gst_object_unref (srcpad);
 
   /* Set the pipeline to "playing" state */
-  g_print ("Now converting...\n");
+  g_print ("Now scaling %s to resolution %dx%d...\n", input_file, WIDTH_SIZE, HEIGHT_SIZE);
   if (gst_element_set_state (pipeline,
           GST_STATE_PLAYING) == GST_STATE_CHANGE_FAILURE) {
     g_printerr ("Unable to set the pipeline to the playing state.\n");
