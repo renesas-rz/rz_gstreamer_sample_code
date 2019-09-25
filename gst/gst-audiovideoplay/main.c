@@ -1,4 +1,6 @@
 #include <gst/gst.h>
+#include <stdbool.h>
+#include <stdio.h>
 
 #define FORMAT           "S16LE"
 #define INPUT_VIDEO_FILE "/home/media/videos/vga1.h264"
@@ -210,6 +212,31 @@ play_pipeline (GstElement * pipeline, CustomData * p_shared_data)
   g_mutex_unlock (&p_shared_data->mutex);
 }
 
+/*
+ *
+ * name: is_file_exist
+ * Check if the input file exists or not?
+ *
+ */
+bool
+is_file_exist(const char *path)
+{
+  bool result = false;
+  FILE *fd = NULL;
+
+  if (path != NULL)
+  {
+    fd = fopen(path, "r");
+    if (fd != NULL)
+    {
+      result = true;
+      fclose(fd);
+    }
+  }
+
+  return result;
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -220,6 +247,16 @@ main (int argc, char *argv[])
   guint video_bus_watch_id;
   const gchar *input_audio_file = INPUT_AUDIO_FILE;
   const gchar *input_video_file = INPUT_VIDEO_FILE;
+
+  /* Check input file */
+  if (!is_file_exist(input_audio_file) || !is_file_exist(input_video_file))
+  {
+    g_printerr("Make sure the following files exist:\n");
+    g_printerr("  %s\n", input_audio_file);
+    g_printerr("  %s\n", input_video_file);
+
+    return -1;
+  }
 
   /* Initialization */
   gst_init (&argc, &argv);
