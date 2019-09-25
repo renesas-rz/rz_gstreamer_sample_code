@@ -7,6 +7,31 @@
 #define OUTPUT_FILE         "/home/media/audios/ENCODE_Rondo_Alla_Turka.ogg"
 #define FORMAT              "F32LE"
 
+/*
+ *
+ * name: is_file_exist
+ * Check if the input file exists or not?
+ *
+ */
+bool
+is_file_exist(const char *path)
+{
+  bool result = false;
+  FILE *fd = NULL;
+
+  if (path != NULL)
+  {
+    fd = fopen(path, "r");
+    if (fd != NULL)
+    {
+      result = true;
+      fclose(fd);
+    }
+  }
+
+  return result;
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -17,6 +42,12 @@ main (int argc, char *argv[])
 
   const gchar *input_file = INPUT_FILE;
   const gchar *output_file = OUTPUT_FILE;
+
+  if (!is_file_exist(input_file))
+  {
+    g_printerr("Cannot find input file: %s. Exiting.\n", input_file);
+    return -1;
+  }
 
   /* Initialization */
   gst_init (&argc, &argv);
