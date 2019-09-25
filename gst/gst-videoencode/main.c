@@ -52,10 +52,9 @@ main (int argc, char *argv[])
   g_object_set (G_OBJECT (capsfilter), "caps", caps, NULL);
   gst_caps_unref (caps);
 
-  /* Set the H.264 encoder options: constant control-rate, 10Mbps target bitrate and zero num-p-frames to the encoder element*/
+  /* Set the H.264 encoder options: constant control-rate, 10Mbps target bitrate to the encoder element*/
   g_object_set (G_OBJECT (encoder), "control-rate", CONTROL_RATE, NULL);
   g_object_set (G_OBJECT (encoder), "target-bitrate", BITRATE, NULL);
-  g_object_set (G_OBJECT (encoder), "num-p-frames", 0, NULL);
 
   /* Set the output filename to the sink element */
   g_object_set (G_OBJECT (sink), "location", output_file, NULL);
