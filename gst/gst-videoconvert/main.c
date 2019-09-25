@@ -1,4 +1,6 @@
 #include <gst/gst.h>
+#include <stdbool.h>
+#include <stdio.h>
 
 #define BITRATE_OMXH264ENC 10485760 /* Target bitrate of the encoder element - omxh264enc */
 #define WIDTH_SIZE         640             /* The output data of v4l2src in this application will be a raw video with 640x480 size */
@@ -41,6 +43,31 @@ link_to_multiplexer (GstPad * tolink_pad, GstElement * mux)
   g_free (srcname);
 }
 
+/*
+ *
+ * name: is_file_exist
+ * Check if the input file exists or not?
+ *
+ */
+bool
+is_file_exist(const char *path)
+{
+  bool result = false;
+  FILE *fd = NULL;
+
+  if (path != NULL)
+  {
+    fd = fopen(path, "r");
+    if (fd != NULL)
+    {
+      result = true;
+      fclose(fd);
+    }
+  }
+
+  return result;
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -53,6 +80,12 @@ main (int argc, char *argv[])
 
   const gchar *input_file = INPUT_FILE;
   const gchar *output_file = OUTPUT_FILE;
+
+  if (!is_file_exist(input_file))
+  {
+    g_printerr("Cannot find input file: %s. Exiting.\n", input_file);
+    return -1;
+  }
 
   /* Initialization */
   gst_init (&argc, &argv);
