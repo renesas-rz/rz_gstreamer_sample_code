@@ -344,7 +344,8 @@ main (int argc, char *argv[])
   struct screen_t *main_screen = NULL;
 
   GstElement *pipeline, *source, *demuxer;
-  GstElement *video_queue, *video_parser, *video_decoder, *video_sink;
+  GstElement *video_queue, *video_parser, *video_decoder, *filter,
+             *video_capsfilter, *video_sink;
   GstElement *audio_queue, *audio_decoder, *audio_resample,
              *audio_capsfilter, *audio_sink;
   CustomData decoders_data;
@@ -378,6 +379,8 @@ main (int argc, char *argv[])
   video_queue = gst_element_factory_make ("queue", "video-queue");
   video_parser = gst_element_factory_make("h264parse", "h264-parser");
   video_decoder = gst_element_factory_make ("omxh264dec", "omxh264-decoder");
+  filter = gst_element_factory_make ("vspmfilter", "vspm-filter");
+  video_capsfilter = gst_element_factory_make ("capsfilter", "video-capsfilter");
   video_sink = gst_element_factory_make ("waylandsink", "video-output");
   /* elements for Audio thread */
   audio_queue = gst_element_factory_make ("queue", "audio-queue");
@@ -387,7 +390,8 @@ main (int argc, char *argv[])
   audio_sink = gst_element_factory_make ("alsasink", "audio-output");
 
   if (!pipeline || !source || !demuxer
-      || !video_queue || !video_decoder || !video_sink
+      || !video_queue || !video_decoder || !filter
+      || !video_capsfilter || !video_sink
       || !audio_queue || !audio_decoder || !audio_resample
       || !audio_capsfilter || !audio_sink) {
     g_printerr ("One element could not be created. Exiting.\n");
@@ -401,11 +405,21 @@ main (int argc, char *argv[])
   /* Set the input filename to the source element */
   g_object_set (G_OBJECT (source), "location", input_file, NULL);
 
+  /* Set property "dmabuf-use" of vspmfilter to true */
+  /* Without it, waylandsink will display broken video */
+  g_object_set (G_OBJECT (filter), "dmabuf-use", TRUE, NULL);
+
   /* Set position for displaying (0, 0) */
   g_object_set (G_OBJECT (video_sink), "position-x", main_screen->x, "position-y", main_screen->y, NULL);
 
-  /* Set out-width and out-height for the out video */
-  g_object_set (G_OBJECT (video_sink), "out-width", main_screen->width, "out-height", main_screen->height, NULL);
+  /* Create simple cap which contains video's resolution */
+  caps = gst_caps_new_simple ("video/x-raw",
+      "width", G_TYPE_INT, main_screen->width,
+      "height", G_TYPE_INT, main_screen->height, NULL);
+
+  /* Add cap to capsfilter element */
+  g_object_set (G_OBJECT (video_capsfilter), "caps", caps, NULL);
+  gst_caps_unref (caps);
 
   /* Create simple cap which contains audio's sample rate */
   caps = gst_caps_new_simple ("audio/x-raw",
@@ -417,17 +431,17 @@ main (int argc, char *argv[])
 
   /* Add all elements into the pipeline:
      file-source | qt-demuxer
-     <1> | video-queue | omxh264-decoder | video-output
+     <1> | video-queue | omxh264-decoder | video-filter | capsfilter | video-output
      <2> | audio-queue | aac-decoder | audio-resample | capsfilter | audio-output
    */
   gst_bin_add_many (GST_BIN (pipeline), source, demuxer,
-      video_queue, video_parser, video_decoder, video_sink,
+      video_queue, video_parser, video_decoder, filter, video_capsfilter, video_sink,
       audio_queue, audio_decoder, audio_resample, audio_capsfilter,
       audio_sink, NULL);
 
   /* Link the elements together:
      - file-source -> qt-demuxer 
-     - video-queue -> omxh264-decoder -> video-output    
+     - video-queue -> omxh264-decoder -> video-filter -> capsfilter -> video-output
      - audio-queue -> aac-decoder -> audio-resample -> capsfilter -> audio-output
    */
   if (gst_element_link (source, demuxer) != TRUE) {
@@ -437,8 +451,8 @@ main (int argc, char *argv[])
     destroy_wayland(wayland_handler);
     return -1;
   }
-  if (gst_element_link_many (video_queue, video_parser, video_decoder, video_sink,
-          NULL) != TRUE) {
+  if (gst_element_link_many (video_queue, video_parser, video_decoder, filter,
+          video_capsfilter, video_sink, NULL) != TRUE) {
     g_printerr ("Video elements could not be linked.\n");
     gst_object_unref (pipeline);
 
