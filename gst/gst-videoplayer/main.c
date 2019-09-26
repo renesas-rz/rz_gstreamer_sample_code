@@ -150,7 +150,6 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
   new_pad_struct = gst_caps_get_structure (new_pad_caps, 0);
   new_pad_type = gst_structure_get_name (new_pad_struct);
 
-  GstStateChangeReturn state;
   GstState currentState;
   GstState pending;
 
@@ -161,16 +160,16 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
 
   if (g_str_has_prefix (new_pad_type, "audio")) {
     /* Need to set Gst State to PAUSED before change state from NULL to PLAYING */
-    state = gst_element_get_state(puser_data->audio_queue, &currentState, &pending, GST_CLOCK_TIME_NONE);
-    if(state == GST_STATE_NULL){
+    gst_element_get_state(puser_data->audio_queue, &currentState, &pending, GST_CLOCK_TIME_NONE);
+    if(currentState == GST_STATE_NULL){
       gst_element_set_state (puser_data->audio_queue, GST_STATE_PAUSED);
     }
-    state = gst_element_get_state(puser_data->audio_decoder, &currentState, &pending, GST_CLOCK_TIME_NONE);
-    if(state == GST_STATE_NULL){
+    gst_element_get_state(puser_data->audio_decoder, &currentState, &pending, GST_CLOCK_TIME_NONE);
+    if(currentState == GST_STATE_NULL){
       gst_element_set_state (puser_data->audio_decoder, GST_STATE_PAUSED);
     }
-    state = gst_element_get_state(puser_data->audio_sink, &currentState, &pending, GST_CLOCK_TIME_NONE);
-    if(state == GST_STATE_NULL){
+    gst_element_get_state(puser_data->audio_sink, &currentState, &pending, GST_CLOCK_TIME_NONE);
+    if(currentState == GST_STATE_NULL){
       gst_element_set_state (puser_data->audio_sink, GST_STATE_PAUSED);
     }
 
@@ -218,16 +217,16 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
     }
 
     /* Need to set Gst State to PAUSED before change state from NULL to PLAYING */
-    state = gst_element_get_state(puser_data->video_queue, &currentState, &pending, GST_CLOCK_TIME_NONE);
-    if(state == GST_STATE_NULL){
+    gst_element_get_state(puser_data->video_queue, &currentState, &pending, GST_CLOCK_TIME_NONE);
+    if(currentState == GST_STATE_NULL){
       gst_element_set_state (puser_data->video_queue, GST_STATE_PAUSED);
     }
-    state = gst_element_get_state(puser_data->video_decoder, &currentState, &pending, GST_CLOCK_TIME_NONE);
-    if(state == GST_STATE_NULL){
+    gst_element_get_state(puser_data->video_decoder, &currentState, &pending, GST_CLOCK_TIME_NONE);
+    if(currentState == GST_STATE_NULL){
       gst_element_set_state (puser_data->video_decoder, GST_STATE_PAUSED);
     }
-    state = gst_element_get_state(puser_data->video_sink, &currentState, &pending, GST_CLOCK_TIME_NONE);
-    if(state == GST_STATE_NULL){
+    gst_element_get_state(puser_data->video_sink, &currentState, &pending, GST_CLOCK_TIME_NONE);
+    if(currentState == GST_STATE_NULL){
       gst_element_set_state (puser_data->video_sink, GST_STATE_PAUSED);
     }
 
@@ -513,12 +512,11 @@ play_new_file (UserData * data, gboolean refresh_console_message)
   GstElement *audio_sink = data->audio_sink;
   gboolean ret = FALSE;
 
-  GstStateChangeReturn state;
   GstState currentState;
   GstState pending;
 
-  state = gst_element_get_state(pipeline, &currentState, &pending, GST_CLOCK_TIME_NONE);
-  if(state == GST_STATE_PLAYING){
+  gst_element_get_state(pipeline, &currentState, &pending, GST_CLOCK_TIME_NONE);
+  if(currentState == GST_STATE_PLAYING){
     gst_element_set_state (pipeline, GST_STATE_PAUSED);
     /* Seek to start and flush all old data */
     gst_element_seek_simple (pipeline, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH, 0);
