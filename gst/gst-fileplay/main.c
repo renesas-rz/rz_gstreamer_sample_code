@@ -16,6 +16,7 @@
 #define INDEX_WESTON_WIDTH   6
 #define INDEX_WESTON_HEIGHT  23
 #define INDEX                0
+#define AUDIO_SAMPLE_RATE    44100
 
 /* Count number of available screens */
 int count_screens = 0;
@@ -157,9 +158,10 @@ main (int argc, char *argv[])
 {
   GstElement *pipeline, *source, *demuxer;
   GstElement *video_queue, *video_parser, *video_decoder, *video_sink;
-  GstElement *audio_queue, *audio_decoder, *audio_sink;
+  GstElement *audio_queue, *audio_decoder, *audio_resample,
+             *audio_capsfilter, *audio_sink;
   CustomData decoders_data;
-
+  GstCaps *caps;
   GstBus *bus;
   GstMessage *msg;
 
@@ -183,11 +185,14 @@ main (int argc, char *argv[])
   /* elements for Audio thread */
   audio_queue = gst_element_factory_make ("queue", "audio-queue");
   audio_decoder = gst_element_factory_make ("faad", "aac-decoder");
+  audio_resample = gst_element_factory_make("audioresample", "audio-resample");
+  audio_capsfilter = gst_element_factory_make ("capsfilter", "audio-capsfilter");
   audio_sink = gst_element_factory_make ("alsasink", "audio-output");
 
   if (!pipeline || !source || !demuxer
       || !video_queue || !video_decoder || !video_sink
-      || !audio_queue || !audio_decoder || !audio_sink) {
+      || !audio_queue || !audio_decoder || !audio_resample
+      || !audio_capsfilter || !audio_sink) {
     g_printerr ("One element could not be created. Exiting.\n");
     return -1;
   }
@@ -203,19 +208,28 @@ main (int argc, char *argv[])
   /* Set out-width and out-height for the out video */
   g_object_set (G_OBJECT (video_sink), "out-width", availbe_width_screen[0], "out-height", availbe_height_screen[0], NULL);
 
+  /* Create simple cap which contains audio's sample rate */
+  caps = gst_caps_new_simple ("audio/x-raw",
+      "rate", G_TYPE_INT, AUDIO_SAMPLE_RATE, NULL);
+
+  /* Add cap to capsfilter element */
+  g_object_set (G_OBJECT (audio_capsfilter), "caps", caps, NULL);
+  gst_caps_unref (caps);
+
   /* Add all elements into the pipeline:
      file-source | qt-demuxer
      <1> | video-queue | omxh264-decoder | video-output
-     <2> | audio-queue | aac-decoder | audio-output
+     <2> | audio-queue | aac-decoder | audio-resample | capsfilter | audio-output
    */
   gst_bin_add_many (GST_BIN (pipeline), source, demuxer,
       video_queue, video_parser, video_decoder, video_sink,
-      audio_queue, audio_decoder, audio_sink, NULL);
+      audio_queue, audio_decoder, audio_resample, audio_capsfilter,
+      audio_sink, NULL);
 
   /* Link the elements together:
      - file-source -> qt-demuxer 
      - video-queue -> omxh264-decoder -> video-output    
-     - audio-queue -> aac-decoder -> audio-output
+     - audio-queue -> aac-decoder -> audio-resample -> capsfilter -> audio-output
    */
   if (gst_element_link (source, demuxer) != TRUE) {
     g_printerr ("Source and demuxer could not be linked.\n");
@@ -228,8 +242,8 @@ main (int argc, char *argv[])
     gst_object_unref (pipeline);
     return -1;
   }
-  if (gst_element_link_many (audio_queue, audio_decoder, audio_sink,
-          NULL) != TRUE) {
+  if (gst_element_link_many (audio_queue, audio_decoder, audio_resample,
+          audio_capsfilter, audio_sink, NULL) != TRUE) {
     g_printerr ("Audio elements could not be linked.\n");
     gst_object_unref (pipeline);
     return -1;
