@@ -19,6 +19,7 @@
 #define NORMAL_PLAYING_RATE (gdouble) 1.0
 #define GET_SECOND_FROM_NANOSEC(x)	 (x / 1000000000)
 #define ONE_MINUTE                    60               /* 1 minute = 60 seconds */
+#define AUDIO_SAMPLE_RATE             44100
 
 /* Count number of available screens */
 int count_screens = 0;
@@ -34,6 +35,8 @@ typedef struct tag_user_data
   GstElement *demuxer;
   GstElement *audio_queue;
   GstElement *audio_decoder;
+  GstElement *audio_resample;
+  GstElement *audio_capsfilter;
   GstElement *audio_sink;
   GstElement *video_queue;
   GstElement *video_parser;
@@ -168,21 +171,31 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
     if(currentState == GST_STATE_NULL){
       gst_element_set_state (puser_data->audio_decoder, GST_STATE_PAUSED);
     }
+    gst_element_get_state(puser_data->audio_resample, &currentState, &pending, GST_CLOCK_TIME_NONE);
+    if(currentState == GST_STATE_NULL){
+      gst_element_set_state (puser_data->audio_resample, GST_STATE_PAUSED);
+    }
+    gst_element_get_state(puser_data->audio_capsfilter, &currentState, &pending, GST_CLOCK_TIME_NONE);
+    if(currentState == GST_STATE_NULL){
+      gst_element_set_state (puser_data->audio_capsfilter, GST_STATE_PAUSED);
+    }
     gst_element_get_state(puser_data->audio_sink, &currentState, &pending, GST_CLOCK_TIME_NONE);
     if(currentState == GST_STATE_NULL){
       gst_element_set_state (puser_data->audio_sink, GST_STATE_PAUSED);
     }
 
-    /* Add back audio_queue, audio_decoder and audio_sink */
+    /* Add back audio_queue, audio_decoder, audio_resample, audio_capsfilter, and audio_sink */
     gst_bin_add_many (GST_BIN (puser_data->pipeline),
         puser_data->audio_queue, puser_data->audio_decoder,
+        puser_data->audio_resample, puser_data->audio_capsfilter,
         puser_data->audio_sink, NULL);
 
-    /* Link audio_queue +++ audio_decoder +++ audio_sink */
+    /* Link audio_queue +++ audio_decoder +++ audio_resample +++ audio_capsfilter +++ audio_sink */
     if (gst_element_link_many (puser_data->audio_queue,
-            puser_data->audio_decoder, puser_data->audio_sink, NULL) != TRUE) {
+            puser_data->audio_decoder, puser_data->audio_resample,
+            puser_data->audio_capsfilter, puser_data->audio_sink, NULL) != TRUE) {
       g_print
-          ("audio_queue, audio_decoder and audio_sink could not be linked.\n");
+          ("audio_queue, audio_decoder, audio_resample, audio_capsfilter, and audio_sink could not be linked.\n");
     }
 
     /* In case link this pad with the AAC-decoder sink pad */
@@ -199,6 +212,8 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
     /* Change newly added element to ready state is required */
     gst_element_set_state (puser_data->audio_queue, GST_STATE_PLAYING);
     gst_element_set_state (puser_data->audio_decoder, GST_STATE_PLAYING);
+    gst_element_set_state (puser_data->audio_resample, GST_STATE_PLAYING);
+    gst_element_set_state (puser_data->audio_capsfilter, GST_STATE_PLAYING);
     gst_element_set_state (puser_data->audio_sink, GST_STATE_PLAYING);
   } else if (g_str_has_prefix (new_pad_type, "video")) {
     /* Recreate waylandsink */
@@ -364,6 +379,7 @@ check_user_command_loop (void *data)
         break;
 
       case STOP:{
+
         /* Seek to the begining */
         if (GST_STATE_PLAYING == current_state) {
           gst_element_set_state (pipeline, GST_STATE_PAUSED);
@@ -507,6 +523,8 @@ play_new_file (UserData * data, gboolean refresh_console_message)
   GstElement *source = data->source;
   GstElement *video_queue = data->video_queue;
   GstElement *video_decoder = data->video_decoder;
+  GstElement *audio_resample = data->audio_resample;
+  GstElement *audio_capsfilter = data->audio_capsfilter;
   GstElement *audio_queue = data->audio_queue;
   GstElement *audio_decoder = data->audio_decoder;
   GstElement *audio_sink = data->audio_sink;
@@ -539,6 +557,20 @@ play_new_file (UserData * data, gboolean refresh_console_message)
   if (NULL != audio_decoder) {
     ret = gst_bin_remove (GST_BIN (pipeline), data->audio_decoder);
     LOGD ("gst_bin_remove audio_decoder from pipeline: %s\n",
+        (ret) ? ("SUCCEEDED") : ("FAILED"));
+  }
+  audio_resample = gst_bin_get_by_name (GST_BIN (pipeline), "audio-resample");
+  if (NULL != audio_resample)
+  {
+    ret = gst_bin_remove (GST_BIN (pipeline), data->audio_resample);
+    LOGD ("gst_bin_remove audio_resample from pipeline: %s\n",
+        (ret) ? ("SUCCEEDED") : ("FAILED"));
+  }
+  audio_capsfilter = gst_bin_get_by_name (GST_BIN (pipeline), "audio-capsfilter");
+  if (NULL != audio_capsfilter)
+  {
+    ret = gst_bin_remove (GST_BIN (pipeline), data->audio_capsfilter);
+    LOGD ("gst_bin_remove audio_capsfilter from pipeline: %s\n",
         (ret) ? ("SUCCEEDED") : ("FAILED"));
   }
   audio_sink = gst_bin_get_by_name (GST_BIN (pipeline), "audio-output");        /* Keep the element to still exist after removing */
@@ -599,8 +631,10 @@ main (int argc, char *argv[])
 
   GstElement *pipeline, *source, *demuxer;
   GstElement *video_queue, *video_parser, *video_decoder, *video_sink;
-  GstElement *audio_queue, *audio_decoder, *audio_sink;
+  GstElement *audio_queue, *audio_decoder, *audio_resample,
+             *audio_capsfilter, *audio_sink;
 
+  GstCaps *caps;
   GstBus *bus;
   guint bus_watch_id;
 
@@ -623,18 +657,30 @@ main (int argc, char *argv[])
   /* elements for Audio thread */
   audio_queue = gst_element_factory_make ("queue", "audio-queue");
   audio_decoder = gst_element_factory_make ("faad", "aac-decoder");
+  audio_resample = gst_element_factory_make("audioresample", "audio-resample");
+  audio_capsfilter = gst_element_factory_make ("capsfilter", "audio-capsfilter");
   audio_sink = gst_element_factory_make ("alsasink", "audio-output");
 
   if (!pipeline || !source || !demuxer
       || !video_queue || !video_parser || !video_decoder
-      || !audio_queue || !audio_decoder || !audio_sink) {
+      || !audio_queue || !audio_decoder || !audio_resample
+      || !audio_capsfilter || !audio_sink) {
     g_printerr ("One element could not be created. Exiting.\n");
     return -1;
   }
 
+  /* Create simple cap which contains audio's sample rate */
+  caps = gst_caps_new_simple ("audio/x-raw",
+      "rate", G_TYPE_INT, AUDIO_SAMPLE_RATE, NULL);
+
+  /* Add cap to capsfilter element */
+  g_object_set (G_OBJECT (audio_capsfilter), "caps", caps, NULL);
+  gst_caps_unref (caps);
+
   /* we add all elements into the pipeline and link them instead of waylandsink */
   gst_bin_add_many (GST_BIN (pipeline), source, demuxer,
-      video_queue, video_parser, video_decoder, audio_queue, audio_decoder, audio_sink, NULL);
+      video_queue, video_parser, video_decoder, audio_queue, audio_decoder,
+      audio_resample, audio_capsfilter, audio_sink, NULL);
 
   /* Link the elements together:
      - file-source -> qt-demuxer
@@ -652,6 +698,8 @@ main (int argc, char *argv[])
   user_data.demuxer = demuxer;
   user_data.audio_queue = audio_queue;
   user_data.audio_decoder = audio_decoder;
+  user_data.audio_resample = audio_resample;
+  user_data.audio_capsfilter = audio_capsfilter;
   user_data.audio_sink = audio_sink;
   user_data.video_queue = video_queue;
   user_data.video_parser = video_parser;
