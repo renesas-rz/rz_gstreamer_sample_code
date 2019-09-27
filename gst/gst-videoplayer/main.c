@@ -47,6 +47,8 @@ typedef struct tag_user_data
   GstElement *video_queue;
   GstElement *video_parser;
   GstElement *video_decoder;
+  GstElement *video_filter;
+  GstElement *video_capsfilter;
   GstElement *video_sink;
   gint64 media_length;
   struct screen_t *main_screen;
@@ -328,6 +330,7 @@ get_main_screen(struct wayland_t *handler)
 static void
 on_pad_added (GstElement * element, GstPad * pad, gpointer data)
 {
+  GstCaps *video_caps = NULL;
   GstPad *sinkpad = NULL;
   GstCaps *new_pad_caps = NULL;
   GstStructure *new_pad_struct = NULL;
@@ -411,10 +414,33 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
 
       /* Set position for displaying (0, 0) */
       g_object_set (G_OBJECT (puser_data->video_sink), "position-x", main_screen->x, "position-y", main_screen->y, NULL);
+    }
 
-      /* Set out-width and out-height for the out video */
-      g_object_set (G_OBJECT (puser_data->video_sink), "out-width", main_screen->width,
-                                                       "out-height", main_screen->height, NULL);
+    /* Recreate vspmfilter */
+    if (NULL == puser_data->video_filter) {
+      puser_data->video_filter =
+          gst_element_factory_make ("vspmfilter", "video-filter");
+      LOGD ("Re-create gst_element_factory_make : %s\n",
+          (NULL == puser_data->video_filter) ? ("FAILED") : ("SUCCEEDED"));
+
+      g_object_set (G_OBJECT (puser_data->video_filter), "dmabuf-use", TRUE, NULL);
+    }
+
+    /* Recreate capsfilter */
+    if (NULL == puser_data->video_capsfilter) {
+      puser_data->video_capsfilter =
+          gst_element_factory_make ("capsfilter", "video-capsfilter");
+      LOGD ("Re-create gst_element_factory_make video_capsfilter: %s\n",
+          (NULL == puser_data->video_capsfilter) ? ("FAILED") : ("SUCCEEDED"));
+
+      /* Create simple cap which contains video's resolution */
+      video_caps = gst_caps_new_simple ("video/x-raw",
+          "width", G_TYPE_INT, main_screen->width,
+          "height", G_TYPE_INT, main_screen->height, NULL);
+
+      /* Add cap to capsfilter element */
+      g_object_set (G_OBJECT (puser_data->video_capsfilter), "caps", video_caps, NULL);
+      gst_caps_unref (video_caps);
     }
 
     /* Need to set Gst State to PAUSED before change state from NULL to PLAYING */
@@ -430,20 +456,29 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
     if(currentState == GST_STATE_NULL){
       gst_element_set_state (puser_data->video_decoder, GST_STATE_PAUSED);
     }
+    gst_element_get_state(puser_data->video_filter, &currentState, &pending, GST_CLOCK_TIME_NONE);
+    if(currentState == GST_STATE_NULL){
+      gst_element_set_state (puser_data->video_filter, GST_STATE_PAUSED);
+    }
+    gst_element_get_state(puser_data->video_capsfilter, &currentState, &pending, GST_CLOCK_TIME_NONE);
+    if(currentState == GST_STATE_NULL){
+      gst_element_set_state (puser_data->video_capsfilter, GST_STATE_PAUSED);
+    }
     gst_element_get_state(puser_data->video_sink, &currentState, &pending, GST_CLOCK_TIME_NONE);
     if(currentState == GST_STATE_NULL){
       gst_element_set_state (puser_data->video_sink, GST_STATE_PAUSED);
     }
 
-    /* Add back video_queue, video_parser, video_decoder and video_sink */
+    /* Add back video_queue, video_parser, video_decoder, video_filter, video_capsfilter, and video_sink */
     gst_bin_add_many (GST_BIN (puser_data->pipeline),
         puser_data->video_queue, puser_data->video_parser, puser_data->video_decoder,
-        puser_data->video_sink, NULL);
+        puser_data->video_filter, puser_data->video_capsfilter, puser_data->video_sink, NULL);
 
-    /* Link video_queue +++ video_parser +++ video_decoder +++ video_sink */
+    /* Link video_queue +++ video_parser +++ video_decoder +++ video_filter +++ video_capsfilter +++ video_sink */
     if (gst_element_link_many (puser_data->video_queue, puser_data->video_parser,
-            puser_data->video_decoder, puser_data->video_sink, NULL) != TRUE) {
-      g_print ("video_queue, video_parser, and video_decoder could not be linked.\n");
+            puser_data->video_decoder, puser_data->video_filter, puser_data->video_capsfilter,
+            puser_data->video_sink, NULL) != TRUE) {
+      g_print ("video_queue, video_parser, video_decoder, video_filter, video_capsfilter, and video_sink could not be linked.\n");
     }
 
     /* In case link this pad with the omxh264-decoder sink pad */
@@ -461,6 +496,8 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
     gst_element_set_state (puser_data->video_queue, GST_STATE_PLAYING);
     gst_element_set_state (puser_data->video_parser, GST_STATE_PLAYING);
     gst_element_set_state (puser_data->video_decoder, GST_STATE_PLAYING);
+    gst_element_set_state (puser_data->video_filter, GST_STATE_PLAYING);
+    gst_element_set_state (puser_data->video_capsfilter, GST_STATE_PLAYING);
     gst_element_set_state (puser_data->video_sink, GST_STATE_PLAYING);
   }
 
@@ -792,6 +829,26 @@ play_new_file (UserData * data, gboolean refresh_console_message)
         (ret) ? ("SUCCEEDED") : ("FAILED"));
   }
 
+  /* Remove vspmfilter completely */
+  if (data->video_filter != NULL) {
+    ret = gst_bin_remove (GST_BIN (pipeline), data->video_filter);
+    LOGD ("gst_bin_remove video_filter from pipeline: %s\n",
+        (ret) ? ("SUCCEEDED") : ("FAILED"));
+    if (TRUE == ret) {
+      data->video_filter = NULL;
+    }
+  }
+
+  /* Remove capsfilter completely */
+  if (data->video_capsfilter != NULL) {
+    ret = gst_bin_remove (GST_BIN (pipeline), data->video_capsfilter);
+    LOGD ("gst_bin_remove video_capsfilter from pipeline: %s\n",
+        (ret) ? ("SUCCEEDED") : ("FAILED"));
+    if (TRUE == ret) {
+      data->video_capsfilter = NULL;
+    }
+  }
+
   /* Remove waylandsink completely */
   if (data->video_sink != NULL) {
     ret = gst_bin_remove (GST_BIN (pipeline), data->video_sink);
@@ -849,7 +906,8 @@ main (int argc, char *argv[])
   UserData user_data;
 
   GstElement *pipeline, *source, *demuxer;
-  GstElement *video_queue, *video_parser, *video_decoder, *video_sink;
+  GstElement *video_queue, *video_parser, *video_decoder,
+             *video_filter, *video_capsfilter, *video_sink;
   GstElement *audio_queue, *audio_decoder, *audio_resample,
              *audio_capsfilter, *audio_sink;
 
@@ -869,6 +927,8 @@ main (int argc, char *argv[])
   video_queue = gst_element_factory_make ("queue", "video-queue");
   video_parser = gst_element_factory_make("h264parse", "h264-parser");
   video_decoder = gst_element_factory_make ("omxh264dec", "omxh264-decoder");
+  video_filter = NULL;
+  video_capsfilter = NULL;
   video_sink = NULL;
   /* elements for Audio thread */
   audio_queue = gst_element_factory_make ("queue", "audio-queue");
@@ -920,6 +980,8 @@ main (int argc, char *argv[])
   user_data.video_queue = video_queue;
   user_data.video_parser = video_parser;
   user_data.video_decoder = video_decoder;
+  user_data.video_filter = video_filter;
+  user_data.video_capsfilter = video_capsfilter;
   user_data.video_sink = video_sink;
   user_data.media_length = 0;
   user_data.main_screen = &main_screen;
