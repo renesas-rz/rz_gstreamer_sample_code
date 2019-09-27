@@ -422,6 +422,10 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
     if(currentState == GST_STATE_NULL){
       gst_element_set_state (puser_data->video_queue, GST_STATE_PAUSED);
     }
+    gst_element_get_state(puser_data->video_parser, &currentState, &pending, GST_CLOCK_TIME_NONE);
+    if (currentState == GST_STATE_NULL){
+      gst_element_set_state (puser_data->video_parser, GST_STATE_PAUSED);
+    }
     gst_element_get_state(puser_data->video_decoder, &currentState, &pending, GST_CLOCK_TIME_NONE);
     if(currentState == GST_STATE_NULL){
       gst_element_set_state (puser_data->video_decoder, GST_STATE_PAUSED);
@@ -431,15 +435,15 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
       gst_element_set_state (puser_data->video_sink, GST_STATE_PAUSED);
     }
 
-    /* Add back video_queue, video_decoder and video_sink */
+    /* Add back video_queue, video_parser, video_decoder and video_sink */
     gst_bin_add_many (GST_BIN (puser_data->pipeline),
         puser_data->video_queue, puser_data->video_parser, puser_data->video_decoder,
         puser_data->video_sink, NULL);
 
-    /* Link video_queue +++ video_decoder +++ video_sink */
+    /* Link video_queue +++ video_parser +++ video_decoder +++ video_sink */
     if (gst_element_link_many (puser_data->video_queue, puser_data->video_parser,
             puser_data->video_decoder, puser_data->video_sink, NULL) != TRUE) {
-      g_print ("video_queue and video_decoder could not be linked.\n");
+      g_print ("video_queue, video_parser, and video_decoder could not be linked.\n");
     }
 
     /* In case link this pad with the omxh264-decoder sink pad */
@@ -455,6 +459,7 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
 
     /* Change newly added element to ready state is required */
     gst_element_set_state (puser_data->video_queue, GST_STATE_PLAYING);
+    gst_element_set_state (puser_data->video_parser, GST_STATE_PLAYING);
     gst_element_set_state (puser_data->video_decoder, GST_STATE_PLAYING);
     gst_element_set_state (puser_data->video_sink, GST_STATE_PLAYING);
   }
@@ -708,6 +713,7 @@ play_new_file (UserData * data, gboolean refresh_console_message)
   GstElement *pipeline = data->pipeline;
   GstElement *source = data->source;
   GstElement *video_queue = data->video_queue;
+  GstElement *video_parser = data->video_parser;
   GstElement *video_decoder = data->video_decoder;
   GstElement *audio_resample = data->audio_resample;
   GstElement *audio_capsfilter = data->audio_capsfilter;
@@ -771,6 +777,12 @@ play_new_file (UserData * data, gboolean refresh_console_message)
   if (NULL != video_queue) {
     ret = gst_bin_remove (GST_BIN (pipeline), data->video_queue);
     LOGD ("gst_bin_remove video_queue from pipeline: %s\n",
+        (ret) ? ("SUCCEEDED") : ("FAILED"));
+  }
+  video_parser = gst_bin_get_by_name (GST_BIN (pipeline), "h264-parser");       /* Keep the element to still exist after removing */
+  if (NULL != video_parser) {
+    ret = gst_bin_remove (GST_BIN (pipeline), data->video_parser);
+    LOGD ("gst_bin_remove video_parser from pipeline: %s\n",
         (ret) ? ("SUCCEEDED") : ("FAILED"));
   }
   video_decoder = gst_bin_get_by_name (GST_BIN (pipeline), "omxh264-decoder");  /* Keep the element to still exist after removing */
