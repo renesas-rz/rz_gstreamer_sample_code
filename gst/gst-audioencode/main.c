@@ -1,4 +1,6 @@
 #include <gst/gst.h>
+#include <stdio.h>
+#include <stdbool.h>
 
 #define BITRATE             128000     /* Bitrate averaging */
 #define SAMPLE_RATE         44100      /* Sample rate  of audio file*/
