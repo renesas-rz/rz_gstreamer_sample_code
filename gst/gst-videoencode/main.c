@@ -106,7 +106,7 @@ main (int argc, char *argv[])
   }
 
   /* Set the pipeline to "playing" state */
-  g_print ("Now encoding file %s:\n", input_file);
+  g_print ("Now encoding file: %s\n", input_file);
   if (gst_element_set_state (pipeline,
           GST_STATE_PLAYING) == GST_STATE_CHANGE_FAILURE) {
     g_printerr ("Unable to set the pipeline to the playing state.\n");
