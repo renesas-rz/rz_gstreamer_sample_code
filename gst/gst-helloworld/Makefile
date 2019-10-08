@@ -1,4 +1,4 @@
-PROGRAM = GST_HelloWorld
+PROGRAM = gst-helloworld
 
 DEPENDENCY = gstreamer-1.0
 
