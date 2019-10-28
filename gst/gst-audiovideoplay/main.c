@@ -1,6 +1,10 @@
 #include <gst/gst.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <wayland-client.h>
+#include <stdlib.h>
+#include <string.h>
+
 
 #define FORMAT           "S16LE"
 #define INPUT_VIDEO_FILE "/home/media/videos/vga1.h264"
@@ -12,6 +16,285 @@ typedef struct _CustomData
   int loop_reference;
   GMutex mutex;
 } CustomData;
+
+/* These structs contain information needed to get a list of available screens */
+struct screen_t
+{
+  uint16_t x;
+  uint16_t y;
+
+  uint16_t width;
+  uint16_t height;
+
+  struct wl_list link;
+};
+
+struct wayland_t
+{
+  struct wl_display *display;
+  struct wl_registry *registry;
+  struct wl_output *output;
+
+  struct wl_list screens;
+};
+
+/*
+ *
+ * name: init_wayland
+ * Initialize "wayland_t" structure
+ *
+ */
+void
+init_wayland(struct wayland_t *handler)
+{
+  if (handler != NULL)
+  {
+    /* Initialize "wayland_t" structure */
+    handler->display = NULL;
+    handler->registry = NULL;
+    handler->output = NULL;
+
+    /* Initialize doubly-linked list */
+    wl_list_init(&(handler->screens));
+  }
+}
+
+/*
+ *
+ * name: destroy_wayland
+ * De-initialize wayland_t structure
+ *
+ */
+void
+destroy_wayland(struct wayland_t *handler)
+{
+  struct screen_t *screen = NULL;
+  struct screen_t *tmp = NULL;
+
+  if (handler != NULL)
+  {
+    /* Clean up screens */
+    if (!wl_list_empty(&(handler->screens)))
+    {
+      wl_list_for_each_safe(screen, tmp, &(handler->screens), link)
+      {
+        wl_list_remove(&(screen->link));
+        free(screen);
+      }
+    }
+
+    /* Clean up wayland */
+    if (handler->output != NULL)
+    {
+      wl_output_destroy(handler->output);
+    }
+
+    if (handler->registry != NULL)
+    {
+      wl_registry_destroy(handler->registry);
+    }
+
+    if (handler->display != NULL)
+    {
+      wl_display_disconnect(handler->display);
+    }
+
+    /* De-allocate "wayland_t" structure itself */
+    free(handler);
+  }
+}
+
+/*
+ *
+ * name: output_handle_geometry
+ * Obtain geometry information, such as: name, model, physical width,
+ * physical height...
+ *
+ */
+static void
+output_handle_geometry(void *data, struct wl_output *wl_output,
+                       int32_t x, int32_t y,
+                       int32_t physical_width, int32_t physical_height,
+                       int32_t subpixel,
+                       const char *make, const char *model,
+                       int32_t output_transform)
+{
+  struct screen_t *screen = (struct screen_t*)data;
+
+  screen->x = x;
+  screen->y = y;
+}
+
+/*
+ *
+ * name: output_handle_mode
+ * Obtain screen's information, such as: width, height, refresh rate....
+ *
+ */
+static void
+output_handle_mode(void *data, struct wl_output *wl_output,
+                   uint32_t flags, int32_t width, int32_t height,
+                   int32_t refresh)
+{
+  struct screen_t *screen = (struct screen_t*)data;
+  if (flags & WL_OUTPUT_MODE_CURRENT)
+  {
+    screen->width = width;
+    screen->height = height;
+  }
+}
+
+/*
+ *
+ * name: output_handle_scale
+ * Obtain geometry scale
+ *
+ */
+static void
+output_handle_scale(void *data, struct wl_output *wl_output,
+                    int32_t scale)
+{
+  /* Do nothing */
+}
+
+static void
+output_handle_done(void *data, struct wl_output *wl_output)
+{
+  /* Don't bother waiting for this; there's no good reason a
+   * compositor will wait more than one roundtrip before sending
+   * these initial events. */
+}
+
+/* This variable is used to get information from global object "wl_outout" */
+static const struct wl_output_listener output_listener =
+{
+  output_handle_geometry,
+  output_handle_mode,
+  output_handle_done,
+  output_handle_scale,
+};
+
+/*
+ *
+ * name: global_handler
+ * Register global objects from Wayland compositor
+ *
+ */
+static void
+global_handler(void *data, struct wl_registry *registry, uint32_t id,
+               const char *interface, uint32_t version)
+{
+  struct screen_t *screen = NULL;
+  struct wayland_t *handler = (struct wayland_t*)data;
+
+  if (strcmp(interface, "wl_output") == 0)
+  {
+    /* Allocate and initialize "screen_t" structure */
+    screen = (struct screen_t*)calloc(1, sizeof(struct screen_t));
+
+    if (screen != NULL)
+    {
+      handler->output = wl_registry_bind(handler->registry, id, &wl_output_interface, MIN(version, 2));
+      wl_output_add_listener(handler->output, &output_listener, screen);
+
+      /* Wait until all screen's data members are filled */
+      wl_display_roundtrip(handler->display);
+
+      if ((screen->width == 0) || (screen->height == 0))
+      {
+        /* Remove invalid screen */
+        free(screen);
+      }
+      else
+      {
+        /* Add this new screen to the head of doubly-linked list */
+        wl_list_insert(&(handler->screens), &(screen->link));
+      }
+    }
+  }
+}
+
+/*
+ *
+ * name: global_remove_handler
+ * Remove public objects from Wayland compositor
+ *
+ */
+static void
+global_remove_handler(void *data, struct wl_registry *registry, uint32_t name)
+{
+  /* Do nothing */
+}
+
+/* This variable contains functions to register public Wayland's objects */
+static const struct wl_registry_listener registry_listener =
+{
+  global_handler,
+  global_remove_handler
+};
+
+/*
+ *
+ * name: get_available_screens
+ * Get a list of available screens
+ *
+ */
+struct wayland_t*
+get_available_screens()
+{
+  struct wayland_t *handler = calloc(1, sizeof(struct wayland_t));
+  if (handler == NULL)
+  {
+    return NULL;
+  }
+
+  /* Initialize "wayland_t" structure */
+  init_wayland(handler);
+
+  /* Connect to weston compositor */
+  handler->display = wl_display_connect(NULL);
+  if (handler->display == NULL)
+  {
+    fprintf(stderr, "Failed to create display\n");
+    free(handler);
+
+    return NULL;
+  }
+
+  /* Obtain wl_registry from Wayland compositor to access public object "wl_output" */
+  handler->registry = wl_display_get_registry(handler->display);
+  wl_registry_add_listener(handler->registry, &registry_listener, handler);
+
+  /* Wait until public object "wl_output" is binded */
+  wl_display_roundtrip(handler->display);
+
+  return handler;
+}
+
+/*
+ *
+ * name: get_main_screen
+ * Get main screen which has axis (0, 0)
+ *
+ */
+struct screen_t*
+get_main_screen(struct wayland_t *handler)
+{
+  struct screen_t *result = NULL;
+
+  if ((handler != NULL) && !wl_list_empty(&(handler->screens)))
+  {
+    wl_list_for_each(result, &(handler->screens), link)
+    {
+      if ((result->x == 0) && (result->y == 0))
+      {
+        return result;
+      }
+    }
+  }
+
+  return NULL;
+}
 
 static void
 try_to_quit_loop (CustomData * p_shared_data)
@@ -198,9 +481,11 @@ create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
   return video_bus_watch_id;
 }
 
-void
+bool
 play_pipeline (GstElement * pipeline, CustomData * p_shared_data)
 {
+  bool result = true;
+
   g_mutex_lock (&p_shared_data->mutex);
   ++(p_shared_data->loop_reference);
   if (gst_element_set_state (pipeline,
@@ -208,8 +493,10 @@ play_pipeline (GstElement * pipeline, CustomData * p_shared_data)
     g_printerr ("Unable to set the pipeline to the playing state.\n");
     --(p_shared_data->loop_reference);
     gst_object_unref (pipeline);
+    result = false;
   }
   g_mutex_unlock (&p_shared_data->mutex);
+  return result;
 }
 
 /*
@@ -240,6 +527,9 @@ is_file_exist(const char *path)
 int
 main (int argc, char *argv[])
 {
+  struct wayland_t *wayland_handler = NULL;
+  struct screen_t *main_screen = NULL;
+
   CustomData shared_data;
   GstElement *audio_pipeline;
   GstElement *video_pipeline;
@@ -248,6 +538,19 @@ main (int argc, char *argv[])
   const gchar *input_audio_file = INPUT_AUDIO_FILE;
   const gchar *input_video_file = INPUT_VIDEO_FILE;
 
+  /* Get a list of available screen */
+  wayland_handler = get_available_screens();
+
+  /* Get main screen */
+  main_screen = get_main_screen(wayland_handler);
+  if (main_screen == NULL)
+  {
+    g_printerr("Cannot find any available screens. Exiting.\n");
+
+    destroy_wayland(wayland_handler);
+    return -1;
+  }
+ 
   /* Check input file */
   if (!is_file_exist(input_audio_file) || !is_file_exist(input_video_file))
   {
@@ -272,19 +575,48 @@ main (int argc, char *argv[])
 
   /* Set the audio pipeline to "playing" state */
   if (audio_bus_watch_id) {
-    g_print ("Now playing audio file: %s\n", input_audio_file);
-    play_pipeline (audio_pipeline, &shared_data);
+    if (play_pipeline (audio_pipeline, &shared_data) == true) {
+      g_print ("Now playing audio file: %s\n", input_audio_file);
+    } else {
+      g_printerr ("Unable to play audio file: %s\n", input_audio_file);
+      destroy_wayland (wayland_handler);
+      g_source_remove (audio_bus_watch_id);
+      g_source_remove (video_bus_watch_id);
+      return -1;
+    }       
+  } else {
+    g_printerr ("Unable to create audio pipeline\n");
+    destroy_wayland (wayland_handler);
+    g_source_remove (audio_bus_watch_id);
+    g_source_remove (video_bus_watch_id);
+    return -1;  
   }
 
   /* Set the video pipeline to "playing" state */
   if (video_bus_watch_id) {
-    g_print ("Now playing video file: %s\n", input_video_file);
-    play_pipeline (video_pipeline, &shared_data);
+    if (play_pipeline (video_pipeline, &shared_data) == true) {
+      g_print ("Now playing video file: %s\n", input_video_file);
+    } else {
+      g_printerr ("Unable to play video file: %s\n", input_video_file);
+      destroy_wayland (wayland_handler); 
+      g_source_remove (audio_bus_watch_id);
+      g_source_remove (video_bus_watch_id);   
+      return -1; 
+    }
+  } else {
+    g_printerr ("Unable to create video pipeline\n");
+    destroy_wayland(wayland_handler);
+    g_source_remove (audio_bus_watch_id);
+    g_source_remove (video_bus_watch_id);
+    return -1;
   }
 
   /* Iterate */
   g_print ("Running...\n");
   g_main_loop_run (shared_data.loop);
+
+  /* Clean up "wayland_t" structure */
+  destroy_wayland(wayland_handler);
 
   /* Out of loop. Clean up nicely */
   g_source_remove (audio_bus_watch_id);
