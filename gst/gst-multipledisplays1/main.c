@@ -546,7 +546,7 @@ main (int argc, char *argv[])
   gst_object_unref (req_pad_2);
 
   g_print ("Returned, stopping playback\n");
-  gst_element_set_state (pipeline, GST_STATE_CHANGE_READY_TO_NULL);
+  gst_element_set_state (pipeline, GST_STATE_NULL);
 
   g_print ("Deleting pipeline\n");
   gst_object_unref (GST_OBJECT (pipeline));
