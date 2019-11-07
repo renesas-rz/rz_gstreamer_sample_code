@@ -398,12 +398,11 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
     if (new_pad_caps != NULL)
       gst_caps_unref (new_pad_caps);
 
-    /* Change newly added element to ready state is required */
-    gst_element_set_state (puser_data->audio_queue, GST_STATE_PLAYING);
-    gst_element_set_state (puser_data->audio_decoder, GST_STATE_PLAYING);
-    gst_element_set_state (puser_data->audio_resample, GST_STATE_PLAYING);
-    gst_element_set_state (puser_data->audio_capsfilter, GST_STATE_PLAYING);
-    gst_element_set_state (puser_data->audio_sink, GST_STATE_PLAYING);
+    /* Change the pipeline to PLAYING state
+     * TODO: The below statement temporarily fixes issue "Unable to pause the video".
+     * The root cause is still unknown.
+     */
+    gst_element_set_state (puser_data->pipeline, GST_STATE_PLAYING);
   } else if (g_str_has_prefix (new_pad_type, "video")) {
     /* Recreate waylandsink */
     if (NULL == puser_data->video_sink) {
@@ -492,13 +491,11 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
     if (new_pad_caps != NULL)
       gst_caps_unref (new_pad_caps);
 
-    /* Change newly added element to ready state is required */
-    gst_element_set_state (puser_data->video_queue, GST_STATE_PLAYING);
-    gst_element_set_state (puser_data->video_parser, GST_STATE_PLAYING);
-    gst_element_set_state (puser_data->video_decoder, GST_STATE_PLAYING);
-    gst_element_set_state (puser_data->video_filter, GST_STATE_PLAYING);
-    gst_element_set_state (puser_data->video_capsfilter, GST_STATE_PLAYING);
-    gst_element_set_state (puser_data->video_sink, GST_STATE_PLAYING);
+    /* Change the pipeline to PLAYING state
+     * TODO: The below statement temporarily fixes issue "Unable to pause the video".
+     * The root cause is still unknown.
+     */
+    gst_element_set_state (puser_data->pipeline, GST_STATE_PLAYING);
   }
 
   /* Signal the dynamic pad linked */
