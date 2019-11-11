@@ -1,9 +1,13 @@
 #include <gst/gst.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
+#include <libgen.h>
 
-#define INPUT_FILE  "/home/media/audios/Rondo_Alla_Turka.ogg"
 #define FORMAT      "S16LE"
+#define ARG_PROGRAM_NAME 0
+#define ARG_INPUT 1
+#define ARG_COUNT 2
 
 static void
 on_pad_added (GstElement * element, GstPad * pad, gpointer data)
@@ -46,6 +50,20 @@ is_file_exist(const char *path)
   return result;
 }
 
+/* get the extention of filename */
+const char* get_filename_ext (const char *filename) {
+  const char* dot = strrchr (filename, '.');
+  if ((!dot) || (dot == filename))
+  {
+    g_print ("Invalid input file.\n");
+    return "";
+  }
+  else
+  {
+    return dot + 1;
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -53,11 +71,29 @@ main (int argc, char *argv[])
   GstCaps *caps;
   GstBus *bus;
   GstMessage *msg;
+  const char* ext;
+  char* file_name;
 
-  const gchar *input_file = INPUT_FILE;
+  if (argc != ARG_COUNT) 
+  {
+    g_print ("Invalid arugments.\n");
+    g_print ("Format: %s <path to file> \n", argv[ARG_PROGRAM_NAME]);
+    return -1;
+  }
+
+  const gchar *input_file = argv[ARG_INPUT];
   if (!is_file_exist(input_file))
   {
     g_printerr("Cannot find input file: %s. Exiting.\n", input_file);
+    return -1;
+  }
+
+  file_name = basename (argv[ARG_INPUT]);
+  ext = get_filename_ext (file_name);
+
+  if (strcmp ("ogg", ext) != 0) 
+  {
+    g_print ("Invalid extention.This application is used to play an ogg file.\n");
     return -1;
   }
 
