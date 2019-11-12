@@ -416,6 +416,43 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
       g_object_set (G_OBJECT (puser_data->video_sink), "position-x", main_screen->x, "position-y", main_screen->y, NULL);
     }
 
+    /* Create decoder and parser for H264 video */
+    if (g_str_has_prefix (new_pad_type, "video/x-h264")) {
+      /* Recreate video-parser */
+      if (NULL == puser_data->video_parser) {
+        puser_data->video_parser =
+            gst_element_factory_make ("h264parse", "h264-parser");
+        LOGD ("Re-create gst_element_factory_make video_parser: %s\n",
+            (NULL == puser_data->video_parser) ? ("FAILED") : ("SUCCEEDED"));
+      }
+      /* Recreate video-decoder */
+      if (NULL == puser_data->video_decoder) {
+        puser_data->video_decoder =
+            gst_element_factory_make ("omxh264dec", "omxh264-decoder");
+        LOGD ("Re-create gst_element_factory_make video_decoder: %s\n",
+            (NULL == puser_data->video_decoder) ? ("FAILED") : ("SUCCEEDED"));
+      }
+    /* Create decoder and parser for H265 video */
+    } else if (g_str_has_prefix (new_pad_type, "video/x-h265")) {
+      /* Recreate video-parser */
+      if (NULL == puser_data->video_parser) {
+        puser_data->video_parser =
+            gst_element_factory_make ("h265parse", "h265-parser");
+        LOGD ("Re-create gst_element_factory_make video_parser: %s\n",
+            (NULL == puser_data->video_parser) ? ("FAILED") : ("SUCCEEDED"));
+      }
+      /* Recreate video-decoder */
+      if (NULL == puser_data->video_decoder) {
+        puser_data->video_decoder =
+            gst_element_factory_make ("omxh265dec", "omxh265-decoder");
+        LOGD ("Re-create gst_element_factory_make video_decoder: %s\n",
+            (NULL == puser_data->video_decoder) ? ("FAILED") : ("SUCCEEDED"));
+      }
+    } else {
+      g_print("Unsupported video format\n");
+      g_main_loop_quit (puser_data->loop);
+    }
+
     /* Recreate vspmfilter and capsfilter in case of scaling full screen */
     if (puser_data->fullscreen) {
       /* Recreate vspmfilter */
@@ -770,8 +807,6 @@ play_new_file (UserData * data, gboolean refresh_console_message)
   GstElement *pipeline = data->pipeline;
   GstElement *source = data->source;
   GstElement *video_queue = data->video_queue;
-  GstElement *video_parser = data->video_parser;
-  GstElement *video_decoder = data->video_decoder;
   GstElement *audio_resample = data->audio_resample;
   GstElement *audio_capsfilter = data->audio_capsfilter;
   GstElement *audio_queue = data->audio_queue;
@@ -837,17 +872,25 @@ play_new_file (UserData * data, gboolean refresh_console_message)
     LOGD ("gst_bin_remove video_queue from pipeline: %s\n",
         (ret) ? ("SUCCEEDED") : ("FAILED"));
   }
-  video_parser = gst_bin_get_by_name (GST_BIN (pipeline), "h264-parser");       /* Keep the element to still exist after removing */
-  if (NULL != video_parser) {
+
+  /* Remove video-parser completely */
+  if (data->video_parser != NULL) {
     ret = gst_bin_remove (GST_BIN (pipeline), data->video_parser);
     LOGD ("gst_bin_remove video_parser from pipeline: %s\n",
         (ret) ? ("SUCCEEDED") : ("FAILED"));
+    if (TRUE == ret) {
+      data->video_parser = NULL;
+    }
   }
-  video_decoder = gst_bin_get_by_name (GST_BIN (pipeline), "omxh264-decoder");  /* Keep the element to still exist after removing */
-  if (NULL != video_decoder) {
+
+  /* Remove video-decoder completely */
+  if (data->video_decoder != NULL) {
     ret = gst_bin_remove (GST_BIN (pipeline), data->video_decoder);
     LOGD ("gst_bin_remove video_decoder from pipeline: %s\n",
         (ret) ? ("SUCCEEDED") : ("FAILED"));
+    if (TRUE == ret) {
+     data->video_decoder = NULL;
+    }
   }
 
   if (fullscreen) {
@@ -944,7 +987,7 @@ main (int argc, char *argv[])
   UserData user_data;
 
   GstElement *pipeline, *source, *demuxer;
-  GstElement *video_queue, *video_parser, *video_decoder, *video_sink;
+  GstElement *video_queue, *video_sink;
   GstElement *audio_queue, *audio_decoder, *audio_resample,
              *audio_capsfilter, *audio_sink;
 
@@ -968,8 +1011,6 @@ main (int argc, char *argv[])
   demuxer = gst_element_factory_make ("qtdemux", "qt-demuxer");
   /* elements for Video thread */
   video_queue = gst_element_factory_make ("queue", "video-queue");
-  video_parser = gst_element_factory_make("h264parse", "h264-parser");
-  video_decoder = gst_element_factory_make ("omxh264dec", "omxh264-decoder");
   video_sink = NULL;
   /* elements for Audio thread */
   audio_queue = gst_element_factory_make ("queue", "audio-queue");
@@ -978,8 +1019,7 @@ main (int argc, char *argv[])
   audio_capsfilter = gst_element_factory_make ("capsfilter", "audio-capsfilter");
   audio_sink = gst_element_factory_make ("alsasink", "audio-output");
 
-  if (!pipeline || !source || !demuxer
-      || !video_queue || !video_parser || !video_decoder
+  if (!pipeline || !source || !demuxer || !video_queue
       || !audio_queue || !audio_decoder || !audio_resample
       || !audio_capsfilter || !audio_sink) {
     g_printerr ("One element could not be created. Exiting.\n");
@@ -994,9 +1034,9 @@ main (int argc, char *argv[])
   g_object_set (G_OBJECT (audio_capsfilter), "caps", caps, NULL);
   gst_caps_unref (caps);
 
-  /* we add all elements into the pipeline and link them instead of waylandsink */
+  /* Add all created elements into the pipeline */
   gst_bin_add_many (GST_BIN (pipeline), source, demuxer,
-      video_queue, video_parser, video_decoder, audio_queue, audio_decoder,
+      video_queue, audio_queue, audio_decoder,
       audio_resample, audio_capsfilter, audio_sink, NULL);
 
   /* Link the elements together:
@@ -1019,8 +1059,8 @@ main (int argc, char *argv[])
   user_data.audio_capsfilter = audio_capsfilter;
   user_data.audio_sink = audio_sink;
   user_data.video_queue = video_queue;
-  user_data.video_parser = video_parser;
-  user_data.video_decoder = video_decoder;
+  user_data.video_parser = NULL;
+  user_data.video_decoder = NULL;
   user_data.video_sink = video_sink;
   user_data.media_length = 0;
   user_data.main_screen = &main_screen;
