@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 #include <libgen.h>
 
 #define FORMAT      "S16LE"
@@ -91,7 +92,7 @@ main (int argc, char *argv[])
   file_name = basename (argv[ARG_INPUT]);
   ext = get_filename_ext (file_name);
 
-  if (strcmp ("ogg", ext) != 0) 
+  if (strcasecmp ("ogg", ext) != 0) 
   {
     g_print ("Invalid extention.This application is used to play an ogg file.\n");
     return -1;
