@@ -52,6 +52,7 @@ typedef struct tag_user_data
   GstElement *video_sink;
   gint64 media_length;
   struct screen_t *main_screen;
+  bool fullscreen;
 } UserData;
 
 /* Private helper functions */
@@ -415,31 +416,71 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
       g_object_set (G_OBJECT (puser_data->video_sink), "position-x", main_screen->x, "position-y", main_screen->y, NULL);
     }
 
-    /* Recreate vspmfilter */
-    if (NULL == puser_data->video_filter) {
-      puser_data->video_filter =
-          gst_element_factory_make ("vspmfilter", "video-filter");
-      LOGD ("Re-create gst_element_factory_make : %s\n",
-          (NULL == puser_data->video_filter) ? ("FAILED") : ("SUCCEEDED"));
-
-      g_object_set (G_OBJECT (puser_data->video_filter), "dmabuf-use", TRUE, NULL);
+    /* Create decoder and parser for H264 video */
+    if (g_str_has_prefix (new_pad_type, "video/x-h264")) {
+      /* Recreate video-parser */
+      if (NULL == puser_data->video_parser) {
+        puser_data->video_parser =
+            gst_element_factory_make ("h264parse", "h264-parser");
+        LOGD ("Re-create gst_element_factory_make video_parser: %s\n",
+            (NULL == puser_data->video_parser) ? ("FAILED") : ("SUCCEEDED"));
+      }
+      /* Recreate video-decoder */
+      if (NULL == puser_data->video_decoder) {
+        puser_data->video_decoder =
+            gst_element_factory_make ("omxh264dec", "omxh264-decoder");
+        LOGD ("Re-create gst_element_factory_make video_decoder: %s\n",
+            (NULL == puser_data->video_decoder) ? ("FAILED") : ("SUCCEEDED"));
+      }
+    /* Create decoder and parser for H265 video */
+    } else if (g_str_has_prefix (new_pad_type, "video/x-h265")) {
+      /* Recreate video-parser */
+      if (NULL == puser_data->video_parser) {
+        puser_data->video_parser =
+            gst_element_factory_make ("h265parse", "h265-parser");
+        LOGD ("Re-create gst_element_factory_make video_parser: %s\n",
+            (NULL == puser_data->video_parser) ? ("FAILED") : ("SUCCEEDED"));
+      }
+      /* Recreate video-decoder */
+      if (NULL == puser_data->video_decoder) {
+        puser_data->video_decoder =
+            gst_element_factory_make ("omxh265dec", "omxh265-decoder");
+        LOGD ("Re-create gst_element_factory_make video_decoder: %s\n",
+            (NULL == puser_data->video_decoder) ? ("FAILED") : ("SUCCEEDED"));
+      }
+    } else {
+      g_print("Unsupported video format\n");
+      g_main_loop_quit (puser_data->loop);
     }
 
-    /* Recreate capsfilter */
-    if (NULL == puser_data->video_capsfilter) {
-      puser_data->video_capsfilter =
-          gst_element_factory_make ("capsfilter", "video-capsfilter");
-      LOGD ("Re-create gst_element_factory_make video_capsfilter: %s\n",
-          (NULL == puser_data->video_capsfilter) ? ("FAILED") : ("SUCCEEDED"));
+    /* Recreate vspmfilter and capsfilter in case of scaling full screen */
+    if (puser_data->fullscreen) {
+      /* Recreate vspmfilter */
+      if (NULL == puser_data->video_filter) {
+        puser_data->video_filter =
+            gst_element_factory_make ("vspmfilter", "video-filter");
+        LOGD ("Re-create gst_element_factory_make : %s\n",
+            (NULL == puser_data->video_filter) ? ("FAILED") : ("SUCCEEDED"));
 
-      /* Create simple cap which contains video's resolution */
-      video_caps = gst_caps_new_simple ("video/x-raw",
-          "width", G_TYPE_INT, main_screen->width,
-          "height", G_TYPE_INT, main_screen->height, NULL);
+        g_object_set (G_OBJECT (puser_data->video_filter), "dmabuf-use", TRUE, NULL);
+      }
 
-      /* Add cap to capsfilter element */
-      g_object_set (G_OBJECT (puser_data->video_capsfilter), "caps", video_caps, NULL);
-      gst_caps_unref (video_caps);
+      /* Recreate capsfilter */
+      if (NULL == puser_data->video_capsfilter) {
+        puser_data->video_capsfilter =
+            gst_element_factory_make ("capsfilter", "video-capsfilter");
+        LOGD ("Re-create gst_element_factory_make video_capsfilter: %s\n",
+            (NULL == puser_data->video_capsfilter) ? ("FAILED") : ("SUCCEEDED"));
+
+        /* Create simple cap which contains video's resolution */
+        video_caps = gst_caps_new_simple ("video/x-raw",
+            "width", G_TYPE_INT, main_screen->width,
+            "height", G_TYPE_INT, main_screen->height, NULL);
+
+        /* Add cap to capsfilter element */
+        g_object_set (G_OBJECT (puser_data->video_capsfilter), "caps", video_caps, NULL);
+        gst_caps_unref (video_caps);
+      }
     }
 
     /* Need to set Gst State to PAUSED before change state from NULL to PLAYING */
@@ -455,30 +496,49 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
     if(currentState == GST_STATE_NULL){
       gst_element_set_state (puser_data->video_decoder, GST_STATE_PAUSED);
     }
-    gst_element_get_state(puser_data->video_filter, &currentState, &pending, GST_CLOCK_TIME_NONE);
-    if(currentState == GST_STATE_NULL){
-      gst_element_set_state (puser_data->video_filter, GST_STATE_PAUSED);
+
+    /* Change state of vspmfilter and capsfilter in case of scaling full screen */
+    if (puser_data->fullscreen) {
+      gst_element_get_state(puser_data->video_filter, &currentState, &pending, GST_CLOCK_TIME_NONE);
+      if(currentState == GST_STATE_NULL){
+        gst_element_set_state (puser_data->video_filter, GST_STATE_PAUSED);
+      }
+      gst_element_get_state(puser_data->video_capsfilter, &currentState, &pending, GST_CLOCK_TIME_NONE);
+      if(currentState == GST_STATE_NULL){
+        gst_element_set_state (puser_data->video_capsfilter, GST_STATE_PAUSED);
+      }
     }
-    gst_element_get_state(puser_data->video_capsfilter, &currentState, &pending, GST_CLOCK_TIME_NONE);
-    if(currentState == GST_STATE_NULL){
-      gst_element_set_state (puser_data->video_capsfilter, GST_STATE_PAUSED);
-    }
+
     gst_element_get_state(puser_data->video_sink, &currentState, &pending, GST_CLOCK_TIME_NONE);
     if(currentState == GST_STATE_NULL){
       gst_element_set_state (puser_data->video_sink, GST_STATE_PAUSED);
     }
 
-    /* Add back video_queue, video_parser, video_decoder, video_filter, video_capsfilter, and video_sink */
-    gst_bin_add_many (GST_BIN (puser_data->pipeline),
-        puser_data->video_queue, puser_data->video_parser, puser_data->video_decoder,
-        puser_data->video_filter, puser_data->video_capsfilter, puser_data->video_sink, NULL);
+    /* Add back video_queue, video_parser, video_decoder, and video_sink */
+    gst_bin_add_many (GST_BIN (puser_data->pipeline), puser_data->video_queue,
+        puser_data->video_parser, puser_data->video_decoder, puser_data->video_sink, NULL);
 
-    /* Link video_queue +++ video_parser +++ video_decoder +++ video_filter +++ video_capsfilter +++ video_sink */
-    if (gst_element_link_many (puser_data->video_queue, puser_data->video_parser,
-            puser_data->video_decoder, puser_data->video_filter, puser_data->video_capsfilter,
-            puser_data->video_sink, NULL) != TRUE) {
-      g_print ("video_queue, video_parser, video_decoder, video_filter, video_capsfilter, and video_sink could not be linked.\n");
+    /* Add back video_filter and video_capsfilter in case of scaling full screen */
+    if (puser_data->fullscreen) {
+      gst_bin_add_many (GST_BIN (puser_data->pipeline),
+          puser_data->video_filter, puser_data->video_capsfilter, NULL);
     }
+
+    /* Link video_queue -> video_parser -> video_decoder -> video_filter -> video_capsfilter -> video_sink
+     * in case of scaling full screen.
+     * Link video_queue -> video_parser -> video_decoder -> video_sink in case of not scaling full screen */
+    if (puser_data->fullscreen) {
+      if (gst_element_link_many (puser_data->video_queue, puser_data->video_parser,
+              puser_data->video_decoder, puser_data->video_filter, puser_data->video_capsfilter,
+              puser_data->video_sink, NULL) != TRUE) {
+        g_print ("video_queue, video_parser, video_decoder, video_filter, video_capsfilter, and video_sink could not be linked.\n");
+      }
+    } else {
+      if (gst_element_link_many (puser_data->video_queue, puser_data->video_parser,
+              puser_data->video_decoder, puser_data->video_sink, NULL) != TRUE) {
+        g_print ("video_queue, video_parser, video_decoder and video_sink could not be linked.\n");
+      }
+     }
 
     /* In case link this pad with the omxh264-decoder sink pad */
     sinkpad = gst_element_get_static_pad (puser_data->video_queue, "sink");
@@ -747,13 +807,12 @@ play_new_file (UserData * data, gboolean refresh_console_message)
   GstElement *pipeline = data->pipeline;
   GstElement *source = data->source;
   GstElement *video_queue = data->video_queue;
-  GstElement *video_parser = data->video_parser;
-  GstElement *video_decoder = data->video_decoder;
   GstElement *audio_resample = data->audio_resample;
   GstElement *audio_capsfilter = data->audio_capsfilter;
   GstElement *audio_queue = data->audio_queue;
   GstElement *audio_decoder = data->audio_decoder;
   GstElement *audio_sink = data->audio_sink;
+  bool fullscreen = data->fullscreen;
   gboolean ret = FALSE;
 
   GstState currentState;
@@ -813,36 +872,46 @@ play_new_file (UserData * data, gboolean refresh_console_message)
     LOGD ("gst_bin_remove video_queue from pipeline: %s\n",
         (ret) ? ("SUCCEEDED") : ("FAILED"));
   }
-  video_parser = gst_bin_get_by_name (GST_BIN (pipeline), "h264-parser");       /* Keep the element to still exist after removing */
-  if (NULL != video_parser) {
+
+  /* Remove video-parser completely */
+  if (data->video_parser != NULL) {
     ret = gst_bin_remove (GST_BIN (pipeline), data->video_parser);
     LOGD ("gst_bin_remove video_parser from pipeline: %s\n",
         (ret) ? ("SUCCEEDED") : ("FAILED"));
-  }
-  video_decoder = gst_bin_get_by_name (GST_BIN (pipeline), "omxh264-decoder");  /* Keep the element to still exist after removing */
-  if (NULL != video_decoder) {
-    ret = gst_bin_remove (GST_BIN (pipeline), data->video_decoder);
-    LOGD ("gst_bin_remove video_decoder from pipeline: %s\n",
-        (ret) ? ("SUCCEEDED") : ("FAILED"));
-  }
-
-  /* Remove vspmfilter completely */
-  if (data->video_filter != NULL) {
-    ret = gst_bin_remove (GST_BIN (pipeline), data->video_filter);
-    LOGD ("gst_bin_remove video_filter from pipeline: %s\n",
-        (ret) ? ("SUCCEEDED") : ("FAILED"));
     if (TRUE == ret) {
-      data->video_filter = NULL;
+      data->video_parser = NULL;
     }
   }
 
-  /* Remove capsfilter completely */
-  if (data->video_capsfilter != NULL) {
-    ret = gst_bin_remove (GST_BIN (pipeline), data->video_capsfilter);
-    LOGD ("gst_bin_remove video_capsfilter from pipeline: %s\n",
+  /* Remove video-decoder completely */
+  if (data->video_decoder != NULL) {
+    ret = gst_bin_remove (GST_BIN (pipeline), data->video_decoder);
+    LOGD ("gst_bin_remove video_decoder from pipeline: %s\n",
         (ret) ? ("SUCCEEDED") : ("FAILED"));
     if (TRUE == ret) {
-      data->video_capsfilter = NULL;
+     data->video_decoder = NULL;
+    }
+  }
+
+  if (fullscreen) {
+    /* Remove vspmfilter completely */
+    if (data->video_filter != NULL) {
+      ret = gst_bin_remove (GST_BIN (pipeline), data->video_filter);
+      LOGD ("gst_bin_remove video_filter from pipeline: %s\n",
+          (ret) ? ("SUCCEEDED") : ("FAILED"));
+      if (TRUE == ret) {
+        data->video_filter = NULL;
+      }
+    }
+
+    /* Remove capsfilter completely */
+    if (data->video_capsfilter != NULL) {
+      ret = gst_bin_remove (GST_BIN (pipeline), data->video_capsfilter);
+      LOGD ("gst_bin_remove video_capsfilter from pipeline: %s\n",
+          (ret) ? ("SUCCEEDED") : ("FAILED"));
+      if (TRUE == ret) {
+        data->video_capsfilter = NULL;
+      }
     }
   }
 
@@ -872,9 +941,18 @@ main (int argc, char *argv[])
   struct screen_t main_screen;
 
   /* Check input arguments */
-  if (argc != 2) {
+  if ((argc != 2) && (argc != 3)) {   
     g_printerr ("Usage: %s <MP4 filename or directory>\n", argv[0]);
+    g_printerr ("Usage: %s -s <MP4 filename or directory> to scale full screen\n", argv[0]);
     return -1;
+  }
+
+  if (argc == 3) {
+    if (strcmp ("-s", argv[1]) != 0) {
+      g_printerr ("Usage: %s <MP4 filename or directory>\n", argv[0]);
+      g_printerr ("Usage: %s -s <MP4 filename or directory> to scale full screen\n", argv[0]);
+      return -1;
+    }
   }
 
   /* Get a list of available screen */
@@ -895,18 +973,29 @@ main (int argc, char *argv[])
   destroy_wayland(wayland_handler);
 
   /* Get dir_path and file_path if possible */
-  if (!inject_dir_path_to_player (argv[1])) {
-    return -1;
+  if (argc == 2) {
+    if (!inject_dir_path_to_player (argv[1])) {
+      return -1;
+    }
+  } else if (argc == 3) {
+    if (!inject_dir_path_to_player (argv[2])) {
+      return -1;
+    }
   }
 
   GMainLoop *loop;
   UserData user_data;
 
   GstElement *pipeline, *source, *demuxer;
-  GstElement *video_queue, *video_parser, *video_decoder,
-             *video_filter, *video_capsfilter, *video_sink;
+  GstElement *video_queue, *video_sink;
   GstElement *audio_queue, *audio_decoder, *audio_resample,
              *audio_capsfilter, *audio_sink;
+
+  if (argc == 3) {
+    user_data.fullscreen = true;
+  } else {
+    user_data.fullscreen = false;
+  }
 
   GstCaps *caps;
   GstBus *bus;
@@ -922,10 +1011,6 @@ main (int argc, char *argv[])
   demuxer = gst_element_factory_make ("qtdemux", "qt-demuxer");
   /* elements for Video thread */
   video_queue = gst_element_factory_make ("queue", "video-queue");
-  video_parser = gst_element_factory_make("h264parse", "h264-parser");
-  video_decoder = gst_element_factory_make ("omxh264dec", "omxh264-decoder");
-  video_filter = NULL;
-  video_capsfilter = NULL;
   video_sink = NULL;
   /* elements for Audio thread */
   audio_queue = gst_element_factory_make ("queue", "audio-queue");
@@ -934,8 +1019,7 @@ main (int argc, char *argv[])
   audio_capsfilter = gst_element_factory_make ("capsfilter", "audio-capsfilter");
   audio_sink = gst_element_factory_make ("alsasink", "audio-output");
 
-  if (!pipeline || !source || !demuxer
-      || !video_queue || !video_parser || !video_decoder
+  if (!pipeline || !source || !demuxer || !video_queue
       || !audio_queue || !audio_decoder || !audio_resample
       || !audio_capsfilter || !audio_sink) {
     g_printerr ("One element could not be created. Exiting.\n");
@@ -950,9 +1034,9 @@ main (int argc, char *argv[])
   g_object_set (G_OBJECT (audio_capsfilter), "caps", caps, NULL);
   gst_caps_unref (caps);
 
-  /* we add all elements into the pipeline and link them instead of waylandsink */
+  /* Add all created elements into the pipeline */
   gst_bin_add_many (GST_BIN (pipeline), source, demuxer,
-      video_queue, video_parser, video_decoder, audio_queue, audio_decoder,
+      video_queue, audio_queue, audio_decoder,
       audio_resample, audio_capsfilter, audio_sink, NULL);
 
   /* Link the elements together:
@@ -975,13 +1059,16 @@ main (int argc, char *argv[])
   user_data.audio_capsfilter = audio_capsfilter;
   user_data.audio_sink = audio_sink;
   user_data.video_queue = video_queue;
-  user_data.video_parser = video_parser;
-  user_data.video_decoder = video_decoder;
-  user_data.video_filter = video_filter;
-  user_data.video_capsfilter = video_capsfilter;
+  user_data.video_parser = NULL;
+  user_data.video_decoder = NULL;
   user_data.video_sink = video_sink;
   user_data.media_length = 0;
   user_data.main_screen = &main_screen;
+
+  if (user_data.fullscreen) {
+    user_data.video_filter = NULL;
+    user_data.video_capsfilter = NULL;
+  }
 
   /* Set up the pipeline */
   /* we add a message handler */
