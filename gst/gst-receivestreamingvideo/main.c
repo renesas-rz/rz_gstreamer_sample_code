@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <wayland-client.h>
+#include <libgen.h>
 
 #define PORT 5000
 
@@ -327,6 +328,20 @@ bus_call (GstBus * bus, GstMessage * msg, gpointer data)
 int
 main (int argc, char *argv[])
 {
+  bool fullscreen = false;
+  if ((argc > 2) || ((argc == 2) && (strcmp (argv[1], "-s")))) {
+    g_print ("Error: Invalid arguments.\n");
+    g_print ("Usage: %s [-s]\n", argv[0]);
+    return -1;
+  }
+
+  /* Check -s option */
+  if (argc == 2) {
+    if (strcmp (argv[1], "-s") == 0) {
+      fullscreen = true;
+    }
+  }
+
   struct wayland_t *wayland_handler = NULL;
   struct screen_t *main_screen = NULL;
 
@@ -359,16 +374,18 @@ main (int argc, char *argv[])
   depayloader = gst_element_factory_make ("rtph264depay", "h264-depay");
   parser = gst_element_factory_make ("h264parse", "h264-parser");
   decoder = gst_element_factory_make ("omxh264dec", "h264-decoder");
-  filter = gst_element_factory_make ("vspmfilter", "vspm-filter");
-  capsfilter = gst_element_factory_make ("capsfilter", "caps-filter");
   sink = gst_element_factory_make ("waylandsink", "video-sink");
 
   if (!pipeline || !source || !depayloader || !parser
-      || !decoder || !filter || !capsfilter || !sink) {
+      || !decoder || !sink) {
     g_printerr ("One element could not be created. Exiting.\n");
     destroy_wayland(wayland_handler);
     return -1;
   }
+
+  /* Add all elements into the pipeline */
+  gst_bin_add_many (GST_BIN (pipeline), source, depayloader,
+      parser, decoder, sink, NULL);
 
   bus = gst_element_get_bus (pipeline);
   bus_watch_id = gst_bus_add_watch (bus, bus_call, main_loop);
@@ -391,30 +408,52 @@ main (int argc, char *argv[])
   /* unref cap after use */
   gst_caps_unref (caps);
 
-  /* Set property "dmabuf-use" of vspmfilter to true */
-  /* Without it, waylandsink will display broken video */
-  g_object_set (G_OBJECT (filter), "dmabuf-use", TRUE, NULL);
+  if (!fullscreen) {
+    /* Link the elements together */
+    if (gst_element_link_many (source, depayloader, parser,
+            decoder, sink, NULL) != TRUE) {
+      g_printerr ("Elements could not be linked.\n");
+      gst_object_unref (pipeline);
+      destroy_wayland(wayland_handler);
+      return -1;
+    }
+  }
+  else {
+    /* Create 2 more elements */
+    filter = gst_element_factory_make ("vspmfilter", "vspm-filter");
+    capsfilter = gst_element_factory_make ("capsfilter", "caps-filter");
 
-  /* Create simple cap which contains video's resolution */
-  caps = gst_caps_new_simple ("video/x-raw",
-      "width", G_TYPE_INT, main_screen->width,
-      "height", G_TYPE_INT, main_screen->height, NULL);
+    if (!filter || !capsfilter) {
+      g_printerr ("One element could not be created. Exiting.\n");
+      gst_object_unref (pipeline);
+      destroy_wayland(wayland_handler);
+      return -1;
+    }
 
-  /* Add cap to capsfilter element */
-  g_object_set (G_OBJECT (capsfilter), "caps", caps, NULL);
-  gst_caps_unref (caps);
+    /* Set property "dmabuf-use" of vspmfilter to true */
+    /* Without it, waylandsink will display broken video */
+    g_object_set (G_OBJECT (filter), "dmabuf-use", TRUE, NULL);
 
-  /* Add all elements into the pipeline */
-  gst_bin_add_many (GST_BIN (pipeline), source, depayloader,
-      parser, decoder, filter, capsfilter, sink, NULL);
+    /* Create simple cap which contains video's resolution */
+    caps = gst_caps_new_simple ("video/x-raw",
+        "width", G_TYPE_INT, main_screen->width,
+        "height", G_TYPE_INT, main_screen->height, NULL);
 
-  /* Link the elements together */
-  if (gst_element_link_many (source, depayloader, parser,
-          decoder, filter, capsfilter, sink, NULL) != TRUE) {
-    g_printerr ("Elements could not be linked.\n");
-    gst_object_unref (pipeline);
-    destroy_wayland(wayland_handler);
-    return -1;
+    /* Add cap to capsfilter element */
+    g_object_set (G_OBJECT (capsfilter), "caps", caps, NULL);
+    gst_caps_unref (caps);
+
+    /* Add elements into the pipeline */
+    gst_bin_add_many (GST_BIN (pipeline), filter, capsfilter, NULL);
+
+    /* Link the elements together */
+    if (gst_element_link_many (source, depayloader, parser,
+            decoder, filter, capsfilter, sink, NULL) != TRUE) {
+      g_printerr ("Elements could not be linked.\n");
+      gst_object_unref (pipeline);
+      destroy_wayland(wayland_handler);
+      return -1;
+    }
   }
 
   /* Set the pipeline to "playing" state */
