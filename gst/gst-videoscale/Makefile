@@ -1,9 +1,9 @@
-PROGRAM = gst-videoconvert
+PROGRAM = gst-videoscale
 
 DEPENDENCY = gstreamer-1.0
 
 CFLAGS = -Wall -g $(shell pkg-config $(DEPENDENCY) --cflags)
-LIBS = $(shell pkg-config $(DEPENDENCY) --libs)
+LIBS = $(shell pkg-config $(DEPENDENCY) --libs) -lm
 CC ?= gcc
 
 SRC_FILES = main.c
