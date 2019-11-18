@@ -1,4 +1,4 @@
-PROGRAM = gst-videoconvert
+PROGRAM = gst-videoscale
 
 DEPENDENCY = gstreamer-1.0
 

@@ -6,7 +6,7 @@
 #define WIDTH_SIZE         640             /* The output data of v4l2src in this application will be a raw video with 640x480 size */
 #define HEIGHT_SIZE        480 
 #define INPUT_FILE         "/home/media/videos/sintel_trailer-720p.mp4"
-#define OUTPUT_FILE        "/home/media/videos/CONVERT_video.mp4"
+#define OUTPUT_FILE        "SCALE_video.mp4"
 
 static void
 on_pad_added (GstElement * element, GstPad * pad, gpointer data)
@@ -72,11 +72,11 @@ int
 main (int argc, char *argv[])
 {
   GstElement *pipeline, *source, *demuxer, *parser1, *decoder,
-      *converter, *conv_capsfilter, *encoder, *parser2, *muxer, *sink;
+      *filter, *capsfilter, *encoder, *parser2, *muxer, *sink;
   GstBus *bus;
   GstMessage *msg;
   GstPad *srcpad;
-  GstCaps *conv_caps;
+  GstCaps *caps;
 
   const gchar *input_file = INPUT_FILE;
   const gchar *output_file = OUTPUT_FILE;
@@ -91,20 +91,20 @@ main (int argc, char *argv[])
   gst_init (&argc, &argv);
 
   /* Create GStreamer elements */
-  pipeline = gst_pipeline_new ("video-convert");
+  pipeline = gst_pipeline_new ("video-scale");
   source = gst_element_factory_make ("filesrc", "video-src");
   demuxer = gst_element_factory_make ("qtdemux", "mp4-demuxer");
   parser1 = gst_element_factory_make ("h264parse", "h264-parser-1");
   decoder = gst_element_factory_make ("omxh264dec", "video-decoder");
-  converter = gst_element_factory_make ("vspfilter", "video-converter");
-  conv_capsfilter = gst_element_factory_make ("capsfilter", "convert_caps");
+  filter = gst_element_factory_make ("vspfilter", "video-filter");
+  capsfilter = gst_element_factory_make ("capsfilter", "capsfilter");
   encoder = gst_element_factory_make ("omxh264enc", "video-encoder");
   parser2 = gst_element_factory_make ("h264parse", "h264-parser-2");
   muxer = gst_element_factory_make ("qtmux", "mp4-muxer");
   sink = gst_element_factory_make ("filesink", "file-output");
 
-  if (!pipeline || !source || !demuxer || !parser1 || !decoder || !converter
-      || !conv_capsfilter || !encoder || !parser2 || !muxer || !sink) {
+  if (!pipeline || !source || !demuxer || !parser1 || !decoder || !filter
+      || !capsfilter || !encoder || !parser2 || !muxer || !sink) {
     g_printerr ("One element could not be created. Exiting.\n");
     return -1;
   }
@@ -119,19 +119,19 @@ main (int argc, char *argv[])
   g_object_set (G_OBJECT (sink), "location", output_file, NULL);
 
   /* create simple caps */
-  conv_caps =
+  caps =
       gst_caps_new_simple ("video/x-raw", "width", G_TYPE_INT, WIDTH_SIZE, "height",
       G_TYPE_INT, HEIGHT_SIZE, NULL);
 
   /* set caps property for capsfilters */
-  g_object_set (G_OBJECT (conv_capsfilter), "caps", conv_caps, NULL);
+  g_object_set (G_OBJECT (capsfilter), "caps", caps, NULL);
 
   /* unref caps after usage */
-  gst_caps_unref (conv_caps);
+  gst_caps_unref (caps);
 
   /* Add all elements into the pipeline */
   gst_bin_add_many (GST_BIN (pipeline), source, demuxer, parser1, decoder,
-      converter, conv_capsfilter, encoder, parser2, muxer, sink, NULL);
+      filter, capsfilter, encoder, parser2, muxer, sink, NULL);
 
   /* Link the elements together */
   if (gst_element_link (source, demuxer) != TRUE) {
@@ -139,7 +139,7 @@ main (int argc, char *argv[])
     gst_object_unref (pipeline);
     return -1;
   }
-  if (gst_element_link_many (parser1, decoder, converter, conv_capsfilter, encoder,
+  if (gst_element_link_many (parser1, decoder, filter, capsfilter, encoder,
           parser2, NULL) != TRUE) {
     g_printerr ("Elements could not be linked.\n");
     gst_object_unref (pipeline);
@@ -206,11 +206,11 @@ main (int argc, char *argv[])
   }
 
   /* Clean up nicely */
-  g_print ("Returned, stopping conversion...\n");
+  g_print ("Returned, stopping scaling...\n");
   gst_element_set_state (pipeline, GST_STATE_NULL);
 
   g_print ("Deleting pipeline...\n");
   gst_object_unref (GST_OBJECT (pipeline));
-  g_print ("Succeeded. Output file available at: %s\n", output_file);
+  g_print ("Succeeded. Please check output file: %s\n", output_file);
   return 0;
 }
