@@ -1,32 +1,94 @@
 #include <gst/gst.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <strings.h>
 #include <libgen.h>
+#include <math.h>
 
-#define BITRATE_OMXH264ENC 10485760 /* Target bitrate of the encoder element - omxh264enc */
-#define WIDTH_SIZE         640             /* The output data of v4l2src in this application will be a raw video with 640x480 size */
-#define HEIGHT_SIZE        480 
+#define BITRATE_OMXH264ENC 40000000 /* Target bitrate of the encoder element - omxh264enc */
 #define OUTPUT_FILE        "SCALE_video.mp4"
 #define ARG_PROGRAM_NAME   0
-#define ARG_INPUT          1
-#define ARG_COUNT          2
+#define ARG_SCALE_RATIO    1
+#define ARG_INPUT          2
+#define ARG_COUNT          3
+
+typedef struct tag_user_data
+{
+  GstElement *parser1;
+  GstElement *capsfilter;
+  float scale_ratio;
+} UserData;
 
 static void
 on_pad_added (GstElement * element, GstPad * pad, gpointer data)
 {
   GstPad *sinkpad;
-  GstElement *parser = (GstElement *) data;
+  GstCaps *new_pad_caps = NULL;
+  GstStructure *new_pad_struct = NULL;
+  const gchar *new_pad_type = NULL;
+  UserData *puser_data = (UserData *) data;
+  GstCaps *scale_caps;
+  int width;
+  int height;
+  int scaled_width;
+  int scaled_height;
 
-  /* We can now link this pad with the H.264 parser sink pad */
-  g_print ("Dynamic pad created, linking demuxer/parser\n");
+  /* Gets the capabilities that pad can produce or consume */
+  new_pad_caps = gst_pad_query_caps (pad, NULL);
 
-  sinkpad = gst_element_get_static_pad (parser, "sink");
-  /* Link the input pad and the new request pad */
-  gst_pad_link (pad, sinkpad);
+  /* Gets the structure in caps */
+  new_pad_struct = gst_caps_get_structure (new_pad_caps, 0);
 
-  gst_object_unref (sinkpad);
+  /* Get the name of structure */
+  new_pad_type = gst_structure_get_name (new_pad_struct);
+
+  g_print ("Received new pad '%s' from '%s': %s\n", GST_PAD_NAME (pad),
+      GST_ELEMENT_NAME (element), new_pad_type);
+
+  if (g_str_has_prefix (new_pad_type, "video/x-h264")) {
+
+    /* Get width of video */
+    gst_structure_get_int (new_pad_struct, "width", &width);
+
+    /* Get height of video */
+    gst_structure_get_int (new_pad_struct, "height", &height);
+
+    g_print ("Resolution of original video: %dx%d\n", width, height);
+
+    scaled_width = (int) (width * puser_data->scale_ratio);
+
+    scaled_height = (int) (height * puser_data->scale_ratio);
+
+    g_print ("Now scaling video to resolution %dx%d...\n", scaled_width, scaled_height);
+
+    /* create simple caps */
+    scale_caps =
+        gst_caps_new_simple ("video/x-raw", "width", G_TYPE_INT, scaled_width, "height",
+        G_TYPE_INT, scaled_height, NULL);
+
+    /* set caps property for capsfilters */
+    g_object_set (G_OBJECT (puser_data->capsfilter), "caps", scale_caps, NULL);
+
+    /* unref caps after usage */
+    gst_caps_unref (scale_caps);
+    /* We can now link this pad with the H.264 parser sink pad */
+    g_print ("Dynamic pad created, linking demuxer/parser\n");
+
+    sinkpad = gst_element_get_static_pad (puser_data->parser1, "sink");
+    /* Link the input pad and the new request pad */
+    gst_pad_link (pad, sinkpad);
+
+    gst_object_unref (sinkpad);
+
+  } else {
+    g_printerr ("Unexpected pad received.\n");
+  }
+
+  if (new_pad_caps != NULL) {
+    gst_caps_unref (new_pad_caps);
+  }
 }
 
 /* Function is used to link request pad and a static pad */
@@ -87,6 +149,12 @@ const char* get_filename_ext (const char *filename) {
   }
 }
 
+/* Round off float number */
+float roundoff (float number, int exp)
+{
+  return floorf ((number) * pow (10, exp) + 0.5f) / pow (10, exp);
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -95,16 +163,26 @@ main (int argc, char *argv[])
   GstBus *bus;
   GstMessage *msg;
   GstPad *srcpad;
-  GstCaps *caps;
   const char* ext;
   char* file_name;
+  UserData user_data;
+  float scale_ratio;
 
   const gchar *output_file = OUTPUT_FILE;
 
   if (argc != ARG_COUNT)
   {
     g_print ("Invalid arugments.\n");
-    g_print ("Format: %s <MP4 file> \n", argv[ARG_PROGRAM_NAME]);
+    g_print ("Usage: %s <scale ratio (0, 1]> <MP4 file> \n", argv[ARG_PROGRAM_NAME]);
+    return -1;
+  }
+
+  scale_ratio = roundoff (atof (argv[ARG_SCALE_RATIO]), 1);
+
+  if ((scale_ratio > 1) || (scale_ratio <= 0 ))
+  {
+    g_print ("Invalid arugments.\n");
+    g_print ("Usage: %s <scale ratio (0, 1]> <MP4 file> \n", argv[ARG_PROGRAM_NAME]);
     return -1;
   }
 
@@ -151,21 +229,11 @@ main (int argc, char *argv[])
   g_object_set (G_OBJECT (source), "location", input_file, NULL);
 
   /* Set target-bitrate property of the encoder element - omxh264enc */
-  g_object_set (G_OBJECT (encoder), "target-bitrate", BITRATE_OMXH264ENC, NULL);
+  g_object_set (G_OBJECT (encoder), "target-bitrate", BITRATE_OMXH264ENC,
+      "control-rate", 1, NULL);
 
   /* Set output file location of the sink element - filesink */
   g_object_set (G_OBJECT (sink), "location", output_file, NULL);
-
-  /* create simple caps */
-  caps =
-      gst_caps_new_simple ("video/x-raw", "width", G_TYPE_INT, WIDTH_SIZE, "height",
-      G_TYPE_INT, HEIGHT_SIZE, NULL);
-
-  /* set caps property for capsfilters */
-  g_object_set (G_OBJECT (capsfilter), "caps", caps, NULL);
-
-  /* unref caps after usage */
-  gst_caps_unref (caps);
 
   /* Add all elements into the pipeline */
   gst_bin_add_many (GST_BIN (pipeline), source, demuxer, parser1, decoder,
@@ -189,8 +257,13 @@ main (int argc, char *argv[])
     gst_object_unref (pipeline);
     return -1;
   }
+
+  user_data.parser1 = parser1;
+  user_data.capsfilter = capsfilter;
+  user_data.scale_ratio = scale_ratio;
+
   /* Dynamic link */
-  g_signal_connect (demuxer, "pad-added", G_CALLBACK (on_pad_added), parser1);
+  g_signal_connect (demuxer, "pad-added", G_CALLBACK (on_pad_added), &user_data);
 
   /* link srcpad of h264parse to request pad of qtmuxer */
   srcpad = gst_element_get_static_pad (parser2, "src");
@@ -198,7 +271,7 @@ main (int argc, char *argv[])
   gst_object_unref (srcpad);
 
   /* Set the pipeline to "playing" state */
-  g_print ("Now scaling %s to resolution %dx%d...\n", input_file, WIDTH_SIZE, HEIGHT_SIZE);
+  g_print ("Running...\n");
   if (gst_element_set_state (pipeline,
           GST_STATE_PLAYING) == GST_STATE_CHANGE_FAILURE) {
     g_printerr ("Unable to set the pipeline to the playing state.\n");
