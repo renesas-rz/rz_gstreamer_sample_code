@@ -1,12 +1,17 @@
 #include <gst/gst.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
+#include <strings.h>
+#include <libgen.h>
 
 #define BITRATE_OMXH264ENC 10485760 /* Target bitrate of the encoder element - omxh264enc */
 #define WIDTH_SIZE         640             /* The output data of v4l2src in this application will be a raw video with 640x480 size */
 #define HEIGHT_SIZE        480 
-#define INPUT_FILE         "/home/media/videos/sintel_trailer-720p.mp4"
 #define OUTPUT_FILE        "SCALE_video.mp4"
+#define ARG_PROGRAM_NAME   0
+#define ARG_INPUT          1
+#define ARG_COUNT          2
 
 static void
 on_pad_added (GstElement * element, GstPad * pad, gpointer data)
@@ -68,6 +73,20 @@ is_file_exist(const char *path)
   return result;
 }
 
+/* get the extention of filename */
+const char* get_filename_ext (const char *filename) {
+  const char* dot = strrchr (filename, '.');
+  if ((!dot) || (dot == filename))
+  {
+    g_print ("Invalid input file.\n");
+    return "";
+  }
+  else
+  {
+    return dot + 1;
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -77,13 +96,32 @@ main (int argc, char *argv[])
   GstMessage *msg;
   GstPad *srcpad;
   GstCaps *caps;
+  const char* ext;
+  char* file_name;
 
-  const gchar *input_file = INPUT_FILE;
   const gchar *output_file = OUTPUT_FILE;
+
+  if (argc != ARG_COUNT)
+  {
+    g_print ("Invalid arugments.\n");
+    g_print ("Format: %s <MP4 file> \n", argv[ARG_PROGRAM_NAME]);
+    return -1;
+  }
+
+  const gchar *input_file = argv[ARG_INPUT];
 
   if (!is_file_exist(input_file))
   {
     g_printerr("Cannot find input file: %s. Exiting.\n", input_file);
+    return -1;
+  }
+
+  file_name = basename (argv[ARG_INPUT]);
+  ext = get_filename_ext (file_name);
+
+  if (strcasecmp ("mp4", ext) != 0)
+  {
+    g_print ("Unsupported video type. MP4 format is required.\n");
     return -1;
   }
 
