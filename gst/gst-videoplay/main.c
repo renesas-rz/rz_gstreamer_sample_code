@@ -4,8 +4,12 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <wayland-client.h>
+#include <strings.h>
+#include <libgen.h>
 
-#define INPUT_FILE "/home/media/videos/vga1.h264"
+#define ARG_PROGRAM_NAME 0
+#define ARG_INPUT 1
+#define ARG_COUNT 2
 
 /* These structs contain information needed to get a list of available screens */
 struct screen_t
@@ -311,6 +315,20 @@ is_file_exist(const char *path)
   return result;
 }
 
+/* get the extension of filename */
+const char* get_filename_ext (const char *filename) {
+  const char* dot = strrchr (filename, '.');
+  if ((!dot) || (dot == filename))
+  {
+    g_print ("Invalid input file.\n");
+    return "";
+  }
+  else
+  {
+    return dot + 1;
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -321,6 +339,15 @@ main (int argc, char *argv[])
   GstCaps *caps;
   GstBus *bus;
   GstMessage *msg;
+  const char* ext;
+  char* file_name;
+
+  if (argc != ARG_COUNT)
+  {
+    g_print ("Error: Invalid arugments.\n");
+    g_print ("Usage: %s <path to H264 file> \n", argv[ARG_PROGRAM_NAME]);
+    return -1;
+  }
 
   /* Get a list of available screen */
   wayland_handler = get_available_screens();
@@ -337,11 +364,20 @@ main (int argc, char *argv[])
   /* Initialization */
   gst_init (&argc, &argv);
 
-  const gchar *input_file = INPUT_FILE;
+  const gchar *input_file = argv[ARG_INPUT];
   if (!is_file_exist(input_file))
   {
     g_printerr("Cannot find input file: %s. Exiting.\n", input_file);
     destroy_wayland(wayland_handler);
+    return -1;
+  }
+
+  file_name = basename ((char*) input_file);
+  ext = get_filename_ext (file_name);
+
+  if (strcasecmp ("h264", ext) != 0)
+  {
+    g_print ("Unsupported video type. H264 format is required\n");
     return -1;
   }
 
