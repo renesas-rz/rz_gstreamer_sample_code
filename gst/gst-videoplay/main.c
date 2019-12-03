@@ -346,7 +346,7 @@ main (int argc, char *argv[])
 
   if ((argc > ARG_COUNT) || (argc == 1) || ((argc == ARG_COUNT) && (strcmp (argv[ARG_SCALE], "-s")))) {
     g_print ("Error: Invalid arugments.\n");
-    g_print ("Usage: %s <path to H264 file> [-s]\n", argv[ARG_PROGRAM_NAME]);
+    g_print ("Usage: %s <path to H264/H265 file> [-s]\n", argv[ARG_PROGRAM_NAME]);
     return -1;
   }
 
@@ -384,17 +384,26 @@ main (int argc, char *argv[])
   file_name = basename ((char*) input_file);
   ext = get_filename_ext (file_name);
 
-  if (strcasecmp ("h264", ext) != 0)
+  /* Check the extension and create parser, decoder */
+  if (strcasecmp ("h264", ext) == 0) {
+    parser = gst_element_factory_make ("h264parse", "h264-parser");
+    decoder = gst_element_factory_make ("omxh264dec", "h264-decoder");
+  }
+  else if (strcasecmp ("h265", ext) == 0)
   {
-    g_print ("Unsupported video type. H264 format is required\n");
+    parser = gst_element_factory_make ("h265parse", "h265-parser");
+    decoder = gst_element_factory_make ("omxh265dec", "h265-decoder");
+  }
+  else
+  {
+    g_print ("Unsupported video type. H264/H265 format is required.\n");
+    destroy_wayland(wayland_handler);
     return -1;
   }
 
   /* Create gstreamer elements */
   pipeline = gst_pipeline_new ("video-play");
   source = gst_element_factory_make ("filesrc", "file-source");
-  parser = gst_element_factory_make ("h264parse", "h264-parser");
-  decoder = gst_element_factory_make ("omxh264dec", "h264-decoder");
   sink = gst_element_factory_make ("waylandsink", "video-output");
 
   if (!pipeline || !source || !parser || !decoder || !sink) {
@@ -453,7 +462,7 @@ main (int argc, char *argv[])
     gst_bin_add_many (GST_BIN (pipeline), filter, capsfilter, NULL);
 
     /* Link the elements together */
-    /* file-source -> h264-parser -> h264-decoder -> vspm-filter -> caps-filter -> video-output */
+    /* file-source -> parser -> decoder -> vspm-filter -> caps-filter -> video-output */
     if (gst_element_link_many (source, parser, decoder, filter, capsfilter, sink, NULL) != TRUE) {
       g_printerr ("Elements could not be linked.\n");
       gst_object_unref (pipeline);
