@@ -9,7 +9,8 @@
 
 #define ARG_PROGRAM_NAME 0
 #define ARG_INPUT 1
-#define ARG_COUNT 2
+#define ARG_SCALE 2
+#define ARG_COUNT 3
 
 /* These structs contain information needed to get a list of available screens */
 struct screen_t
@@ -339,14 +340,21 @@ main (int argc, char *argv[])
   GstCaps *caps;
   GstBus *bus;
   GstMessage *msg;
+  bool fullscreen = false;
   const char* ext;
   char* file_name;
 
-  if (argc != ARG_COUNT)
-  {
+  if ((argc > ARG_COUNT) || (argc == 1) || ((argc == ARG_COUNT) && (strcmp (argv[ARG_SCALE], "-s")))) {
     g_print ("Error: Invalid arugments.\n");
-    g_print ("Usage: %s <path to H264 file> \n", argv[ARG_PROGRAM_NAME]);
+    g_print ("Usage: %s <path to H264 file> [-s]\n", argv[ARG_PROGRAM_NAME]);
     return -1;
+  }
+
+  /* Check -s option */
+  if (argc == ARG_COUNT) {
+    if (strcmp (argv[ARG_SCALE], "-s") == 0) {
+      fullscreen = true;
+    }
   }
 
   /* Get a list of available screen */
@@ -365,6 +373,7 @@ main (int argc, char *argv[])
   gst_init (&argc, &argv);
 
   const gchar *input_file = argv[ARG_INPUT];
+
   if (!is_file_exist(input_file))
   {
     g_printerr("Cannot find input file: %s. Exiting.\n", input_file);
@@ -386,15 +395,17 @@ main (int argc, char *argv[])
   source = gst_element_factory_make ("filesrc", "file-source");
   parser = gst_element_factory_make ("h264parse", "h264-parser");
   decoder = gst_element_factory_make ("omxh264dec", "h264-decoder");
-  filter = gst_element_factory_make ("vspmfilter", "vspm-filter");
-  capsfilter = gst_element_factory_make ("capsfilter", "caps-filter");
   sink = gst_element_factory_make ("waylandsink", "video-output");
 
-  if (!pipeline || !source || !parser || !decoder || !filter || !capsfilter || !sink) {
+  if (!pipeline || !source || !parser || !decoder || !sink) {
     g_printerr ("One element could not be created. Exiting.\n");
     destroy_wayland(wayland_handler);
     return -1;
   }
+
+  /* Add all elements into the pipeline */
+  gst_bin_add_many (GST_BIN (pipeline), source,
+      parser, decoder, sink, NULL);
 
   /* Set input video file for source element */
   g_object_set (G_OBJECT (source), "location", input_file, NULL);
@@ -403,30 +414,52 @@ main (int argc, char *argv[])
   g_object_set (G_OBJECT (sink), "position-x", main_screen->x, "position-y",
       main_screen->y, NULL);
 
-  /* Set property "dmabuf-use" of vspmfilter to true */
-  /* Without it, waylandsink will display broken video */
-  g_object_set (G_OBJECT (filter), "dmabuf-use", TRUE, NULL);
+  if (!fullscreen) {
+    /* Link the elements together */
+    if (gst_element_link_many (source, parser,
+            decoder, sink, NULL) != TRUE) {
+      g_printerr ("Elements could not be linked.\n");
+      gst_object_unref (pipeline);
+      destroy_wayland(wayland_handler);
+      return -1;
+    }
+  }
+  else {
+    /* Create vspm-filter and caps-filter */
+    filter = gst_element_factory_make ("vspmfilter", "vspm-filter");
+    capsfilter = gst_element_factory_make ("capsfilter", "caps-filter");
 
-  /* Create simple cap which contains video's resolution */
-  caps = gst_caps_new_simple ("video/x-raw",
-      "width", G_TYPE_INT, main_screen->width,
-      "height", G_TYPE_INT, main_screen->height, NULL);
+    if (!filter || !capsfilter) {
+      g_printerr ("One element could not be created. Exiting.\n");
+      gst_object_unref (pipeline);
+      destroy_wayland(wayland_handler);
+      return -1;
+    }
 
-  /* Add cap to capsfilter element */
-  g_object_set (G_OBJECT (capsfilter), "caps", caps, NULL);
-  gst_caps_unref (caps);
+    /* Set property "dmabuf-use" of vspmfilter to true */
+    /* Without it, waylandsink will display broken video */
+    g_object_set (G_OBJECT (filter), "dmabuf-use", TRUE, NULL);
 
-  /* Add all elements into the pipeline */
-  /* pipeline---[ file-source + h264-parser + h264-decoder + video-output ] */
-  gst_bin_add_many (GST_BIN (pipeline), source, parser, decoder, filter, capsfilter, sink, NULL);
+    /* Create simple cap which contains video's resolution */
+    caps = gst_caps_new_simple ("video/x-raw",
+        "width", G_TYPE_INT, main_screen->width,
+        "height", G_TYPE_INT, main_screen->height, NULL);
 
-  /* Link the elements together */
-  /* file-source -> h264-parser -> h264-decoder -> video-output */
-  if (gst_element_link_many (source, parser, decoder, filter, capsfilter, sink, NULL) != TRUE) {
-    g_printerr ("Elements could not be linked.\n");
-    gst_object_unref (pipeline);
-    destroy_wayland(wayland_handler);
-    return -1;
+    /* Add cap to capsfilter element */
+    g_object_set (G_OBJECT (capsfilter), "caps", caps, NULL);
+    gst_caps_unref (caps);
+
+    /* Add filter, capsfilter into the pipeline */
+    gst_bin_add_many (GST_BIN (pipeline), filter, capsfilter, NULL);
+
+    /* Link the elements together */
+    /* file-source -> h264-parser -> h264-decoder -> vspm-filter -> caps-filter -> video-output */
+    if (gst_element_link_many (source, parser, decoder, filter, capsfilter, sink, NULL) != TRUE) {
+      g_printerr ("Elements could not be linked.\n");
+      gst_object_unref (pipeline);
+      destroy_wayland(wayland_handler);
+      return -1;
+    }
   }
 
   /* Set the pipeline to "playing" state */
