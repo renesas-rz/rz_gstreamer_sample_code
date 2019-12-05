@@ -4,13 +4,26 @@
 #include <stdbool.h>
 #include <string.h>
 #include <wayland-client.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <linux/videodev2.h>
 
 #define BITRATE_OMXH264ENC 10485760 /* Target bitrate of the encoder element - omxh264enc */
-#define WIDTH_SIZE  640             /* The output data of v4l2src in this application will be a raw video with 640x480 size */
-#define HEIGHT_SIZE 480 
-#define ARG_DEVICE  1
+#define VARIABLE_RATE      1
+#define USB_WIDTH_SIZE     640        /* The output data of v4l2src in this application will be */
+#define USB_HEIGHT_SIZE    480        /* a raw video with 640x480 size */
+#define MIPI_WIDTH_SIZE    1280       /* The output data of v4l2src in this application will be */
+#define MIPI_HEIGHT_SIZE   960        /* a raw video with 1280x960 size */
+#define ARG_DEVICE         1
 
 static GstElement *pipeline;
+
+enum camera_type {
+  NO_CAMERA,
+  MIPI_CAMERA,
+  USB_CAMERA
+};
 
 /* These structs contain information needed to get a list of available screens */
 struct screen_t
@@ -291,6 +304,48 @@ get_main_screen(struct wayland_t *handler)
   return NULL;
 }
 
+/* Check type of camera
+ * return NO_CAMERA: Unsupported camera
+ * return MIPI_CAMERA: MIPI camera detected
+ * return USB_CAMERA: USB camera detected */
+enum camera_type
+check_camera_type (const char *device)
+{
+  int fd = -1;
+  int ret = -1;
+  enum camera_type camera = NO_CAMERA;
+  struct v4l2_capability info;
+
+  fd = open (device, O_RDONLY);
+  if (fd < 0) {
+    g_print ("Cannot open device.\n");
+    return NO_CAMERA;
+  }
+
+  /* Obtain information about driver */
+  ret = ioctl(fd, VIDIOC_QUERYCAP, &info);
+  if (ret < 0) {
+    g_print ("Invalid V4L2 device.\n");
+    close (fd);
+    return NO_CAMERA;
+  }
+
+  /* Detecting type of camera base on driver*/
+  if (strstr ((char*) info.driver, "vin")) {
+    g_print ("MIPI camera detected.\n");
+    camera = MIPI_CAMERA;
+  } else if (strstr ((char*) info.driver, "uvc")) {
+    g_print ("USB camera detected.\n");
+    camera = USB_CAMERA;
+  } else {
+    g_print ("Unsupported camera.\n");
+    camera = NO_CAMERA;
+  }
+
+  close (fd);
+  return camera;
+}
+
 void
 signalHandler (int signal)
 {
@@ -323,13 +378,14 @@ main (int argc, char *argv[])
   bool display_video = true;
 
   GstElement *source, *camera_capsfilter, *converter, *convert_capsfilter,
-      *encoder, *parser, *muxer, *filesink;
+      *queue1, *encoder, *parser, *muxer, *filesink;
   GstBus *bus;
   GstMessage *msg;
   GstPad *srcpad;
   GstCaps *camera_caps, *convert_caps;
+  enum camera_type camera = NO_CAMERA;
 
-  const gchar *output_file = "RECORD_USB-camera.mp4";
+  const gchar *output_file = "RECORD-camera.mp4";
 
   /* Get a list of available screen */
   wayland_handler = get_available_screens();
@@ -344,6 +400,12 @@ main (int argc, char *argv[])
     return -1;
   }
 
+  /*Check type of camera*/
+  camera = check_camera_type (argv[ARG_DEVICE]);
+  if (camera == NO_CAMERA) {
+    return -1;
+  }
+
   /* Initialization */
   gst_init (&argc, &argv);
 
@@ -351,32 +413,58 @@ main (int argc, char *argv[])
   pipeline = gst_pipeline_new ("video-record");
   source = gst_element_factory_make ("v4l2src", "camera-source");
   camera_capsfilter = gst_element_factory_make ("capsfilter", "camera_caps");
-  converter = gst_element_factory_make ("videoconvert", "video-converter");
   convert_capsfilter = gst_element_factory_make ("capsfilter", "convert_caps");
+  queue1 = gst_element_factory_make ("queue", "queue1");
   encoder = gst_element_factory_make ("omxh264enc", "video-encoder");
   parser = gst_element_factory_make ("h264parse", "h264-parser");
   muxer = gst_element_factory_make ("qtmux", "mp4-muxer");
   filesink = gst_element_factory_make ("filesink", "file-output");
 
+  if (camera == MIPI_CAMERA) {
+    converter = gst_element_factory_make ("vspmfilter", "video-converter");
+  } else {
+    converter = gst_element_factory_make ("videoconvert", "video-converter");
+  }
+
   if (!pipeline || !source || !camera_capsfilter || !converter
-      || !convert_capsfilter || !encoder || !parser || !muxer || !filesink) {
+      || !convert_capsfilter || !queue1 || !encoder || !parser
+      || !muxer || !filesink) {
     g_printerr ("One element could not be created. Exiting.\n");
     return -1;
+  }
+
+  if (camera == MIPI_CAMERA) {
+    /* Set property "dmabuf-use" of vspmfilter to true */
+    /* Without it, waylandsink will display broken video */
+    g_object_set (G_OBJECT (converter), "dmabuf-use", true, NULL);
+    /* Set properties of the encoder element - omxh264enc */
+    g_object_set (G_OBJECT (encoder), "target-bitrate", BITRATE_OMXH264ENC,
+        "control-rate", VARIABLE_RATE, "interval_intraframes", 14,
+        "periodicty-idr", 2, "use-dmabuf", true, NULL);
+
+    /* Create camera caps */
+    camera_caps =
+        gst_caps_new_simple ("video/x-raw", "format", G_TYPE_STRING, "UYVY",
+            "width", G_TYPE_INT, MIPI_WIDTH_SIZE, "height",
+            G_TYPE_INT, MIPI_HEIGHT_SIZE, NULL);
+  } else {
+    /* Set properties of the encoder element - omxh264enc */
+    g_object_set (G_OBJECT (encoder), "target-bitrate", BITRATE_OMXH264ENC,
+        "control-rate", VARIABLE_RATE, NULL);
+
+    /* Create camera caps */
+    camera_caps =
+        gst_caps_new_simple ("video/x-raw", "width", G_TYPE_INT, USB_WIDTH_SIZE,
+            "height", G_TYPE_INT, USB_HEIGHT_SIZE, NULL);
   }
 
   /* Set input video device file of the source element - v4l2src */
   g_object_set (G_OBJECT (source), "device", argv[ARG_DEVICE], NULL);
 
-  /* Set target-bitrate property of the encoder element - omxh264enc */
-  g_object_set (G_OBJECT (encoder), "target-bitrate", BITRATE_OMXH264ENC, NULL);
-
   /* Set output file location of the filesink element - filesink */
   g_object_set (G_OBJECT (filesink), "location", output_file, NULL);
 
-  /* create simple caps */
-  camera_caps =
-      gst_caps_new_simple ("video/x-raw", "width", G_TYPE_INT, WIDTH_SIZE, "height",
-      G_TYPE_INT, HEIGHT_SIZE, NULL);
+  /* create convert caps */
   convert_caps =
       gst_caps_new_simple ("video/x-raw", "format", G_TYPE_STRING, "NV12",
       NULL);
@@ -391,24 +479,25 @@ main (int argc, char *argv[])
 
   /* Add elements into the pipeline */
   gst_bin_add_many (GST_BIN (pipeline), source, camera_capsfilter, converter,
-      convert_capsfilter, encoder, parser, muxer, filesink, NULL);
+      convert_capsfilter, queue1, encoder, parser, muxer, filesink, NULL);
 
   if (!display_video) {
     /* Link the elements together */
     if (gst_element_link_many (source, camera_capsfilter, converter,
-            convert_capsfilter, encoder, parser, NULL) != TRUE) {
+            convert_capsfilter, queue1, encoder, parser, NULL) != TRUE) {
       g_printerr ("Elements could not be linked.\n");
       gst_object_unref (pipeline);
       return -1;
     }
   } else {
-    GstElement *tee, *waylandsink;
+    GstElement *tee, *queue2, *waylandsink;
 
     /* Create tee and waylandsink */
     tee = gst_element_factory_make ("tee", "tee");
+    queue2 = gst_element_factory_make ("queue", "queue2");
     waylandsink = gst_element_factory_make ("waylandsink", "video-output");
 
-    if (!tee || !waylandsink) {
+    if (!tee || !queue2 || !waylandsink) {
       g_printerr ("One element could not be created. Exiting.\n");
       return -1;
     }
@@ -417,7 +506,7 @@ main (int argc, char *argv[])
     g_object_set (G_OBJECT (waylandsink), "position-x", 0, "position-y", 0, NULL);
 
     /* Add tee and waylandsink into the pipeline */
-    gst_bin_add_many (GST_BIN (pipeline), tee, waylandsink, NULL);
+    gst_bin_add_many (GST_BIN (pipeline), tee, queue2, waylandsink, NULL);
 
     /* Link the elements together */
     if (gst_element_link_many (source, camera_capsfilter, converter,
@@ -426,12 +515,12 @@ main (int argc, char *argv[])
       gst_object_unref (pipeline);
       return -1;
     }
-    if (gst_element_link_many (tee, encoder, parser, NULL) != TRUE) {
+    if (gst_element_link_many (tee, queue1, encoder, parser, NULL) != TRUE) {
       g_printerr ("Elements could not be linked.\n");
       gst_object_unref (pipeline);
       return -1;
     }
-    if (gst_element_link_many (tee, waylandsink, NULL) != TRUE) {
+    if (gst_element_link_many (tee, queue2, waylandsink, NULL) != TRUE) {
       g_printerr ("Elements could not be linked.\n");
       gst_object_unref (pipeline);
       return -1;
