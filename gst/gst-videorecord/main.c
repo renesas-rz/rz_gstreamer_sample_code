@@ -9,13 +9,18 @@
 #include <sys/ioctl.h>
 #include <linux/videodev2.h>
 
-#define BITRATE_OMXH264ENC 10485760 /* Target bitrate of the encoder element - omxh264enc */
+#define MIPI_BITRATE_OMXH264ENC 40000000 /* Target bitrate of the encoder for MIPI camera */
+#define USB_BITRATE_OMXH264ENC  10485760 /* Target bitrate of the encoder for USB camera */
 #define VARIABLE_RATE      1
 #define USB_WIDTH_SIZE     640        /* The output data of v4l2src in this application will be */
 #define USB_HEIGHT_SIZE    480        /* a raw video with 640x480 size */
 #define MIPI_WIDTH_SIZE    1280       /* The output data of v4l2src in this application will be */
 #define MIPI_HEIGHT_SIZE   960        /* a raw video with 1280x960 size */
+#define ARG_PROGRAM_NAME   0
 #define ARG_DEVICE         1
+#define ARG_WIDTH          2
+#define ARG_HEIGHT         3
+#define ARG_COUNT          4
 
 static GstElement *pipeline;
 
@@ -23,6 +28,25 @@ enum camera_type {
   NO_CAMERA,
   MIPI_CAMERA,
   USB_CAMERA
+};
+
+/* Supported resolutions of MIPI camera */
+const char *mipi_resolutions[] = {
+  "1280x960",
+  "1920x1080",
+  "2592x1944",
+  NULL,
+};
+
+/* Supported resolutions of USB camera */
+const char *usb_resolutions[] = {
+  "320x240",
+  "640x480",
+  "800x600",
+  "960x720",
+  "1280x720",
+  "1280x960",
+  NULL,
 };
 
 /* These structs contain information needed to get a list of available screens */
@@ -346,6 +370,72 @@ check_camera_type (const char *device)
   return camera;
 }
 
+/* Print supported resolutions in console*/
+void
+print_supported_resolutions (char *resolution,
+    const char* supported_resolutions[]) {
+  int index = 0;
+  g_print ("%s is unsupported resolution.\n", resolution);
+  g_print ("Please try one of the following resolutions:\n");
+
+  /* Print list of supported resolutions */
+  while (supported_resolutions[index]) {
+    g_print ("%s\n", supported_resolutions[index]);
+    index++;
+  }
+}
+
+/* Check resolution in program argument is supported or not
+ * Supported resolutions are defined in
+ * usb_resolutions and mipi_resolutions */
+bool
+check_resolution (char *resolution, const char *supported_resolutions[]) {
+  int index = 0;
+  bool ret = false;
+
+  while (supported_resolutions[index] != NULL) {
+    if (strcasecmp (supported_resolutions[index], resolution) == 0) {
+      ret = true;
+      break;
+    } else {
+      index++;
+    }
+  }
+
+  if (!ret) {
+    print_supported_resolutions (resolution, supported_resolutions);
+  }
+
+  return ret;
+}
+
+/* Check resolution in program argument is supported or not
+ * If not, display list of supported resolutions in console
+ * else store resolution to width, height */
+bool
+get_resolution (char *arg_width, char *arg_height, int *width,
+    int *height, enum camera_type camera) {
+  bool ret = false;
+  char resolution[10];
+
+  sprintf (resolution, "%sx%s", arg_width, arg_height);
+  if (camera == MIPI_CAMERA) {
+    ret = check_resolution (resolution, mipi_resolutions);
+  } else {
+    ret = check_resolution (resolution, usb_resolutions);
+  }
+
+  if (!ret) {
+    return ret;
+  }
+
+  /* Store resolution to width and height */
+  *width = atoi (arg_width);
+  *height = atoi (arg_height);
+
+  return ret;
+}
+
 void
 signalHandler (int signal)
 {
@@ -384,6 +474,8 @@ main (int argc, char *argv[])
   GstPad *srcpad;
   GstCaps *camera_caps, *convert_caps;
   enum camera_type camera = NO_CAMERA;
+  int width = 0;
+  int height = 0;
 
   const gchar *output_file = "RECORD-camera.mp4";
 
@@ -395,15 +487,37 @@ main (int argc, char *argv[])
   }
   destroy_wayland(wayland_handler);
 
-  if (argv[ARG_DEVICE] == NULL) {
-    g_print ("No input! Please input video device for this app\n");
+  if ((argc != 2) && (argc != ARG_COUNT)) {
+    g_print ("Error: Invalid arugments.\n");
+    g_print ("Usage: %s <camera device> [width] [height]\n", argv[ARG_PROGRAM_NAME]);
     return -1;
   }
 
-  /*Check type of camera*/
+  /* Check type of camera and set default resolution */
   camera = check_camera_type (argv[ARG_DEVICE]);
   if (camera == NO_CAMERA) {
     return -1;
+  } else if (camera == MIPI_CAMERA) {
+    width = MIPI_WIDTH_SIZE;
+    height = MIPI_HEIGHT_SIZE;
+  } else {
+    width = USB_WIDTH_SIZE;
+    height = USB_HEIGHT_SIZE;
+  }
+
+  /* Parse resolution from program argument */
+  if (argc == ARG_COUNT) {
+    char hostname[20];
+    gethostname (hostname, 20);
+    if (!strcmp (hostname, "ek874") && (camera == MIPI_CAMERA)) {
+      g_print ("RZ/G2E only supports 1280x960 resolution.\n");
+      g_print ("Set 1280x960 resolution as default.\n");
+    } else {
+      if (!get_resolution (argv[ARG_WIDTH], argv[ARG_HEIGHT],
+               &width, &height, camera)) {
+        return -1;
+      }
+    }
   }
 
   /* Initialization */
@@ -438,24 +552,23 @@ main (int argc, char *argv[])
     /* Without it, waylandsink will display broken video */
     g_object_set (G_OBJECT (converter), "dmabuf-use", true, NULL);
     /* Set properties of the encoder element - omxh264enc */
-    g_object_set (G_OBJECT (encoder), "target-bitrate", BITRATE_OMXH264ENC,
+    g_object_set (G_OBJECT (encoder), "target-bitrate", MIPI_BITRATE_OMXH264ENC,
         "control-rate", VARIABLE_RATE, "interval_intraframes", 14,
         "periodicty-idr", 2, "use-dmabuf", true, NULL);
 
     /* Create camera caps */
     camera_caps =
         gst_caps_new_simple ("video/x-raw", "format", G_TYPE_STRING, "UYVY",
-            "width", G_TYPE_INT, MIPI_WIDTH_SIZE, "height",
-            G_TYPE_INT, MIPI_HEIGHT_SIZE, NULL);
+            "width", G_TYPE_INT, width, "height", G_TYPE_INT, height, NULL);
   } else {
     /* Set properties of the encoder element - omxh264enc */
-    g_object_set (G_OBJECT (encoder), "target-bitrate", BITRATE_OMXH264ENC,
+    g_object_set (G_OBJECT (encoder), "target-bitrate", USB_BITRATE_OMXH264ENC,
         "control-rate", VARIABLE_RATE, NULL);
 
     /* Create camera caps */
     camera_caps =
-        gst_caps_new_simple ("video/x-raw", "width", G_TYPE_INT, USB_WIDTH_SIZE,
-            "height", G_TYPE_INT, USB_HEIGHT_SIZE, NULL);
+        gst_caps_new_simple ("video/x-raw", "width", G_TYPE_INT, width,
+            "height", G_TYPE_INT, height, NULL);
   }
 
   /* Set input video device file of the source element - v4l2src */
