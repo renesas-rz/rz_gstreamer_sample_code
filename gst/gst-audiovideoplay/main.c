@@ -4,11 +4,13 @@
 #include <wayland-client.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <libgen.h>
 
 #define FORMAT           "S16LE"
-#define INPUT_VIDEO_FILE "/home/media/videos/vga1.h264"
-#define INPUT_AUDIO_FILE "/home/media/audios/Rondo_Alla_Turka.ogg"
+#define ARG_PROGRAM_NAME 0
+#define ARG_INPUT_AUDIO  1
+#define ARG_INPUT_VIDEO  2
+#define ARG_COUNT        3
 
 typedef struct _CustomData
 {
@@ -524,6 +526,17 @@ is_file_exist(const char *path)
   return result;
 }
 
+/* get the extension of filename */
+const char* get_filename_ext (const char *filename) {
+  const char* dot = strrchr (filename, '.');
+  if ((!dot) || (dot == filename)) {
+    return "";
+  }
+  else {
+    return dot + 1;
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -535,8 +548,14 @@ main (int argc, char *argv[])
   GstElement *video_pipeline;
   guint audio_bus_watch_id;
   guint video_bus_watch_id;
-  const gchar *input_audio_file = INPUT_AUDIO_FILE;
-  const gchar *input_video_file = INPUT_VIDEO_FILE;
+  const char *audio_ext, *video_ext;
+  char* file_name;
+
+  if (argc != ARG_COUNT) {
+    g_printerr ("Error: Invalid arugments.\n");
+    g_printerr ("Usage: %s <OGG file> <H264 file>\n", argv[ARG_PROGRAM_NAME]);
+    return -1;
+  }
 
   /* Get a list of available screen */
   wayland_handler = get_available_screens();
@@ -551,6 +570,9 @@ main (int argc, char *argv[])
     return -1;
   }
  
+  const gchar *input_audio_file = argv[ARG_INPUT_AUDIO];
+  const gchar *input_video_file = argv[ARG_INPUT_VIDEO];
+
   /* Check input file */
   if (!is_file_exist(input_audio_file) || !is_file_exist(input_video_file))
   {
@@ -558,6 +580,19 @@ main (int argc, char *argv[])
     g_printerr("  %s\n", input_audio_file);
     g_printerr("  %s\n", input_video_file);
 
+    return -1;
+  }
+
+  /* Get extension of input file */
+  file_name = basename ((char*) input_audio_file);
+  audio_ext = get_filename_ext (file_name);
+  file_name = basename ((char*) input_video_file);
+  video_ext = get_filename_ext (file_name);
+
+  /* Check extension of input file */
+  if (strcasecmp ("ogg", audio_ext) != 0 || strcasecmp ("h264", video_ext) != 0) {
+    g_printerr ("Error: Unsupported input type.\n");
+    g_printerr ("OGG audio format and H264 video format are required.\n");
     return -1;
   }
 
