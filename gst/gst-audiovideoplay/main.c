@@ -17,6 +17,7 @@ typedef struct _CustomData
   GMainLoop *loop;
   int loop_reference;
   GMutex mutex;
+  const char *video_ext;
 } CustomData;
 
 /* These structs contain information needed to get a list of available screens */
@@ -447,9 +448,15 @@ create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
   /* Create GStreamer elements for video play */
   *p_video_pipeline = gst_pipeline_new ("video-play");
   video_source = gst_element_factory_make ("filesrc", "video-file-source");
-  video_parser = gst_element_factory_make ("h264parse", "h264-parser");
-  video_decoder = gst_element_factory_make ("omxh264dec", "h264-decoder");
   video_sink = gst_element_factory_make ("waylandsink", "video-output");
+
+  if (strcasecmp ("h264", data->video_ext) == 0) {
+    video_parser = gst_element_factory_make ("h264parse", "h264-parser");
+    video_decoder = gst_element_factory_make ("omxh264dec", "h264-decoder");
+  } else {
+    video_parser = gst_element_factory_make ("h265parse", "h265-parser");
+    video_decoder = gst_element_factory_make ("omxh265dec", "h265-decoder");
+  }
 
   if (!*p_video_pipeline || !video_source || !video_parser || !video_decoder
       || !video_sink) {
@@ -463,7 +470,7 @@ create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
   gst_object_unref (bus);
 
   /* Add all elements into the video pipeline */
-  /* file-source | h264-parser | h264-decoder | video-output */
+  /* file-source | parser | decoder | video-output */
   gst_bin_add_many (GST_BIN (*p_video_pipeline), video_source, video_parser,
       video_decoder, video_sink, NULL);
 
@@ -472,7 +479,7 @@ create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
   g_object_set (G_OBJECT (video_source), "location", input_file, NULL);
 
   /* Link the elements together */
-  /* file-source -> h264-parser -> h264-decoder -> video-output */
+  /* file-source -> parser -> decoder -> video-output */
   if (!gst_element_link_many (video_source, video_parser, video_decoder,
           video_sink, NULL)) {
     g_printerr ("Video elements could not be linked.\n");
@@ -553,7 +560,7 @@ main (int argc, char *argv[])
 
   if (argc != ARG_COUNT) {
     g_printerr ("Error: Invalid arugments.\n");
-    g_printerr ("Usage: %s <OGG file> <H264 file>\n", argv[ARG_PROGRAM_NAME]);
+    g_printerr ("Usage: %s <OGG file> <H264/H265 file>\n", argv[ARG_PROGRAM_NAME]);
     return -1;
   }
 
@@ -590,9 +597,11 @@ main (int argc, char *argv[])
   video_ext = get_filename_ext (file_name);
 
   /* Check extension of input file */
-  if (strcasecmp ("ogg", audio_ext) != 0 || strcasecmp ("h264", video_ext) != 0) {
+  if ((strcasecmp ("ogg", audio_ext) != 0)
+      || ((strcasecmp ("h264", video_ext) != 0)
+      && (strcasecmp ("h265", video_ext) != 0))) {
     g_printerr ("Error: Unsupported input type.\n");
-    g_printerr ("OGG audio format and H264 video format are required.\n");
+    g_printerr ("OGG audio format and H264/H265 video format are required.\n");
     return -1;
   }
 
@@ -600,6 +609,7 @@ main (int argc, char *argv[])
   gst_init (&argc, &argv);
   shared_data.loop = g_main_loop_new (NULL, FALSE);
   shared_data.loop_reference = 0;
+  shared_data.video_ext = video_ext;
   g_mutex_init (&shared_data.mutex);
 
   /* Create pipelines */
