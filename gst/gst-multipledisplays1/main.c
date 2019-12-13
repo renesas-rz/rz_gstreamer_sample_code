@@ -4,8 +4,12 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <wayland-client.h>
+#include <strings.h>
+#include <libgen.h>
 
-#define INPUT_VIDEO_FILE           "/home/media/videos/vga1.h264"
+#define ARG_PROGRAM_NAME     0
+#define ARG_INPUT            1
+#define ARG_COUNT            2
 #define REQUIRED_SCREEN_NUMBERS 2
 #define PRIMARY_SCREEN_INDEX 0
 #define SECONDARY_SCREEN_INDEX 1
@@ -315,14 +319,27 @@ is_file_exist(const char *path)
   return result;
 }
 
+/* get the extension of filename */
+const char* get_filename_ext (const char *filename) {
+  const char* dot = strrchr (filename, '.');
+  if ((!dot) || (dot == filename)) {
+    g_print ("Invalid input file.\n");
+    return "";
+  } else {
+    return dot + 1;
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
   struct wayland_t *wayland_handler = NULL;
   struct screen_t *screens[REQUIRED_SCREEN_NUMBERS];
   int screen_numbers = 0;
+  const char* ext;
+  char* file_name;
 
-  const char *input_video_file = INPUT_VIDEO_FILE;
+  const char *input_video_file = argv[ARG_INPUT];
 
   GstElement *pipeline, *source, *parser, *decoder, *tee;
   GstElement *filter_1, *capsfilter_1, *queue_1, *video_sink_1;
@@ -333,6 +350,20 @@ main (int argc, char *argv[])
   GstBus *bus;
   GstMessage *msg;
   GstPadTemplate *tee_src_pad_template;
+
+  if (argc != ARG_COUNT) {
+    g_print ("Error: Invalid arugments.\n");
+    g_print ("Usage: %s <path to H264 file>\n", argv[ARG_PROGRAM_NAME]);
+    return -1;
+  }
+
+  file_name = basename ((char*) input_video_file);
+  ext = get_filename_ext (file_name);
+
+  if (strcasecmp ("H264", ext) != 0) {
+    g_print ("Unsupported video type. H264 format is required\n");
+    return -1;
+  }
 
   /* Get a list of available screen */
   wayland_handler = get_available_screens();
