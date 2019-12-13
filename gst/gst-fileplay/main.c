@@ -17,8 +17,16 @@
 /* Structure to contain decoder queue information, so we can pass it to callbacks */
 typedef struct _CustomData
 {
+  GstElement *pipeline;
   GstElement *video_queue;
+  GstElement *video_parser;
+  GstElement *video_decoder;
+  GstElement *filter;
+  GstElement *video_capsfilter;
+  GstElement *video_sink;
   GstElement *audio_queue;
+  bool fullscreen;
+  struct screen_t *main_screen;
 } CustomData;
 
 /* These structs contain information needed to get a list of available screens */
@@ -303,11 +311,12 @@ get_main_screen(struct wayland_t *handler)
 static void
 on_pad_added (GstElement * element, GstPad * pad, gpointer data)
 {
-  CustomData *decoders = (CustomData *) data;
+  CustomData *user_data = (CustomData *) data;
   GstPad *sinkpad;
   GstCaps *new_pad_caps = NULL;
   GstStructure *new_pad_struct = NULL;
   const gchar *new_pad_type = NULL;
+  GstCaps *caps;
 
   new_pad_caps = gst_pad_query_caps (pad, NULL);
   new_pad_struct = gst_caps_get_structure (new_pad_caps, INDEX);
@@ -323,13 +332,84 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
 
   if (g_str_has_prefix (new_pad_type, "audio")) {
     /* In case link this pad with the AAC-decoder sink pad */
-    sinkpad = gst_element_get_static_pad (decoders->audio_queue, "sink");
+    sinkpad = gst_element_get_static_pad (user_data->audio_queue, "sink");
     gst_pad_link (pad, sinkpad);
     gst_object_unref (sinkpad);
     g_print ("Audio pad linked!\n");
   } else if (g_str_has_prefix (new_pad_type, "video")) {
-    /* In case link this pad with the omxh264-decoder sink pad */
-    sinkpad = gst_element_get_static_pad (decoders->video_queue, "sink");
+    if (g_str_has_prefix (new_pad_type, "video/x-h264")) {
+      user_data->video_parser =
+           gst_element_factory_make ("h264parse", "h264-parser");
+      user_data->video_decoder =
+           gst_element_factory_make ("omxh264dec", "omxh264-decoder");
+    } else if (g_str_has_prefix (new_pad_type, "video/x-h265")) {
+      user_data->video_parser =
+           gst_element_factory_make ("h265parse", "h265-parser");
+      user_data->video_decoder =
+           gst_element_factory_make ("omxh265dec", "omxh265-decoder");
+    } else {
+      g_print ("Unsupported video format\n");
+    }
+
+    if (!user_data->video_parser || !user_data->video_decoder) {
+      g_printerr ("One element could not be created. Exiting.\n");
+    }
+
+    gst_bin_add_many (GST_BIN (user_data->pipeline),
+      user_data->video_parser, user_data->video_decoder, NULL);
+
+    /* Need to set Gst State to PAUSED before change state from NULL to PLAYING */
+    gst_element_set_state (user_data->video_parser, GST_STATE_PAUSED);
+    gst_element_set_state (user_data->video_decoder, GST_STATE_PAUSED);
+
+    if (!user_data->fullscreen) {
+      /* Link the elements together:
+      - video-queue -> parser -> decoder -> video-output
+      */
+      if (gst_element_link_many (user_data->video_queue, user_data->video_parser,
+              user_data->video_decoder, user_data->video_sink, NULL) != TRUE) {
+          g_printerr ("Video elements could not be linked.\n");
+      }
+    } else {
+      user_data->filter = gst_element_factory_make ("vspmfilter", "vspm-filter");
+      user_data->video_capsfilter = gst_element_factory_make ("capsfilter", "video-capsfilter");
+
+      if (!user_data->filter || !user_data->video_capsfilter) {
+          g_printerr ("One element could not be created. Exiting.\n");
+      }
+
+      /* Need to set Gst State to PAUSED before change state from NULL to PLAYING */
+      gst_element_set_state (user_data->filter, GST_STATE_PAUSED);
+      gst_element_set_state (user_data->video_capsfilter, GST_STATE_PAUSED);
+
+      /* Set property "dmabuf-use" of vspmfilter to true */
+      /* Without it, waylandsink will display broken video */
+      g_object_set (G_OBJECT (user_data->filter), "dmabuf-use", TRUE, NULL);
+
+      /* Create simple cap which contains video's resolution */
+      caps = gst_caps_new_simple ("video/x-raw",
+          "width", G_TYPE_INT, user_data->main_screen->width,
+          "height", G_TYPE_INT, user_data->main_screen->height, NULL);
+
+      /* Add cap to capsfilter element */
+      g_object_set (G_OBJECT (user_data->video_capsfilter), "caps", caps, NULL);
+      gst_caps_unref (caps);
+
+      /* Add filter, capsfilter into the pipeline */
+      gst_bin_add_many (GST_BIN (user_data->pipeline), user_data->filter, user_data->video_capsfilter, NULL);
+
+      /* Link the elements together:
+        - video-queue -> parser -> decoder -> video-filter -> capsfilter -> video-output
+      */
+
+      if (gst_element_link_many (user_data->video_queue, user_data->video_parser, user_data->video_decoder, user_data->filter,
+              user_data->video_capsfilter, user_data->video_sink, NULL) != TRUE) {
+        g_printerr ("Video elements could not be linked.\n");
+      }
+    }
+
+    /* In case link this pad with the decoder sink pad */
+    sinkpad = gst_element_get_static_pad (user_data->video_queue, "sink");
     gst_pad_link (pad, sinkpad);
     gst_object_unref (sinkpad);
     g_print ("Video pad linked!\n");
@@ -385,11 +465,10 @@ main (int argc, char *argv[])
   struct screen_t *main_screen = NULL;
 
   GstElement *pipeline, *source, *demuxer;
-  GstElement *video_queue, *video_parser, *video_decoder, *filter,
-             *video_capsfilter, *video_sink;
+  GstElement *video_queue, *video_sink;
   GstElement *audio_queue, *audio_decoder, *audio_resample,
              *audio_capsfilter, *audio_sink;
-  CustomData decoders_data;
+  CustomData user_data;
   GstCaps *caps;
   GstBus *bus;
   GstMessage *msg;
@@ -445,8 +524,6 @@ main (int argc, char *argv[])
   demuxer = gst_element_factory_make ("qtdemux", "qt-demuxer");
   /* elements for Video thread */
   video_queue = gst_element_factory_make ("queue", "video-queue");
-  video_parser = gst_element_factory_make("h264parse", "h264-parser");
-  video_decoder = gst_element_factory_make ("omxh264dec", "omxh264-decoder");
   video_sink = gst_element_factory_make ("waylandsink", "video-output");
   /* elements for Audio thread */
   audio_queue = gst_element_factory_make ("queue", "audio-queue");
@@ -455,8 +532,7 @@ main (int argc, char *argv[])
   audio_capsfilter = gst_element_factory_make ("capsfilter", "audio-capsfilter");
   audio_sink = gst_element_factory_make ("alsasink", "audio-output");
 
-  if (!pipeline || !source || !demuxer
-      || !video_queue || !video_parser || !video_decoder || !video_sink
+  if (!pipeline || !source || !demuxer || !video_queue || !video_sink
       || !audio_queue || !audio_decoder || !audio_resample
       || !audio_capsfilter || !audio_sink) {
     g_printerr ("One element could not be created. Exiting.\n");
@@ -486,8 +562,7 @@ main (int argc, char *argv[])
      <1> | video-queue | omxh264-decoder | video-output
      <2> | audio-queue | aac-decoder | audio-resample | capsfilter | audio-output
    */
-  gst_bin_add_many (GST_BIN (pipeline), source, demuxer,
-      video_queue, video_parser, video_decoder, video_sink,
+  gst_bin_add_many (GST_BIN (pipeline), source, demuxer, video_queue, video_sink,
       audio_queue, audio_decoder, audio_resample, audio_capsfilter,
       audio_sink, NULL);
 
@@ -514,62 +589,14 @@ main (int argc, char *argv[])
     return -1;
   }
 
-  if (!fullscreen) {
-    /* Link the elements together:
-     - video-queue -> h264-parser -> omxh264-decoder -> video-output
-    */
-    if (gst_element_link_many (video_queue, video_parser, video_decoder, video_sink, NULL) != TRUE) {
-      g_printerr ("Video elements could not be linked.\n");
-      gst_object_unref (pipeline);
-
-      destroy_wayland(wayland_handler);
-      return -1;
-    }
-  } else {
-    filter = gst_element_factory_make ("vspmfilter", "vspm-filter");
-    video_capsfilter = gst_element_factory_make ("capsfilter", "video-capsfilter");
-
-    if (!filter || !video_capsfilter) {
-      g_printerr ("One element could not be created. Exiting.\n");
-      gst_object_unref (pipeline);
-      destroy_wayland(wayland_handler);
-      return -1;
-    }
-
-    /* Set property "dmabuf-use" of vspmfilter to true */
-    /* Without it, waylandsink will display broken video */
-    g_object_set (G_OBJECT (filter), "dmabuf-use", TRUE, NULL);
-
-    /* Create simple cap which contains video's resolution */
-    caps = gst_caps_new_simple ("video/x-raw",
-        "width", G_TYPE_INT, main_screen->width,
-        "height", G_TYPE_INT, main_screen->height, NULL);
-
-    /* Add cap to capsfilter element */
-    g_object_set (G_OBJECT (video_capsfilter), "caps", caps, NULL);
-    gst_caps_unref (caps);
-
-    /* Add filter, capsfilter into the pipeline */
-    gst_bin_add_many (GST_BIN (pipeline), filter, video_capsfilter, NULL);
-
-    /* Link the elements together:
-     - video-queue -> h264-parser -> omxh264-decoder -> video-filter -> capsfilter -> video-output
-    */
-
-    if (gst_element_link_many (video_queue, video_parser, video_decoder, filter,
-            video_capsfilter, video_sink, NULL) != TRUE) {
-      g_printerr ("Video elements could not be linked.\n");
-      gst_object_unref (pipeline);
-
-      destroy_wayland(wayland_handler);
-      return -1;
-    }
-  }
-
-  decoders_data.audio_queue = audio_queue;
-  decoders_data.video_queue = video_queue;
+  user_data.main_screen = main_screen;
+  user_data.fullscreen = fullscreen;
+  user_data.pipeline = pipeline;
+  user_data.video_sink = video_sink;
+  user_data.audio_queue = audio_queue;
+  user_data.video_queue = video_queue;
   g_signal_connect (demuxer, "pad-added", G_CALLBACK (on_pad_added),
-      &decoders_data);
+      &user_data);
 
   /* note that the demuxer will be linked to the decoder dynamically.
      The reason is that Qt may contain various streams (for example
