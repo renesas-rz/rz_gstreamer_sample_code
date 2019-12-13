@@ -367,11 +367,6 @@ main (int argc, char *argv[])
   file_name = basename ((char*) input_video_file);
   ext = get_filename_ext (file_name);
 
-  if (strcasecmp ("H264", ext) != 0) {
-    g_print ("Unsupported video type. H264 format is required\n");
-    return -1;
-  }
-
   /* Get a list of available screen */
   wayland_handler = get_available_screens();
   if (wayland_handler == NULL)
@@ -405,11 +400,22 @@ main (int argc, char *argv[])
   /* Initialization */
   gst_init (&argc, &argv);
 
+  /* Check the extension and create parser, decoder */
+  if (strcasecmp ("h264", ext) == 0) {
+    parser = gst_element_factory_make ("h264parse", "h264-parser");
+    decoder = gst_element_factory_make ("omxh264dec", "h264-decoder");
+  } else if (strcasecmp ("h265", ext) == 0) {
+    parser = gst_element_factory_make ("h265parse", "h265-parser");
+    decoder = gst_element_factory_make ("omxh265dec", "h265-decoder");
+  } else {
+    g_print ("Unsupported video type. H264/H265 format is required.\n");
+    destroy_wayland(wayland_handler);
+    return -1;
+  }
+
   /* Create GStreamer elements */
   pipeline = gst_pipeline_new ("multiple-display");
   source = gst_element_factory_make ("filesrc", "file-source");
-  parser = gst_element_factory_make ("h264parse", "parser");
-  decoder = gst_element_factory_make ("omxh264dec", "omxh264-decoder");
   tee = gst_element_factory_make ("tee", "tee-element");
 
   /* Elements for Video Display 1 */
@@ -636,3 +642,4 @@ main (int argc, char *argv[])
 
   return 0;
 }
+
