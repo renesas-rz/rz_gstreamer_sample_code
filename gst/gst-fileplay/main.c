@@ -9,7 +9,8 @@
 
 #define ARG_PROGRAM_NAME     0
 #define ARG_INPUT            1
-#define ARG_COUNT            2
+#define ARG_SCALE            2
+#define ARG_COUNT            3
 #define INDEX                0
 #define AUDIO_SAMPLE_RATE    44100
 
@@ -392,14 +393,20 @@ main (int argc, char *argv[])
   GstCaps *caps;
   GstBus *bus;
   GstMessage *msg;
+  bool fullscreen = false;
   const char* ext;
   char* file_name;
 
   const gchar *input_file = argv[ARG_INPUT];
-  if (argc != ARG_COUNT) {
+  if ((argc > ARG_COUNT) || (argc == 1) || ((argc == ARG_COUNT) && (strcmp (argv[ARG_SCALE], "-s")))) {
     g_print ("Error: Invalid arugments.\n");
-    g_print ("Usage: %s <path to MP4 file>\n", argv[ARG_PROGRAM_NAME]);
+    g_print ("Usage: %s <path to MP4 file> [-s]\n", argv[ARG_PROGRAM_NAME]);
     return -1;
+  }
+
+  /* Check full-screen option */
+  if (argc == ARG_COUNT) {
+      fullscreen = true;
   }
 
   if (!is_file_exist(input_file))
@@ -440,8 +447,6 @@ main (int argc, char *argv[])
   video_queue = gst_element_factory_make ("queue", "video-queue");
   video_parser = gst_element_factory_make("h264parse", "h264-parser");
   video_decoder = gst_element_factory_make ("omxh264dec", "omxh264-decoder");
-  filter = gst_element_factory_make ("vspmfilter", "vspm-filter");
-  video_capsfilter = gst_element_factory_make ("capsfilter", "video-capsfilter");
   video_sink = gst_element_factory_make ("waylandsink", "video-output");
   /* elements for Audio thread */
   audio_queue = gst_element_factory_make ("queue", "audio-queue");
@@ -451,8 +456,7 @@ main (int argc, char *argv[])
   audio_sink = gst_element_factory_make ("alsasink", "audio-output");
 
   if (!pipeline || !source || !demuxer
-      || !video_queue || !video_decoder || !filter
-      || !video_capsfilter || !video_sink
+      || !video_queue || !video_parser || !video_decoder || !video_sink
       || !audio_queue || !audio_decoder || !audio_resample
       || !audio_capsfilter || !audio_sink) {
     g_printerr ("One element could not be created. Exiting.\n");
@@ -466,21 +470,8 @@ main (int argc, char *argv[])
   /* Set the input filename to the source element */
   g_object_set (G_OBJECT (source), "location", input_file, NULL);
 
-  /* Set property "dmabuf-use" of vspmfilter to true */
-  /* Without it, waylandsink will display broken video */
-  g_object_set (G_OBJECT (filter), "dmabuf-use", TRUE, NULL);
-
   /* Set position for displaying (0, 0) */
   g_object_set (G_OBJECT (video_sink), "position-x", main_screen->x, "position-y", main_screen->y, NULL);
-
-  /* Create simple cap which contains video's resolution */
-  caps = gst_caps_new_simple ("video/x-raw",
-      "width", G_TYPE_INT, main_screen->width,
-      "height", G_TYPE_INT, main_screen->height, NULL);
-
-  /* Add cap to capsfilter element */
-  g_object_set (G_OBJECT (video_capsfilter), "caps", caps, NULL);
-  gst_caps_unref (caps);
 
   /* Create simple cap which contains audio's sample rate */
   caps = gst_caps_new_simple ("audio/x-raw",
@@ -490,21 +481,19 @@ main (int argc, char *argv[])
   g_object_set (G_OBJECT (audio_capsfilter), "caps", caps, NULL);
   gst_caps_unref (caps);
 
-  /* Add all elements into the pipeline:
+  /* Add elements into the pipeline:
      file-source | qt-demuxer
-     <1> | video-queue | omxh264-decoder | video-filter | capsfilter | video-output
+     <1> | video-queue | omxh264-decoder | video-output
      <2> | audio-queue | aac-decoder | audio-resample | capsfilter | audio-output
    */
   gst_bin_add_many (GST_BIN (pipeline), source, demuxer,
-      video_queue, video_parser, video_decoder, filter, video_capsfilter, video_sink,
+      video_queue, video_parser, video_decoder, video_sink,
       audio_queue, audio_decoder, audio_resample, audio_capsfilter,
       audio_sink, NULL);
 
   /* Link the elements together:
      - file-source -> qt-demuxer 
-     - video-queue -> omxh264-decoder -> video-filter -> capsfilter -> video-output
-     - audio-queue -> aac-decoder -> audio-resample -> capsfilter -> audio-output
-   */
+  */
   if (gst_element_link (source, demuxer) != TRUE) {
     g_printerr ("Source and demuxer could not be linked.\n");
     gst_object_unref (pipeline);
@@ -512,14 +501,10 @@ main (int argc, char *argv[])
     destroy_wayland(wayland_handler);
     return -1;
   }
-  if (gst_element_link_many (video_queue, video_parser, video_decoder, filter,
-          video_capsfilter, video_sink, NULL) != TRUE) {
-    g_printerr ("Video elements could not be linked.\n");
-    gst_object_unref (pipeline);
 
-    destroy_wayland(wayland_handler);
-    return -1;
-  }
+  /* Link the elements together:
+     - audio-queue -> aac-decoder -> audio-resample -> capsfilter -> audio-output
+  */
   if (gst_element_link_many (audio_queue, audio_decoder, audio_resample,
           audio_capsfilter, audio_sink, NULL) != TRUE) {
     g_printerr ("Audio elements could not be linked.\n");
@@ -527,6 +512,58 @@ main (int argc, char *argv[])
 
     destroy_wayland(wayland_handler);
     return -1;
+  }
+
+  if (!fullscreen) {
+    /* Link the elements together:
+     - video-queue -> h264-parser -> omxh264-decoder -> video-output
+    */
+    if (gst_element_link_many (video_queue, video_parser, video_decoder, video_sink, NULL) != TRUE) {
+      g_printerr ("Video elements could not be linked.\n");
+      gst_object_unref (pipeline);
+
+      destroy_wayland(wayland_handler);
+      return -1;
+    }
+  } else {
+    filter = gst_element_factory_make ("vspmfilter", "vspm-filter");
+    video_capsfilter = gst_element_factory_make ("capsfilter", "video-capsfilter");
+
+    if (!filter || !video_capsfilter) {
+      g_printerr ("One element could not be created. Exiting.\n");
+      gst_object_unref (pipeline);
+      destroy_wayland(wayland_handler);
+      return -1;
+    }
+
+    /* Set property "dmabuf-use" of vspmfilter to true */
+    /* Without it, waylandsink will display broken video */
+    g_object_set (G_OBJECT (filter), "dmabuf-use", TRUE, NULL);
+
+    /* Create simple cap which contains video's resolution */
+    caps = gst_caps_new_simple ("video/x-raw",
+        "width", G_TYPE_INT, main_screen->width,
+        "height", G_TYPE_INT, main_screen->height, NULL);
+
+    /* Add cap to capsfilter element */
+    g_object_set (G_OBJECT (video_capsfilter), "caps", caps, NULL);
+    gst_caps_unref (caps);
+
+    /* Add filter, capsfilter into the pipeline */
+    gst_bin_add_many (GST_BIN (pipeline), filter, video_capsfilter, NULL);
+
+    /* Link the elements together:
+     - video-queue -> h264-parser -> omxh264-decoder -> video-filter -> capsfilter -> video-output
+    */
+
+    if (gst_element_link_many (video_queue, video_parser, video_decoder, filter,
+            video_capsfilter, video_sink, NULL) != TRUE) {
+      g_printerr ("Video elements could not be linked.\n");
+      gst_object_unref (pipeline);
+
+      destroy_wayland(wayland_handler);
+      return -1;
+    }
   }
 
   decoders_data.audio_queue = audio_queue;
