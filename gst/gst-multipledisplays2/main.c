@@ -10,7 +10,8 @@
 #define ARG_PROGRAM_NAME      0
 #define ARG_INPUT1            1
 #define ARG_INPUT2            2
-#define ARG_COUNT             3
+#define ARG_SCALE             3
+#define ARG_COUNT             4
 #define REQUIRED_SCREEN_NUMBERS 2
 #define PRIMARY_SCREEN_INDEX 0
 #define SECONDARY_SCREEN_INDEX 1
@@ -21,6 +22,7 @@ typedef struct _CustomData
   int loop_reference;
   GMutex mutex;
   const char *video_ext;
+  bool fullscreen;
 } CustomData;
 
 /* These structs contain information needed to get a list of available screens */
@@ -363,15 +365,11 @@ create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
 {
   GstBus *bus;
   guint video_bus_watch_id;
-  GstElement *video_source, *video_parser, *video_decoder,
-             *filter, *capsfilter, *video_sink;
-  GstCaps *caps;
+  GstElement *video_source, *video_parser, *video_decoder, *video_sink;
 
   /* Create GStreamer elements for video play */
   *p_video_pipeline = gst_pipeline_new (NULL);
   video_source = gst_element_factory_make ("filesrc", NULL);
-  filter = gst_element_factory_make ("vspmfilter", NULL);
-  capsfilter = gst_element_factory_make ("capsfilter", NULL);
   video_sink = gst_element_factory_make ("waylandsink", NULL);
 
   if (strcasecmp ("h264", data->video_ext) == 0) {
@@ -382,8 +380,7 @@ create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
     video_decoder = gst_element_factory_make ("omxh265dec", "h265-decoder");
   }
 
-  if (!*p_video_pipeline || !video_source || !video_parser || !video_decoder
-      || !filter || !capsfilter || !video_sink) {
+  if (!*p_video_pipeline || !video_source || !video_parser || !video_decoder || !video_sink) {
     g_printerr ("One video element could not be created. Exiting.\n");
     return 0;
   }
@@ -396,12 +393,35 @@ create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
   /* Add all elements into the video pipeline */
   /* file-source | parser | decoder | filter | capsfilter | video-output */
   gst_bin_add_many (GST_BIN (*p_video_pipeline), video_source, video_parser,
-      video_decoder, filter, capsfilter, video_sink, NULL);
+      video_decoder, video_sink, NULL);
 
   /* Set up for the video pipeline */
   /* Set the input file location of the file source element */
   g_object_set (G_OBJECT (video_source), "location", input_file, NULL);
   g_object_set (G_OBJECT (video_sink), "position-x", screen->x, "position-y",  screen->y, NULL);
+
+  if (!data->fullscreen) {
+    /* Link the elements together */
+    /* file-source -> parser -> decoder -> video-output */
+    if (!gst_element_link_many (video_source, video_parser, video_decoder,
+            video_sink, NULL)) {
+      g_printerr ("Video elements could not be linked.\n");
+      gst_object_unref (*p_video_pipeline);
+      return 0;
+    }
+  } else {
+    GstElement *filter, *capsfilter;
+    GstCaps *caps;
+
+    /* Create vspm-filter and caps-filter */
+    filter = gst_element_factory_make ("vspmfilter", NULL);
+    capsfilter = gst_element_factory_make ("capsfilter", NULL);
+
+    if (!filter || !capsfilter) {
+      g_printerr ("One element could not be created. Exiting.\n");
+      gst_object_unref (*p_video_pipeline);
+      return 0;
+    }
 
     /* Set property "dmabuf-use" of vspmfilter to true */
   /* Without it, waylandsink will display broken video */
@@ -424,7 +444,6 @@ create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
     gst_object_unref (*p_video_pipeline);
     return 0;
   }
-
   return video_bus_watch_id;
 }
 
@@ -504,10 +523,15 @@ main (int argc, char *argv[])
   char* file_name_1;
   char* file_name_2;
 
-  if (argc != ARG_COUNT) {
+  if ((argc > ARG_COUNT) || (argc <= 2) || ((argc == ARG_COUNT) && (strcmp (argv[ARG_SCALE], "-s")))) {
     g_print ("Error: Invalid arugments.\n");
-    g_print ("Usage: %s <path to the first H264/H265 file> <path to the second H264/H265 file> \n", argv[ARG_PROGRAM_NAME]);
+    g_print ("Usage: %s <path to the first H264/H265 file> <path to the second H264/H265 file> [-s] \n", argv[ARG_PROGRAM_NAME]);
     return -1;
+  }
+
+  /* Check full-screen option */
+  if (argc == ARG_COUNT) {
+    shared_data.fullscreen = true;
   }
 
   file_name_1 = basename ((char*) input_video_file_1);
