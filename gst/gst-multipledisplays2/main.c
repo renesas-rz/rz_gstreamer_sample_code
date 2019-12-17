@@ -4,9 +4,13 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <wayland-client.h>
+#include <strings.h>
+#include <libgen.h>
 
-#define INPUT_VIDEO_FILE_1         "/home/media/videos/vga1.h264"
-#define INPUT_VIDEO_FILE_2         "/home/media/videos/vga2.h264"
+#define ARG_PROGRAM_NAME      0
+#define ARG_INPUT1            1
+#define ARG_INPUT2            2
+#define ARG_COUNT             3
 #define REQUIRED_SCREEN_NUMBERS 2
 #define PRIMARY_SCREEN_INDEX 0
 #define SECONDARY_SCREEN_INDEX 1
@@ -462,6 +466,17 @@ is_file_exist(const char *path)
   return result;
 }
 
+/* get the extension of filename */
+const char* get_filename_ext (const char *filename) {
+  const char* dot = strrchr (filename, '.');
+  if ((!dot) || (dot == filename)) {
+    g_print ("Invalid input file.\n");
+    return "";
+  } else {
+    return dot + 1;
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -475,8 +490,28 @@ main (int argc, char *argv[])
   guint video_bus_watch_id_1;
   guint video_bus_watch_id_2;
 
-  const gchar *input_video_file_1 = INPUT_VIDEO_FILE_1;
-  const gchar *input_video_file_2 = INPUT_VIDEO_FILE_2;
+  const gchar *input_video_file_1 = argv[ARG_INPUT1];
+  const gchar *input_video_file_2 = argv[ARG_INPUT2];
+  const char* video1_ext;
+  const char* video2_ext;
+  char* file_name_1;
+  char* file_name_2;
+
+  if (argc != ARG_COUNT) {
+    g_print ("Error: Invalid arugments.\n");
+    g_print ("Usage: %s <path to the first H264 file> <path to the second H264 file> \n", argv[ARG_PROGRAM_NAME]);
+    return -1;
+  }
+
+  file_name_1 = basename ((char*) input_video_file_1);
+  file_name_2 = basename ((char*) input_video_file_2);
+  video1_ext = get_filename_ext (file_name_1);
+  video2_ext = get_filename_ext (file_name_2);
+
+  if ((strcasecmp ("h264", video1_ext) != 0) || (strcasecmp ("h264", video2_ext) != 0)) {
+    g_print ("Unsupported video type. H264 format is required\n");
+    return -1;
+  }
 
   /* Get a list of available screen */
   wayland_handler = get_available_screens();
