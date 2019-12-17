@@ -20,6 +20,7 @@ typedef struct _CustomData
   GMainLoop *loop;
   int loop_reference;
   GMutex mutex;
+  const char *video_ext;
 } CustomData;
 
 /* These structs contain information needed to get a list of available screens */
@@ -369,11 +370,17 @@ create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
   /* Create GStreamer elements for video play */
   *p_video_pipeline = gst_pipeline_new (NULL);
   video_source = gst_element_factory_make ("filesrc", NULL);
-  video_parser = gst_element_factory_make ("h264parse", NULL);
-  video_decoder = gst_element_factory_make ("omxh264dec", NULL);
   filter = gst_element_factory_make ("vspmfilter", NULL);
   capsfilter = gst_element_factory_make ("capsfilter", NULL);
   video_sink = gst_element_factory_make ("waylandsink", NULL);
+
+  if (strcasecmp ("h264", data->video_ext) == 0) {
+    video_parser = gst_element_factory_make ("h264parse", "h264-parser");
+    video_decoder = gst_element_factory_make ("omxh264dec", "h264-decoder");
+  } else {
+    video_parser = gst_element_factory_make ("h265parse", "h265-parser");
+    video_decoder = gst_element_factory_make ("omxh265dec", "h265-decoder");
+  }
 
   if (!*p_video_pipeline || !video_source || !video_parser || !video_decoder
       || !filter || !capsfilter || !video_sink) {
@@ -387,7 +394,7 @@ create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
   gst_object_unref (bus);
 
   /* Add all elements into the video pipeline */
-  /* file-source | h264-parser | h264-decoder | video-output */
+  /* file-source | parser | decoder | filter | capsfilter | video-output */
   gst_bin_add_many (GST_BIN (*p_video_pipeline), video_source, video_parser,
       video_decoder, filter, capsfilter, video_sink, NULL);
 
@@ -410,7 +417,7 @@ create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
   gst_caps_unref (caps);
 
   /* Link the elements together */
-  /* file-source -> h264-parser -> h264-decoder -> video-output */
+  /* file-source -> parser -> decoder -> filter -> capsfilter -> video-output */
   if (!gst_element_link_many (video_source, video_parser, video_decoder,
           filter, capsfilter, video_sink, NULL)) {
     g_printerr ("Video elements could not be linked.\n");
@@ -499,7 +506,7 @@ main (int argc, char *argv[])
 
   if (argc != ARG_COUNT) {
     g_print ("Error: Invalid arugments.\n");
-    g_print ("Usage: %s <path to the first H264 file> <path to the second H264 file> \n", argv[ARG_PROGRAM_NAME]);
+    g_print ("Usage: %s <path to the first H264/H265 file> <path to the second H264/H265 file> \n", argv[ARG_PROGRAM_NAME]);
     return -1;
   }
 
@@ -508,8 +515,13 @@ main (int argc, char *argv[])
   video1_ext = get_filename_ext (file_name_1);
   video2_ext = get_filename_ext (file_name_2);
 
-  if ((strcasecmp ("h264", video1_ext) != 0) || (strcasecmp ("h264", video2_ext) != 0)) {
-    g_print ("Unsupported video type. H264 format is required\n");
+  if ((strcasecmp ("h264", video1_ext) != 0) && (strcasecmp ("h265", video1_ext) != 0)) {
+    g_print ("Unsupported video type. H264/H265 format is required\n");
+    return -1;
+  }
+
+  if ((strcasecmp ("h264", video2_ext) != 0) && (strcasecmp ("h265", video2_ext) != 0)) {
+    g_print ("Unsupported video type. H264/H265 format is required\n");
     return -1;
   }
 
@@ -549,6 +561,7 @@ main (int argc, char *argv[])
   gst_init (&argc, &argv);
   shared_data.loop = g_main_loop_new (NULL, FALSE);
   shared_data.loop_reference = 0; 	/* counter */
+  shared_data.video_ext = video1_ext;
   g_mutex_init (&shared_data.mutex);
   
   /* The first display is screens[PRIMARY_SCREEN_INDEX] */
@@ -562,6 +575,8 @@ main (int argc, char *argv[])
     destroy_wayland(wayland_handler);
     return -1;
   }
+
+  shared_data.video_ext = video2_ext;
 
   video_bus_watch_id_2 =
       create_video_pipeline (&video_pipeline_2, input_video_file_2,
