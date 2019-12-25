@@ -4,6 +4,7 @@
 #include <strings.h>
 #include <libgen.h>
 #include <string.h>
+#include <arpa/inet.h>
 
 #define PORT          5000
 #define PAYLOAD_TYPE  96
@@ -67,6 +68,12 @@ const char* get_filename_ext (const char *filename) {
   }
 }
 
+bool isValidIpAddress(char *ipAddress) {
+  struct sockaddr_in sa;
+  int result = inet_pton(AF_INET, ipAddress, &(sa.sin_addr));
+  return result != 0;
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -77,6 +84,11 @@ main (int argc, char *argv[])
   GstCaps *parser_caps;
   const char* ext;
   char* file_name;
+
+  if (!isValidIpAddress (argv[ARG_IP_ADDRESS])) {
+    g_print ("IP is not valid\n");
+    return -1;
+  }
 
   if (argc != ARG_COUNT) {
     g_print ("Invalid arugments.\n");
