@@ -1,8 +1,10 @@
 #include <gst/gst.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <strings.h>
+#include <libgen.h>
+#include <string.h>
 
-#define INPUT_FILE    "/home/media/videos/sintel_trailer-720p.mp4"
 #define PORT          5000
 #define PAYLOAD_TYPE  96
 #define TIME          3  /* Send SPS and PPS Insertion every 3 second */
@@ -10,7 +12,8 @@
 /* Macros for program's arguments */
 #define ARG_PROGRAM_NAME 0
 #define ARG_IP_ADDRESS   1
-#define ARG_COUNT        2
+#define ARG_INPUT        2
+#define ARG_COUNT        3
 
 static void
 on_pad_added (GstElement * element, GstPad * pad, gpointer data)
@@ -53,6 +56,17 @@ is_file_exist(const char *path)
   return result;
 }
 
+/* get the extension of filename */
+const char* get_filename_ext (const char *filename) {
+  const char* dot = strrchr (filename, '.');
+  if ((!dot) || (dot == filename)) {
+    g_print ("Invalid input file.\n");
+    return "";
+  } else {
+    return dot + 1;
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -61,18 +75,28 @@ main (int argc, char *argv[])
   GstBus *bus;
   GstMessage *msg;
   GstCaps *parser_caps;
+  const char* ext;
+  char* file_name;
 
   if (argc != ARG_COUNT) {
     g_print ("Invalid arugments.\n");
-    g_print ("Format: %s <IP address>.\n", argv[ARG_PROGRAM_NAME]);
+    g_print ("Format: %s <IP address> <path to MP4>.\n", argv[ARG_PROGRAM_NAME]);
 
     return -1;
   }
 
-  const gchar *input_file = INPUT_FILE;
+  const gchar *input_file = argv[ARG_INPUT];
   if (!is_file_exist(input_file))
   {
     g_printerr("Cannot find input file: %s. Exiting.\n", input_file);
+    return -1;
+  }
+
+  file_name = basename ((char*) input_file);
+  ext = get_filename_ext (file_name);
+
+  if (strcasecmp ("mp4", ext) != 0) {
+    g_print ("Unsupported video type. MP4 format is required\n");
     return -1;
   }
 
