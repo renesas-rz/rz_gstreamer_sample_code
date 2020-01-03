@@ -4,9 +4,14 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <wayland-client.h>
+#include <strings.h>
+#include <libgen.h>
 
-#define INPUT_VIDEO_FILE_1         "/home/media/videos/vga1.h264"
-#define INPUT_VIDEO_FILE_2         "/home/media/videos/vga2.h264"
+#define ARG_PROGRAM_NAME      0
+#define ARG_INPUT1            1
+#define ARG_INPUT2            2
+#define ARG_SCALE             3
+#define ARG_COUNT             4
 #define REQUIRED_SCREEN_NUMBERS 2
 #define PRIMARY_SCREEN_INDEX 0
 #define SECONDARY_SCREEN_INDEX 1
@@ -16,6 +21,8 @@ typedef struct _CustomData
   GMainLoop *loop;
   int loop_reference;
   GMutex mutex;
+  const char *video_ext;
+  bool fullscreen;
 } CustomData;
 
 /* These structs contain information needed to get a list of available screens */
@@ -358,21 +365,22 @@ create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
 {
   GstBus *bus;
   guint video_bus_watch_id;
-  GstElement *video_source, *video_parser, *video_decoder,
-             *filter, *capsfilter, *video_sink;
-  GstCaps *caps;
+  GstElement *video_source, *video_parser, *video_decoder, *video_sink;
 
   /* Create GStreamer elements for video play */
   *p_video_pipeline = gst_pipeline_new (NULL);
   video_source = gst_element_factory_make ("filesrc", NULL);
-  video_parser = gst_element_factory_make ("h264parse", NULL);
-  video_decoder = gst_element_factory_make ("omxh264dec", NULL);
-  filter = gst_element_factory_make ("vspmfilter", NULL);
-  capsfilter = gst_element_factory_make ("capsfilter", NULL);
   video_sink = gst_element_factory_make ("waylandsink", NULL);
 
-  if (!*p_video_pipeline || !video_source || !video_parser || !video_decoder
-      || !filter || !capsfilter || !video_sink) {
+  if (strcasecmp ("h264", data->video_ext) == 0) {
+    video_parser = gst_element_factory_make ("h264parse", "h264-parser");
+    video_decoder = gst_element_factory_make ("omxh264dec", "h264-decoder");
+  } else {
+    video_parser = gst_element_factory_make ("h265parse", "h265-parser");
+    video_decoder = gst_element_factory_make ("omxh265dec", "h265-decoder");
+  }
+
+  if (!*p_video_pipeline || !video_source || !video_parser || !video_decoder || !video_sink) {
     g_printerr ("One video element could not be created. Exiting.\n");
     return 0;
   }
@@ -383,14 +391,37 @@ create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
   gst_object_unref (bus);
 
   /* Add all elements into the video pipeline */
-  /* file-source | h264-parser | h264-decoder | video-output */
+  /* file-source | parser | decoder | filter | capsfilter | video-output */
   gst_bin_add_many (GST_BIN (*p_video_pipeline), video_source, video_parser,
-      video_decoder, filter, capsfilter, video_sink, NULL);
+      video_decoder, video_sink, NULL);
 
   /* Set up for the video pipeline */
   /* Set the input file location of the file source element */
   g_object_set (G_OBJECT (video_source), "location", input_file, NULL);
   g_object_set (G_OBJECT (video_sink), "position-x", screen->x, "position-y",  screen->y, NULL);
+
+  if (!data->fullscreen) {
+    /* Link the elements together */
+    /* file-source -> parser -> decoder -> video-output */
+    if (!gst_element_link_many (video_source, video_parser, video_decoder,
+            video_sink, NULL)) {
+      g_printerr ("Video elements could not be linked.\n");
+      gst_object_unref (*p_video_pipeline);
+      return 0;
+    }
+  } else {
+    GstElement *filter, *capsfilter;
+    GstCaps *caps;
+
+    /* Create vspm-filter and caps-filter */
+    filter = gst_element_factory_make ("vspmfilter", NULL);
+    capsfilter = gst_element_factory_make ("capsfilter", NULL);
+
+    if (!filter || !capsfilter) {
+      g_printerr ("One element could not be created. Exiting.\n");
+      gst_object_unref (*p_video_pipeline);
+      return 0;
+    }
 
     /* Set property "dmabuf-use" of vspmfilter to true */
   /* Without it, waylandsink will display broken video */
@@ -406,14 +437,13 @@ create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
   gst_caps_unref (caps);
 
   /* Link the elements together */
-  /* file-source -> h264-parser -> h264-decoder -> video-output */
+  /* file-source -> parser -> decoder -> filter -> capsfilter -> video-output */
   if (!gst_element_link_many (video_source, video_parser, video_decoder,
           filter, capsfilter, video_sink, NULL)) {
     g_printerr ("Video elements could not be linked.\n");
     gst_object_unref (*p_video_pipeline);
     return 0;
   }
-
   return video_bus_watch_id;
 }
 
@@ -462,6 +492,17 @@ is_file_exist(const char *path)
   return result;
 }
 
+/* get the extension of filename */
+const char* get_filename_ext (const char *filename) {
+  const char* dot = strrchr (filename, '.');
+  if ((!dot) || (dot == filename)) {
+    g_print ("Invalid input file.\n");
+    return "";
+  } else {
+    return dot + 1;
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -475,8 +516,38 @@ main (int argc, char *argv[])
   guint video_bus_watch_id_1;
   guint video_bus_watch_id_2;
 
-  const gchar *input_video_file_1 = INPUT_VIDEO_FILE_1;
-  const gchar *input_video_file_2 = INPUT_VIDEO_FILE_2;
+  const gchar *input_video_file_1 = argv[ARG_INPUT1];
+  const gchar *input_video_file_2 = argv[ARG_INPUT2];
+  const char* video1_ext;
+  const char* video2_ext;
+  char* file_name_1;
+  char* file_name_2;
+
+  if ((argc > ARG_COUNT) || (argc <= 2) || ((argc == ARG_COUNT) && (strcmp (argv[ARG_SCALE], "-s")))) {
+    g_print ("Error: Invalid arugments.\n");
+    g_print ("Usage: %s <path to the first H264/H265 file> <path to the second H264/H265 file> [-s] \n", argv[ARG_PROGRAM_NAME]);
+    return -1;
+  }
+
+  /* Check full-screen option */
+  if (argc == ARG_COUNT) {
+    shared_data.fullscreen = true;
+  }
+
+  file_name_1 = basename ((char*) input_video_file_1);
+  file_name_2 = basename ((char*) input_video_file_2);
+  video1_ext = get_filename_ext (file_name_1);
+  video2_ext = get_filename_ext (file_name_2);
+
+  if ((strcasecmp ("h264", video1_ext) != 0) && (strcasecmp ("h265", video1_ext) != 0)) {
+    g_print ("Unsupported video type. H264/H265 format is required\n");
+    return -1;
+  }
+
+  if ((strcasecmp ("h264", video2_ext) != 0) && (strcasecmp ("h265", video2_ext) != 0)) {
+    g_print ("Unsupported video type. H264/H265 format is required\n");
+    return -1;
+  }
 
   /* Get a list of available screen */
   wayland_handler = get_available_screens();
@@ -514,6 +585,7 @@ main (int argc, char *argv[])
   gst_init (&argc, &argv);
   shared_data.loop = g_main_loop_new (NULL, FALSE);
   shared_data.loop_reference = 0; 	/* counter */
+  shared_data.video_ext = video1_ext;
   g_mutex_init (&shared_data.mutex);
   
   /* The first display is screens[PRIMARY_SCREEN_INDEX] */
@@ -527,6 +599,8 @@ main (int argc, char *argv[])
     destroy_wayland(wayland_handler);
     return -1;
   }
+
+  shared_data.video_ext = video2_ext;
 
   video_bus_watch_id_2 =
       create_video_pipeline (&video_pipeline_2, input_video_file_2,
