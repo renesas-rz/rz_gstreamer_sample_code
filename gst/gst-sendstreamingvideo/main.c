@@ -85,15 +85,15 @@ main (int argc, char *argv[])
   const char* ext;
   char* file_name;
 
-  if (!isValidIpAddress (argv[ARG_IP_ADDRESS])) {
-    g_print ("IP is not valid\n");
-    return -1;
-  }
-
   if (argc != ARG_COUNT) {
     g_print ("Invalid arugments.\n");
     g_print ("Format: %s <IP address> <path to MP4>.\n", argv[ARG_PROGRAM_NAME]);
 
+    return -1;
+  }
+
+  if (!isValidIpAddress (argv[ARG_IP_ADDRESS])) {
+    g_print ("IP is not valid\n");
     return -1;
   }
 
