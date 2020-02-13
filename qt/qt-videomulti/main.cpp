@@ -36,8 +36,50 @@
 #include <QtQuick/QQuickItem>
 #include <QtQuick/QQuickView>
 #include <QtGui/QScreen>
+#include <QCommandLineParser>
+#include <QCommandLineOption>
+#include <QFileInfo>
 
-#define VIDEOSDIRPATH "file:///home/media/videos"
+/*
+ * name: isFileExists
+ * Check if the input file exists or not and if it is a file?
+ *
+ */
+bool isFileExists (QString path) {
+    QFileInfo file_info(path);
+    // Check if path exists
+    if (file_info.exists()) {
+        // Check if path is a file
+        if (file_info.isFile()) {
+            return true;
+        } else {
+            qDebug() << "Error: " << path << " is not a file.";
+            return false;
+        }
+    } else {
+        qDebug() << "Error: " << path << "does not exist";
+        return false;
+    }
+}
+
+/*
+ * name: isSupportedVideo
+ * Check if the video format is supported?
+ * Supported format: MP4, H.264, H.265
+ *
+ */
+bool isSupportedVideo (QString path) {
+    QFileInfo file_info(path);
+    if ((file_info.suffix().compare("h264", Qt::CaseInsensitive) != 0)
+            && (file_info.suffix().compare("h265", Qt::CaseInsensitive) != 0)
+            && (file_info.suffix().compare("mp4", Qt::CaseInsensitive) != 0)) {
+        qDebug() << "Error: unsupport video format.";
+        qDebug() << "Supported video extensions: mp4, h264, h265.";
+        return false;
+    } else {
+        return true;
+    }
+}
 
 // Declare the variable screen size
 int widthScreen1 = 0;
@@ -68,7 +110,22 @@ void dataScreens()
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
+    QGuiApplication::setApplicationVersion("1.1");
+    QGuiApplication::setApplicationName("qt-videomulti");
     QQuickView viewer;
+
+    QCommandLineParser parser;
+    parser.setApplicationDescription("Description: A simple application to play a video file");
+    parser.addHelpOption();
+    parser.addVersionOption();
+
+    QCommandLineOption input(QStringList() << "i" << "input",
+            "Directory of input file. (Default: /home/media/videos/vga1.h264)",
+            "path to video file", "/home/media/videos/vga1.h264");
+    parser.addOption(input);
+
+    // Process the actual command line arguments given by the user
+    parser.process(app);
     
     viewer.setSource(QUrl(QLatin1String("qrc:/main.qml")));
     // Call function dataScreens
@@ -78,7 +135,13 @@ int main(int argc, char *argv[])
     viewer.rootContext()->setContextProperty("widthScreen2", widthScreen2);
     viewer.rootContext()->setContextProperty("heightScreen1", heightScreen1);
     viewer.rootContext()->setContextProperty("heightScreen2", heightScreen2);
-    viewer.rootContext()->setContextProperty("videosDirPath", VIDEOSDIRPATH);
+
+    if ((!isFileExists(parser.value(input))) || (!isSupportedVideo(parser.value(input)))) {
+        return -1;
+    } else {
+        viewer.rootContext()->setContextProperty("videosDirPath", parser.value(input));
+    }
+
     // Check max height screen
     if (heightScreen1>heightScreen2) {
         maxHeight=heightScreen1;
