@@ -424,25 +424,26 @@ create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
     }
 
     /* Set property "dmabuf-use" of vspmfilter to true */
-  /* Without it, waylandsink will display broken video */
-  g_object_set (G_OBJECT (filter), "dmabuf-use", TRUE, NULL);
+    /* Without it, waylandsink will display broken video */
+    g_object_set (G_OBJECT (filter), "dmabuf-use", TRUE, NULL);
 
-  /* Create simple cap which contains video's resolution */
-  caps = gst_caps_new_simple ("video/x-raw",
-      "width", G_TYPE_INT, screen->width,
-      "height", G_TYPE_INT, screen->height, NULL);
+    /* Create simple cap which contains video's resolution */
+    caps = gst_caps_new_simple ("video/x-raw",
+        "width", G_TYPE_INT, screen->width,
+        "height", G_TYPE_INT, screen->height, NULL);
 
-  /* Add cap to capsfilter element */
-  g_object_set (G_OBJECT (capsfilter), "caps", caps, NULL);
-  gst_caps_unref (caps);
+    /* Add cap to capsfilter element */
+    g_object_set (G_OBJECT (capsfilter), "caps", caps, NULL);
+    gst_caps_unref (caps);
 
-  /* Link the elements together */
-  /* file-source -> parser -> decoder -> filter -> capsfilter -> video-output */
-  if (!gst_element_link_many (video_source, video_parser, video_decoder,
-          filter, capsfilter, video_sink, NULL)) {
-    g_printerr ("Video elements could not be linked.\n");
-    gst_object_unref (*p_video_pipeline);
-    return 0;
+    /* Link the elements together */
+    /* file-source -> parser -> decoder -> filter -> capsfilter -> video-output */
+    if (!gst_element_link_many (video_source, video_parser, video_decoder,
+            filter, capsfilter, video_sink, NULL)) {
+      g_printerr ("Video elements could not be linked.\n");
+      gst_object_unref (*p_video_pipeline);
+      return 0;
+    }
   }
   return video_bus_watch_id;
 }
