@@ -436,6 +436,9 @@ create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
     g_object_set (G_OBJECT (capsfilter), "caps", caps, NULL);
     gst_caps_unref (caps);
 
+    /* Add filter and capsfilter into the video pipeline */
+    gst_bin_add_many (GST_BIN (*p_video_pipeline), filter, capsfilter, NULL);
+
     /* Link the elements together */
     /* file-source -> parser -> decoder -> filter -> capsfilter -> video-output */
     if (!gst_element_link_many (video_source, video_parser, video_decoder,
