@@ -36,8 +36,8 @@ Rectangle {
         heightNumber2 = heightScreen2
         
         //set value of source file
-        source1 = videosDirPath + "/vga1.h264"
-        source2 = videosDirPath + "/vga2.h264"
+        source1 = "file://" + videosDirPath1
+        source2 = "file://" + videosDirPath2
     }
 
     // Object properties
