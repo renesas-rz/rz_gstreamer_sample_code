@@ -11,7 +11,11 @@
 #define HEIGHT_SIZE        480 
 #define F_NV12             "NV12"
 #define F_F32LE            "F32LE"
-#define OUTPUT_FILE        "/home/media/videos/RECORD_Multimedia.mkv"
+#define OUTPUT_FILE        "RECORD_Multimedia.mkv"
+#define ARG_PROGRAM_NAME   0
+#define ARG_MICROPHONE     1
+#define ARG_CAMERA         2
+#define ARG_COUNT          3
 
 
 #define COMMAND_GET_INPUT_RESOLUTION    "media-ctl -d /dev/media0 --get-v4l2 \"\'adv748x 0-0070 hdmi\':1\" > /home/media/input_resolution.txt"
@@ -99,8 +103,9 @@ main (int argc, char *argv[])
 
   const gchar *output_file = OUTPUT_FILE;
 
-  if (argv[1] == NULL) {
-    g_print ("No input! Please input video device for this app\n");
+  if (argc != ARG_COUNT) {
+    g_print ("Error: Invalid arugments.\n");
+    g_print ("Usage: %s <microphone device> <camera device>\n", argv[ARG_PROGRAM_NAME]);
     return -1;
   }
 
@@ -148,7 +153,7 @@ main (int argc, char *argv[])
   /* for video elements */
 
   /* Set input video device file of the source element - v4l2src */
-  g_object_set (G_OBJECT (cam_src), "device", argv[1], NULL);
+  g_object_set (G_OBJECT (cam_src), "device", argv[ARG_CAMERA], NULL);
 
   /* Set target-bitrate property of the encoder element - omxh264enc */
   g_object_set (G_OBJECT (video_encoder), "target-bitrate", BITRATE_OMXH264ENC, NULL);
@@ -156,7 +161,7 @@ main (int argc, char *argv[])
   /* for audio elements */
 
   /* set input device (microphone) of the source element - alsasrc */
-  g_object_set (G_OBJECT (audio_src), "device", "hw:0,0", NULL);
+  g_object_set (G_OBJECT (audio_src), "device", argv[ARG_MICROPHONE], NULL);
 
   /* set target bitrate of the encoder element - vorbisenc */
   g_object_set (G_OBJECT (audio_encoder), "bitrate", BITRATE_ALSASRC, NULL);
@@ -283,6 +288,6 @@ main (int argc, char *argv[])
 
   g_print ("Deleting pipeline...\n");
   gst_object_unref (GST_OBJECT (pipeline));
-  g_print ("Succeeded. Recorded file available at: %s\n", output_file);
+  g_print ("Succeeded. Please check output file: %s\n", output_file);
   return 0;
 }
