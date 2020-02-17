@@ -5,7 +5,7 @@
 
 #define BITRATE_OMXH264ENC 10485760 /* Target bitrate of the encoder element - omxh264enc */
 #define BITRATE_ALSASRC    128000      /* Target bitrate of the encoder element - alsasrc */
-#define SAMPLE_RATE        44100  			/* Sample rate  of audio file*/
+#define SAMPLE_RATE        48000  			/* Sample rate  of audio file*/
 #define CHANNEL            1          			/* Channel*/
 #define WIDTH_SIZE         640             /* The output data of v4l2src in this application will be a raw video with 640x480 size */
 #define HEIGHT_SIZE        480 
