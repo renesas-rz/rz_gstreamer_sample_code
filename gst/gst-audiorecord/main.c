@@ -1,7 +1,7 @@
 #include <gst/gst.h>
 
 #define BITRATE      128000     /* Bitrate averaging */
-#define SAMPLE_RATE  44100  /* Sample rate  of audio file*/
+#define SAMPLE_RATE  48000  /* Sample rate  of audio file*/
 #define CHANNEL      1          /* Channel*/
 #define OUTPUT_FILE  "RECORD_microphone-mono.ogg"
 #define FORMAT       "F32LE"
