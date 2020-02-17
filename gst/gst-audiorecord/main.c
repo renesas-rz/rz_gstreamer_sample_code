@@ -3,8 +3,11 @@
 #define BITRATE      128000     /* Bitrate averaging */
 #define SAMPLE_RATE  44100  /* Sample rate  of audio file*/
 #define CHANNEL      1          /* Channel*/
-#define OUTPUT_FILE  "/home/media/audios/RECORD_microphone-mono.ogg"
+#define OUTPUT_FILE  "RECORD_microphone-mono.ogg"
 #define FORMAT       "F32LE"
+#define ARG_PROGRAM_NAME   0
+#define ARG_DEVICE         1
+#define ARG_COUNT          2
 
 static GstElement *pipeline;
 
@@ -44,6 +47,12 @@ main (int argc, char *argv[])
 
   const gchar *output_file = OUTPUT_FILE;
 
+  if (argc != ARG_COUNT) {
+    g_print ("Error: Invalid arugments.\n");
+    g_print ("Usage: %s <microphone device> \n", argv[ARG_PROGRAM_NAME]);
+    return -1;
+  }
+
   /* Initialization */
   gst_init (&argc, &argv);
 
@@ -63,7 +72,7 @@ main (int argc, char *argv[])
   }
 
   /* set input device (microphone) of the source element - alsasrc */
-  g_object_set (G_OBJECT (source), "device", "hw:0,0", NULL);
+  g_object_set (G_OBJECT (source), "device", argv[ARG_DEVICE], NULL);
 
   /* set target bitrate of the encoder element - vorbisenc */
   g_object_set (G_OBJECT (encoder), "bitrate", BITRATE, NULL);
@@ -158,6 +167,6 @@ main (int argc, char *argv[])
 
   g_print ("Deleting pipeline...\n");
   gst_object_unref (GST_OBJECT (pipeline));
-  g_print ("Succeeded. Recorded file available at: %s\n", output_file);
+  g_print ("Succeeded. Please check output file: %s\n", output_file);
   return 0;
 }
