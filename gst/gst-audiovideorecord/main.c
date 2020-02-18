@@ -7,57 +7,16 @@
 #define BITRATE_ALSASRC    128000      /* Target bitrate of the encoder element - alsasrc */
 #define SAMPLE_RATE        48000  			/* Sample rate  of audio file*/
 #define CHANNEL            1          			/* Channel*/
-#define WIDTH_SIZE         640             /* The output data of v4l2src in this application will be a raw video with 640x480 size */
-#define HEIGHT_SIZE        480 
+#define WIDTH_SIZE         1280             /* The output data of v4l2src in this application will be */
+#define HEIGHT_SIZE        720              /* a raw video with 1280x720 size */
 #define F_NV12             "NV12"
 #define F_F32LE            "F32LE"
+#define VARIABLE_RATE      1
 #define OUTPUT_FILE        "RECORD_Multimedia.mkv"
 #define ARG_PROGRAM_NAME   0
 #define ARG_MICROPHONE     1
 #define ARG_CAMERA         2
 #define ARG_COUNT          3
-
-
-#define COMMAND_GET_INPUT_RESOLUTION    "media-ctl -d /dev/media0 --get-v4l2 \"\'adv748x 0-0070 hdmi\':1\" > /home/media/input_resolution.txt"
-#define INPUT_RESOLUTION_FILE           "/home/media/input_resolution.txt"
-
-static void get_input_resolution(int *available_width_screen, int *available_height_screen) {
-
-        /* Initial variables */
-        char *line = NULL;
-        size_t len, read;
-        FILE *fp;
-        char width[10], height[10];
-
-        system(COMMAND_GET_INPUT_RESOLUTION);
-        fp = fopen(INPUT_RESOLUTION_FILE, "rt");
-
-        if(fp == NULL) {
-                g_printerr("Can't open file.\n");
-                exit(1);
-        } else {
-                while((read = getline(&line, &len, fp)) != -1 ) {
-                        char* p_start_width   = strstr(line, "/");
-                        p_start_width += 1;
-                        char* p_end_width     = strstr(line, "x");
-
-                        char* p_start_height  = strstr(line, "x");
-                        p_start_height += 1;
-                        char* p_end_height    = strstr(line, " f");
-
-
-                        memset(width, '\0', sizeof(width));
-                        strncpy(width, p_start_width, p_end_width - p_start_width);
-                        *available_width_screen = atoi(width);
-
-                        memset(height, '\0', sizeof(height));
-                        strncpy(height, p_start_height, p_end_height - p_start_height);
-                        *available_height_screen = atoi(height);
-                }
-        }
-        fclose(fp);
-}
-
 
 static GstElement *pipeline;
 
@@ -109,9 +68,9 @@ main (int argc, char *argv[])
     return -1;
   }
 
-  int width, height;
-  get_input_resolution(&width, &height);
-  g_printerr("Input resolution is: %dx%d\n", width, height);
+  int width = WIDTH_SIZE;
+  int height = HEIGHT_SIZE;
+
   /* Initialization */
   gst_init (&argc, &argv);
 
@@ -156,7 +115,8 @@ main (int argc, char *argv[])
   g_object_set (G_OBJECT (cam_src), "device", argv[ARG_CAMERA], NULL);
 
   /* Set target-bitrate property of the encoder element - omxh264enc */
-  g_object_set (G_OBJECT (video_encoder), "target-bitrate", BITRATE_OMXH264ENC, NULL);
+  g_object_set (G_OBJECT (video_encoder), "target-bitrate", BITRATE_OMXH264ENC,
+      "control-rate", VARIABLE_RATE, NULL);
 
   /* for audio elements */
 
@@ -170,12 +130,8 @@ main (int argc, char *argv[])
   g_object_set (G_OBJECT (sink), "location", output_file, NULL);
 
   /* create simple caps */
-  /* RCar-E3 doesn't support input resolution 1920x1080p, so we need add interlace-mode property to capsfilter to limit input resolution to 1920x1080i */
-  if(width == 1920 && height == 1080) {
-        cam_caps = gst_caps_new_simple("video/x-raw", "interlace-mode", G_TYPE_STRING, "interleaved", "width", G_TYPE_INT, width, "height", G_TYPE_INT, height, NULL);
-  } else {
-        cam_caps = gst_caps_new_simple("video/x-raw", "width", G_TYPE_INT, width, "height", G_TYPE_INT, height, NULL);
-  }
+  cam_caps = gst_caps_new_simple("video/x-raw", "width", G_TYPE_INT, width,
+                 "height", G_TYPE_INT, height, NULL);
 
   video_conv_caps =
       gst_caps_new_simple ("video/x-raw", "format", G_TYPE_STRING, F_NV12,
