@@ -2,13 +2,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <linux/videodev2.h>
 
 #define BITRATE_OMXH264ENC 10485760 /* Target bitrate of the encoder element - omxh264enc */
 #define BITRATE_ALSASRC    128000      /* Target bitrate of the encoder element - alsasrc */
 #define SAMPLE_RATE        48000  			/* Sample rate  of audio file*/
 #define CHANNEL            1          			/* Channel*/
-#define WIDTH_SIZE         1280             /* The output data of v4l2src in this application will be */
-#define HEIGHT_SIZE        720              /* a raw video with 1280x720 size */
+#define USB_WIDTH_SIZE         1280         /* The output data of v4l2src in this application will be */
+#define USB_HEIGHT_SIZE        720          /* a raw video with 1280x720 size */
+#define MIPI_WIDTH_SIZE    1280             /* The output data of v4l2src in this application will be */
+#define MIPI_HEIGHT_SIZE   960              /* a raw video with 1280x960 size */
 #define F_NV12             "NV12"
 #define F_F32LE            "F32LE"
 #define VARIABLE_RATE      1
@@ -17,6 +24,12 @@
 #define ARG_MICROPHONE     1
 #define ARG_CAMERA         2
 #define ARG_COUNT          3
+
+enum camera_type {
+  NO_CAMERA,
+  MIPI_CAMERA,
+  USB_CAMERA
+};
 
 static GstElement *pipeline;
 
@@ -47,6 +60,48 @@ link_to_multiplexer (GstPad * tolink_pad, GstElement * mux)
   g_free (srcname);
 }
 
+/* Check type of camera
+ * return NO_CAMERA: Unsupported camera
+ * return MIPI_CAMERA: MIPI camera detected
+ * return USB_CAMERA: USB camera detected */
+enum camera_type
+check_camera_type (const char *device)
+{
+  int fd = -1;
+  int ret = -1;
+  enum camera_type camera = NO_CAMERA;
+  struct v4l2_capability info;
+
+  fd = open (device, O_RDONLY);
+  if (fd < 0) {
+    g_print ("Cannot open device.\n");
+    return NO_CAMERA;
+  }
+
+  /* Obtain information about driver */
+  ret = ioctl(fd, VIDIOC_QUERYCAP, &info);
+  if (ret < 0) {
+    g_print ("Invalid V4L2 device.\n");
+    close (fd);
+    return NO_CAMERA;
+  }
+
+  /* Detecting type of camera base on driver*/
+  if (strstr ((char*) info.driver, "vin")) {
+    g_print ("MIPI camera detected.\n");
+    camera = MIPI_CAMERA;
+  } else if (strstr ((char*) info.driver, "uvc")) {
+    g_print ("USB camera detected.\n");
+    camera = USB_CAMERA;
+  } else {
+    g_print ("Unsupported camera.\n");
+    camera = NO_CAMERA;
+  }
+
+  close (fd);
+  return camera;
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -59,6 +114,7 @@ main (int argc, char *argv[])
   GstMessage *msg;
   GstPad *srcpad;
   GstCaps *cam_caps, *video_conv_caps, *audio_conv_caps;
+  enum camera_type camera = NO_CAMERA;
 
   const gchar *output_file = OUTPUT_FILE;
 
@@ -68,8 +124,10 @@ main (int argc, char *argv[])
     return -1;
   }
 
-  int width = WIDTH_SIZE;
-  int height = HEIGHT_SIZE;
+  camera = check_camera_type (argv[ARG_CAMERA]);
+  if (camera == NO_CAMERA) {
+    return -1;
+  }
 
   /* Initialization */
   gst_init (&argc, &argv);
@@ -81,11 +139,16 @@ main (int argc, char *argv[])
   cam_src = gst_element_factory_make ("v4l2src", "cam-src");
   cam_queue = gst_element_factory_make ("queue", "cam-queue");
   cam_capsfilter = gst_element_factory_make ("capsfilter", "cam_caps");
-  video_converter = gst_element_factory_make ("videoconvert", "video-conv");
   video_conv_capsfilter =
       gst_element_factory_make ("capsfilter", "video-conv-caps");
   video_encoder = gst_element_factory_make ("omxh264enc", "video-encoder");
   video_parser = gst_element_factory_make ("h264parse", "h264-parser");
+
+  if (camera == MIPI_CAMERA) {
+    video_converter = gst_element_factory_make ("vspmfilter", "video-converter");
+  } else {
+    video_converter = gst_element_factory_make ("videoconvert", "video-converter");
+  }
 
   /* Audio elements */
   audio_src = gst_element_factory_make ("alsasrc", "audio-src");
@@ -111,12 +174,33 @@ main (int argc, char *argv[])
 
   /* for video elements */
 
+  if (camera == MIPI_CAMERA) {
+    /* Set property "dmabuf-use" of vspmfilter to true */
+    /* Without it, the output file will be broken video */
+    g_object_set (G_OBJECT (video_converter), "dmabuf-use", true, NULL);
+    /* Set properties of the encoder element - omxh264enc */
+    g_object_set (G_OBJECT (video_encoder), "target-bitrate", BITRATE_OMXH264ENC,
+        "control-rate", VARIABLE_RATE, "interval_intraframes", 14,
+        "periodicty-idr", 2, NULL);
+
+    /* Create camera caps */
+    cam_caps =
+        gst_caps_new_simple ("video/x-raw", "format", G_TYPE_STRING, "UYVY",
+            "width", G_TYPE_INT, MIPI_WIDTH_SIZE, "height",
+            G_TYPE_INT, MIPI_HEIGHT_SIZE, NULL);
+  } else {
+    /* Set properties of the encoder element - omxh264enc */
+    g_object_set (G_OBJECT (video_encoder), "target-bitrate", BITRATE_OMXH264ENC,
+        "control-rate", VARIABLE_RATE, NULL);
+
+    /* Create camera caps */
+    cam_caps =
+        gst_caps_new_simple ("video/x-raw", "width", G_TYPE_INT, USB_WIDTH_SIZE,
+            "height", G_TYPE_INT, USB_HEIGHT_SIZE, NULL);
+  }
+
   /* Set input video device file of the source element - v4l2src */
   g_object_set (G_OBJECT (cam_src), "device", argv[ARG_CAMERA], NULL);
-
-  /* Set target-bitrate property of the encoder element - omxh264enc */
-  g_object_set (G_OBJECT (video_encoder), "target-bitrate", BITRATE_OMXH264ENC,
-      "control-rate", VARIABLE_RATE, NULL);
 
   /* for audio elements */
 
@@ -128,10 +212,6 @@ main (int argc, char *argv[])
 
   /* Set output file location of the sink element - filesink */
   g_object_set (G_OBJECT (sink), "location", output_file, NULL);
-
-  /* create simple caps */
-  cam_caps = gst_caps_new_simple("video/x-raw", "width", G_TYPE_INT, width,
-                 "height", G_TYPE_INT, height, NULL);
 
   video_conv_caps =
       gst_caps_new_simple ("video/x-raw", "format", G_TYPE_STRING, F_NV12,
