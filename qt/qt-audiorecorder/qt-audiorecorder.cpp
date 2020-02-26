@@ -65,6 +65,12 @@ AudioRecorder::AudioRecorder(QWidget *parent) :
     connect(probe, SIGNAL(audioBufferProbed(QAudioBuffer)),
             this, SLOT(processBuffer(QAudioBuffer)));
     probe->setSource(audioRecorder);
+
+    //audio devices
+    for (QString &device: audioRecorder->audioInputs()) {
+        ui->audioDeviceBox->addItem(device, QVariant(device));
+    }
+
     // Title of window
     this->setWindowTitle("Audio recorder version 1.0");
     connect(audioRecorder, SIGNAL(durationChanged(qint64)), this,
@@ -141,10 +147,21 @@ void AudioRecorder::onStateChanged(QMediaRecorder::State state)
     ui->pauseButton->setEnabled(audioRecorder->state() != QMediaRecorder::StoppedState);
 }
 
+// Return current value in box.
+static QVariant boxValue (const QComboBox *box)
+{
+    int idx = box->currentIndex();
+    if (idx == -1)
+        return QVariant();
+
+    return box->itemData(idx);
+}
+
 // Function helps toggle record state between RecordingState and StoppedState
 void AudioRecorder::toggleRecord()
 {
     if (audioRecorder->state() == QMediaRecorder::StoppedState) {
+        audioRecorder->setAudioInput(boxValue(ui->audioDeviceBox).toString());
         QAudioEncoderSettings settings;
         settings.setBitRate(BIT_RATE);
         settings.setChannelCount(CHANEL_COUNT);

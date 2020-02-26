@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
     recorder.setMaximumSize(width, height);
     // resize to set minimum window
     recorder.resize(width/MINIMIZED_SCALE, height/MINIMIZED_SCALE);
-    recorder.showMaximized();
+    recorder.showNormal();
 
     return app.exec();
 }
