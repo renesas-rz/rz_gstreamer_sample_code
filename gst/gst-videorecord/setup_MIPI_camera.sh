@@ -9,7 +9,7 @@ then
   media-ctl -d /dev/media0 -V "'rcar_csi2 feaa0000.csi2':1 [fmt:UYVY8_2X8/1280x960 field:none]"
   media-ctl -d /dev/media0 -V "'ov5645 3-003c':0 [fmt:UYVY8_2X8/1280x960 field:none]"
   echo "/dev/video0 is configured successfully with resolution 1280x960"
-elif [ "$HOSTNAME" = "hihope-rzg2n" ] || [ "$HOSTNAME" = "hihope-rzg2m" ]
+elif [ "$HOSTNAME" = "hihope-rzg2n" ] || [ "$HOSTNAME" = "hihope-rzg2m" ] || [ "$HOSTNAME" = "hihope-rzg2h" ]
 then
   if [ $# -ne 2 ]
   then
