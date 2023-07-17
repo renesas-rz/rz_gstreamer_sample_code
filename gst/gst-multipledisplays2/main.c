@@ -10,11 +10,12 @@
 #define ARG_PROGRAM_NAME      0
 #define ARG_INPUT1            1
 #define ARG_INPUT2            2
-#define ARG_SCALE             3
-#define ARG_COUNT             4
-#define REQUIRED_SCREEN_NUMBERS 2
+#define ARG_COUNT             3
+#define REQUIRED_SCREEN_NUMBERS 1
 #define PRIMARY_SCREEN_INDEX 0
-#define SECONDARY_SCREEN_INDEX 1
+#define SECONDARY_SCREEN_INDEX 0
+#define PRIMARY_POS_OFFSET 0
+#define SECONDARY_POS_OFFSET 300
 
 typedef struct _CustomData
 {
@@ -22,7 +23,6 @@ typedef struct _CustomData
   int loop_reference;
   GMutex mutex;
   const char *video_ext;
-  bool fullscreen;
 } CustomData;
 
 /* These structs contain information needed to get a list of available screens */
@@ -372,12 +372,9 @@ create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
   video_source = gst_element_factory_make ("filesrc", NULL);
   video_sink = gst_element_factory_make ("waylandsink", NULL);
 
-  if (strcasecmp ("h264", data->video_ext) == 0) {
+  if ((strcasecmp ("h264", data->video_ext) == 0) || (strcasecmp ("264", data->video_ext) == 0)) {
     video_parser = gst_element_factory_make ("h264parse", "h264-parser");
     video_decoder = gst_element_factory_make ("omxh264dec", "h264-decoder");
-  } else {
-    video_parser = gst_element_factory_make ("h265parse", "h265-parser");
-    video_decoder = gst_element_factory_make ("omxh265dec", "h265-decoder");
   }
 
   if (!*p_video_pipeline || !video_source || !video_parser || !video_decoder || !video_sink) {
@@ -400,54 +397,15 @@ create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
   g_object_set (G_OBJECT (video_source), "location", input_file, NULL);
   g_object_set (G_OBJECT (video_sink), "position-x", screen->x, "position-y",  screen->y, NULL);
 
-  if (!data->fullscreen) {
-    /* Link the elements together */
-    /* file-source -> parser -> decoder -> video-output */
-    if (!gst_element_link_many (video_source, video_parser, video_decoder,
-            video_sink, NULL)) {
-      g_printerr ("Video elements could not be linked.\n");
-      gst_object_unref (*p_video_pipeline);
-      return 0;
-    }
-  } else {
-    GstElement *filter, *capsfilter;
-    GstCaps *caps;
-
-    /* Create vspm-filter and caps-filter */
-    filter = gst_element_factory_make ("vspmfilter", NULL);
-    capsfilter = gst_element_factory_make ("capsfilter", NULL);
-
-    if (!filter || !capsfilter) {
-      g_printerr ("One element could not be created. Exiting.\n");
-      gst_object_unref (*p_video_pipeline);
-      return 0;
-    }
-
-    /* Set property "dmabuf-use" of vspmfilter to true */
-    /* Without it, waylandsink will display broken video */
-    g_object_set (G_OBJECT (filter), "dmabuf-use", TRUE, NULL);
-
-    /* Create simple cap which contains video's resolution */
-    caps = gst_caps_new_simple ("video/x-raw",
-        "width", G_TYPE_INT, screen->width,
-        "height", G_TYPE_INT, screen->height, NULL);
-
-    /* Add cap to capsfilter element */
-    g_object_set (G_OBJECT (capsfilter), "caps", caps, NULL);
-    gst_caps_unref (caps);
-
-    /* Add filter and capsfilter into the video pipeline */
-    gst_bin_add_many (GST_BIN (*p_video_pipeline), filter, capsfilter, NULL);
-
-    /* Link the elements together */
-    /* file-source -> parser -> decoder -> filter -> capsfilter -> video-output */
-    if (!gst_element_link_many (video_source, video_parser, video_decoder,
-            filter, capsfilter, video_sink, NULL)) {
-      g_printerr ("Video elements could not be linked.\n");
-      gst_object_unref (*p_video_pipeline);
-      return 0;
-    }
+  /* Link the elements together */
+  /* file-source -> parser -> decoder -> video-output */
+  if (!gst_element_link_many (video_source, video_parser, video_decoder,
+          video_sink, NULL)) {
+    g_printerr ("Video elements could not be linked.\n");
+    gst_object_unref (*p_video_pipeline);
+    return 0;
   }
+
   return video_bus_watch_id;
 }
 
@@ -527,15 +485,10 @@ main (int argc, char *argv[])
   char* file_name_1;
   char* file_name_2;
 
-  if ((argc > ARG_COUNT) || (argc <= 2) || ((argc == ARG_COUNT) && (strcmp (argv[ARG_SCALE], "-s")))) {
+  if ((argc > ARG_COUNT) || (argc <= 2)) {
     g_print ("Error: Invalid arugments.\n");
-    g_print ("Usage: %s <path to the first H264/H265 file> <path to the second H264/H265 file> [-s] \n", argv[ARG_PROGRAM_NAME]);
+    g_print ("Usage: %s <path to the first H264 file> <path to the second H264 file> \n", argv[ARG_PROGRAM_NAME]);
     return -1;
-  }
-
-  /* Check full-screen option */
-  if (argc == ARG_COUNT) {
-    shared_data.fullscreen = true;
   }
 
   file_name_1 = basename ((char*) input_video_file_1);
@@ -543,13 +496,13 @@ main (int argc, char *argv[])
   video1_ext = get_filename_ext (file_name_1);
   video2_ext = get_filename_ext (file_name_2);
 
-  if ((strcasecmp ("h264", video1_ext) != 0) && (strcasecmp ("h265", video1_ext) != 0)) {
-    g_print ("Unsupported video type. H264/H265 format is required\n");
+  if ((strcasecmp ("h264", video1_ext) != 0) && (strcasecmp ("264", video1_ext) != 0)) {
+    g_print ("Unsupported video type. H264 format is required\n");
     return -1;
   }
 
-  if ((strcasecmp ("h264", video2_ext) != 0) && (strcasecmp ("h265", video2_ext) != 0)) {
-    g_print ("Unsupported video type. H264/H265 format is required\n");
+  if ((strcasecmp ("h264", video2_ext) != 0) && (strcasecmp ("264", video2_ext) != 0)) {
+    g_print ("Unsupported video type. H264 format is required\n");
     return -1;
   }
 
@@ -592,8 +545,8 @@ main (int argc, char *argv[])
   shared_data.video_ext = video1_ext;
   g_mutex_init (&shared_data.mutex);
   
-  /* The first display is screens[PRIMARY_SCREEN_INDEX] */
-  /* The second display is screens[SECONDARY_SCREEN_INDEX] */
+  screens[PRIMARY_SCREEN_INDEX]->x += PRIMARY_POS_OFFSET;
+  screens[PRIMARY_SCREEN_INDEX]->y += PRIMARY_POS_OFFSET;
   video_bus_watch_id_1 =
       create_video_pipeline (&video_pipeline_1, input_video_file_1,
       screens[PRIMARY_SCREEN_INDEX], &shared_data);
@@ -606,6 +559,8 @@ main (int argc, char *argv[])
 
   shared_data.video_ext = video2_ext;
 
+  screens[SECONDARY_SCREEN_INDEX]->x += SECONDARY_POS_OFFSET;
+  screens[SECONDARY_SCREEN_INDEX]->y += SECONDARY_POS_OFFSET;
   video_bus_watch_id_2 =
       create_video_pipeline (&video_pipeline_2, input_video_file_2,
       screens[SECONDARY_SCREEN_INDEX], &shared_data);
