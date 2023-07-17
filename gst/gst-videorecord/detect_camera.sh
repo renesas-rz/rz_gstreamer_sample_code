@@ -31,7 +31,7 @@ PROG_STAT=$PROG_SUCCESS_CODE
 
 for DEV_NAME in $( ls -v /dev/video* )
 do
-  CHECK_CAMERA=$( v4l2-ctl -d $DEV_NAME --all | grep "Crop Capability Video Capture:" )
+  CHECK_CAMERA=$( v4l2-ctl -d $DEV_NAME --all | grep "Video Capture:" )
 
   if [ ! -z "$CHECK_CAMERA" ]
   then
