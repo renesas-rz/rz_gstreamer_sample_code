@@ -9,11 +9,12 @@
 
 #define ARG_PROGRAM_NAME     0
 #define ARG_INPUT            1
-#define ARG_SCALE            2
-#define ARG_COUNT            3
-#define REQUIRED_SCREEN_NUMBERS 2
+#define ARG_COUNT            2
+#define REQUIRED_SCREEN_NUMBERS 1
 #define PRIMARY_SCREEN_INDEX 0
-#define SECONDARY_SCREEN_INDEX 1
+#define SECONDARY_SCREEN_INDEX 0
+#define PRIMARY_POS_OFFSET   0
+#define SECONDARY_POS_OFFSET   300
 
 /* These structs contain information needed to get a list of available screens */
 struct screen_t
@@ -337,31 +338,24 @@ main (int argc, char *argv[])
   struct wayland_t *wayland_handler = NULL;
   struct screen_t *screens[REQUIRED_SCREEN_NUMBERS];
   int screen_numbers = 0;
-  bool fullscreen = false;
   const char* ext;
   char* file_name;
 
   const char *input_video_file = argv[ARG_INPUT];
 
   GstElement *pipeline, *source, *parser, *decoder, *tee;
-  GstElement *filter_1, *capsfilter_1, *queue_1, *video_sink_1;
-  GstElement *filter_2, *capsfilter_2, *queue_2, *video_sink_2;
+  GstElement *queue_1, *video_sink_1;
+  GstElement *queue_2, *video_sink_2;
 
-  GstCaps *caps_1, *caps_2;
   GstPad *req_pad_1, *sink_pad, *req_pad_2;
   GstBus *bus;
   GstMessage *msg;
   GstPadTemplate *tee_src_pad_template;
 
-  if ((argc > ARG_COUNT) || (argc == 1) || ((argc == ARG_COUNT) && (strcmp (argv[ARG_SCALE], "-s")))) {
+  if ((argc > ARG_COUNT) || (argc == 1)) {
     g_print ("Error: Invalid arugments.\n");
-    g_print ("Usage: %s <path to H264 file> [-s]\n", argv[ARG_PROGRAM_NAME]);
+    g_print ("Usage: %s <path to H264 file> \n", argv[ARG_PROGRAM_NAME]);
     return -1;
-  }
-
-  /* Check full-screen option */
-  if (argc == ARG_COUNT) {
-    fullscreen = true;
   }
 
   file_name = basename ((char*) input_video_file);
@@ -401,14 +395,11 @@ main (int argc, char *argv[])
   gst_init (&argc, &argv);
 
   /* Check the extension and create parser, decoder */
-  if (strcasecmp ("h264", ext) == 0) {
+  if ((strcasecmp ("h264", ext) == 0) || (strcasecmp ("264", ext) == 0)) {
     parser = gst_element_factory_make ("h264parse", "h264-parser");
     decoder = gst_element_factory_make ("omxh264dec", "h264-decoder");
-  } else if (strcasecmp ("h265", ext) == 0) {
-    parser = gst_element_factory_make ("h265parse", "h265-parser");
-    decoder = gst_element_factory_make ("omxh265dec", "h265-decoder");
   } else {
-    g_print ("Unsupported video type. H264/H265 format is required.\n");
+    g_print ("Unsupported video type. H264 format is required.\n");
     destroy_wayland(wayland_handler);
     return -1;
   }
@@ -441,13 +432,15 @@ main (int argc, char *argv[])
 
   /* Set display position and size for Display 1  */
   g_object_set (G_OBJECT (video_sink_1),
-       "position-x", screens[PRIMARY_SCREEN_INDEX]->x,
-       "position-y", screens[PRIMARY_SCREEN_INDEX]->y, NULL);
+       "position-x", screens[PRIMARY_SCREEN_INDEX]->x + PRIMARY_POS_OFFSET,
+       "position-y", screens[PRIMARY_SCREEN_INDEX]->y + PRIMARY_POS_OFFSET,
+       NULL);
 
   /* Set display position and size for Display 2 */
   g_object_set (G_OBJECT (video_sink_2),
-       "position-x", screens[SECONDARY_SCREEN_INDEX]->x,
-       "position-y", screens[SECONDARY_SCREEN_INDEX]->y, NULL);
+       "position-x", screens[SECONDARY_SCREEN_INDEX]->x + SECONDARY_POS_OFFSET,
+       "position-y", screens[SECONDARY_SCREEN_INDEX]->y + SECONDARY_POS_OFFSET,
+       NULL);
 
   /* Add all elements into the pipeline */
   gst_bin_add_many (GST_BIN (pipeline), source, parser, decoder, tee,
@@ -462,116 +455,42 @@ main (int argc, char *argv[])
     return -1;
   }
 
-  if (!fullscreen) {
-    if (gst_element_link_many (queue_1, video_sink_1, NULL) != TRUE) {
-      g_printerr ("Elements of Video Display-1 could not be linked.\n");
-      gst_object_unref (pipeline);
-
-      destroy_wayland(wayland_handler);
-      return -1;
-    }
-    if (gst_element_link_many (queue_2, video_sink_2, NULL) != TRUE) {
-      g_printerr ("Elements of Video Display-2 could not be linked.\n");
-      gst_object_unref (pipeline);
-
-      destroy_wayland(wayland_handler);
-      return -1;
-    }
-
-    /* Get a src pad template of Tee */
-    tee_src_pad_template =
-        gst_element_class_get_pad_template (GST_ELEMENT_GET_CLASS (tee),
-        "src_%u");
-
-    /* Get request pad and manually link for Video Display 1 */
-    req_pad_1 = gst_element_request_pad (tee, tee_src_pad_template, NULL, NULL);
-    sink_pad = gst_element_get_static_pad (queue_1, "sink");
-    if (gst_pad_link (req_pad_1, sink_pad) != GST_PAD_LINK_OK) {
-      g_print ("tee link failed!\n");
-    }
-    gst_object_unref (sink_pad);
-
-    /* Get request pad and manually link for Video Display 2 */
-    req_pad_2 = gst_element_request_pad (tee, tee_src_pad_template, NULL, NULL);
-    sink_pad = gst_element_get_static_pad (queue_2, "sink");
-    if (gst_pad_link (req_pad_2, sink_pad) != GST_PAD_LINK_OK) {
-      g_print ("tee link failed!\n");
-    }
-    gst_object_unref (sink_pad);
-  } else {
-    filter_1 = gst_element_factory_make ("vspmfilter", "vspm-filter-1");
-    capsfilter_1 = gst_element_factory_make ("capsfilter", "caps-filter-1");
-    filter_2 = gst_element_factory_make ("vspmfilter", "vspm-filter-2");
-    capsfilter_2 = gst_element_factory_make ("capsfilter", "caps-filter-2");
-
-    if (!filter_1 || !capsfilter_1 || !filter_2 || !capsfilter_2) {
-    g_printerr ("One element could not be created. Exiting.\n");
+  if (gst_element_link_many (queue_1, video_sink_1, NULL) != TRUE) {
+    g_printerr ("Elements of Video Display-1 could not be linked.\n");
     gst_object_unref (pipeline);
+
     destroy_wayland(wayland_handler);
     return -1;
-    }
-
-    /* Set property "dmabuf-use" of vspmfilter to true */
-    /* Without it, waylandsink will display broken video */
-    g_object_set (G_OBJECT (filter_1), "dmabuf-use", TRUE, NULL);
-    g_object_set (G_OBJECT (filter_2), "dmabuf-use", TRUE, NULL);
-
-    /* Create simple cap which contains video's resolutions */
-    caps_1 = gst_caps_new_simple ("video/x-raw",
-        "width", G_TYPE_INT, screens[PRIMARY_SCREEN_INDEX]->width,
-        "height", G_TYPE_INT, screens[PRIMARY_SCREEN_INDEX]->height, NULL);
-
-    caps_2 = gst_caps_new_simple ("video/x-raw",
-        "width", G_TYPE_INT, screens[SECONDARY_SCREEN_INDEX]->width,
-        "height", G_TYPE_INT, screens[SECONDARY_SCREEN_INDEX]->height, NULL);
-
-    /* Add caps_1 to capsfilter_1 element */
-    g_object_set (G_OBJECT (capsfilter_1), "caps", caps_1, NULL);
-    gst_caps_unref (caps_1);
-
-    /* Add caps_2 to capsfilter_2 element */
-    g_object_set (G_OBJECT (capsfilter_2), "caps", caps_2, NULL);
-    gst_caps_unref (caps_2);
-
-    /* Add filter, capsfilter into the pipeline */
-    gst_bin_add_many (GST_BIN (pipeline), filter_1, capsfilter_1, filter_2, capsfilter_2, NULL);
-
-    if (gst_element_link_many (filter_1, capsfilter_1, queue_1, video_sink_1,
-            NULL) != TRUE) {
-      g_printerr ("Elements of Video Display-1 could not be linked.\n");
-      gst_object_unref (pipeline);
-      destroy_wayland(wayland_handler);
-      return -1;
-    }
-    if (gst_element_link_many (filter_2, capsfilter_2, queue_2, video_sink_2,
-            NULL) != TRUE) {
-      g_printerr ("Elements of Video Display-2 could not be linked.\n");
-      gst_object_unref (pipeline);
-      destroy_wayland(wayland_handler);
-      return -1;
-    }
-
-    /* Get a src pad template of Tee */
-    tee_src_pad_template =
-        gst_element_class_get_pad_template (GST_ELEMENT_GET_CLASS (tee),
-        "src_%u");
-
-    /* Get request pad and manually link for Video Display 1 */
-    req_pad_1 = gst_element_request_pad (tee, tee_src_pad_template, NULL, NULL);
-    sink_pad = gst_element_get_static_pad (filter_1, "sink");
-    if (gst_pad_link (req_pad_1, sink_pad) != GST_PAD_LINK_OK) {
-      g_print ("tee link failed!\n");
-    }
-    gst_object_unref (sink_pad);
-
-    /* Get request pad and manually link for Video Display 2 */
-    req_pad_2 = gst_element_request_pad (tee, tee_src_pad_template, NULL, NULL);
-    sink_pad = gst_element_get_static_pad (filter_2, "sink");
-    if (gst_pad_link (req_pad_2, sink_pad) != GST_PAD_LINK_OK) {
-      g_print ("tee link failed!\n");
-    }
-    gst_object_unref (sink_pad);
   }
+  if (gst_element_link_many (queue_2, video_sink_2, NULL) != TRUE) {
+    g_printerr ("Elements of Video Display-2 could not be linked.\n");
+    gst_object_unref (pipeline);
+
+    destroy_wayland(wayland_handler);
+    return -1;
+  }
+
+  /* Get a src pad template of Tee */
+  tee_src_pad_template =
+      gst_element_class_get_pad_template (GST_ELEMENT_GET_CLASS (tee),
+      "src_%u");
+
+  /* Get request pad and manually link for Video Display 1 */
+  req_pad_1 = gst_element_request_pad (tee, tee_src_pad_template, NULL, NULL);
+  sink_pad = gst_element_get_static_pad (queue_1, "sink");
+  if (gst_pad_link (req_pad_1, sink_pad) != GST_PAD_LINK_OK) {
+    g_print ("tee link failed!\n");
+  }
+  gst_object_unref (sink_pad);
+
+  /* Get request pad and manually link for Video Display 2 */
+  req_pad_2 = gst_element_request_pad (tee, tee_src_pad_template, NULL, NULL);
+  sink_pad = gst_element_get_static_pad (queue_2, "sink");
+  if (gst_pad_link (req_pad_2, sink_pad) != GST_PAD_LINK_OK) {
+    g_print ("tee link failed!\n");
+  }
+  gst_object_unref (sink_pad);
+
   /* Set the pipeline to "playing" state */
   g_print ("Now playing:\n");
   if (gst_element_set_state (pipeline,
