@@ -10,8 +10,7 @@
 #define ARG_PROGRAM_NAME 0
 #define ARG_INPUT_AUDIO  1
 #define ARG_INPUT_VIDEO  2
-#define ARG_SCALE        3
-#define ARG_COUNT        4
+#define ARG_COUNT        3
 
 typedef struct _CustomData
 {
@@ -21,7 +20,6 @@ typedef struct _CustomData
   const char *video_ext;
   struct wayland_t *wayland_handler;
   struct screen_t *main_screen;
-  bool fullscreen;
 } CustomData;
 
 /* These structs contain information needed to get a list of available screens */
@@ -454,12 +452,10 @@ create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
   video_source = gst_element_factory_make ("filesrc", "video-file-source");
   video_sink = gst_element_factory_make ("waylandsink", "video-output");
 
-  if (strcasecmp ("h264", data->video_ext) == 0) {
+  if ((strcasecmp ("h264", data->video_ext) == 0) ||
+      (strcasecmp ("264", data->video_ext) == 0)) {
     video_parser = gst_element_factory_make ("h264parse", "h264-parser");
     video_decoder = gst_element_factory_make ("omxh264dec", "h264-decoder");
-  } else {
-    video_parser = gst_element_factory_make ("h265parse", "h265-parser");
-    video_decoder = gst_element_factory_make ("omxh265dec", "h265-decoder");
   }
 
   if (!*p_video_pipeline || !video_source || !video_parser || !video_decoder
@@ -482,58 +478,14 @@ create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
   /* Set the input file location of the file source element */
   g_object_set (G_OBJECT (video_source), "location", input_file, NULL);
 
-  if (!data->fullscreen) {
-    /* Link the elements together */
-    /* file-source -> parser -> decoder -> video-output */
-    if (!gst_element_link_many (video_source, video_parser, video_decoder,
-            video_sink, NULL)) {
-      g_printerr ("Video elements could not be linked.\n");
-      gst_object_unref (*p_video_pipeline);
-      destroy_wayland(data->wayland_handler);
-      return 0;
-    }
-  } else {
-    GstElement *video_filter, *video_capsfilter;
-    GstCaps *caps;
-
-    /* Create vspm-filter and caps-filter */
-    video_filter = gst_element_factory_make ("vspmfilter", "vspm-filter");
-    video_capsfilter = gst_element_factory_make ("capsfilter", "caps-filter");
-
-    if (!video_filter || !video_capsfilter) {
-      g_printerr ("One element could not be created. Exiting.\n");
-      gst_object_unref (*p_video_pipeline);
-      destroy_wayland(data->wayland_handler);
-      return 0;
-    }
-
-    /* Set property "dmabuf-use" of vspmfilter to true */
-    /* Without it, waylandsink will display broken video */
-    g_object_set (G_OBJECT (video_filter), "dmabuf-use", TRUE, NULL);
-
-    /* Create simple cap which contains video's resolution */
-    caps = gst_caps_new_simple ("video/x-raw",
-        "width", G_TYPE_INT, data->main_screen->width,
-        "height", G_TYPE_INT, data->main_screen->height, NULL);
-
-    /* Add cap to capsfilter element */
-    g_object_set (G_OBJECT (video_capsfilter), "caps", caps, NULL);
-    gst_caps_unref (caps);
-
-    /* Add filter, capsfilter into the pipeline */
-    gst_bin_add_many (GST_BIN (*p_video_pipeline), video_filter,
-        video_capsfilter, NULL);
-
-    /* Link the elements together */
-    /* file-source -> parser -> decoder -> vspm-filter
-     * |-> caps-filter -> video-output */
-    if (gst_element_link_many (video_source, video_parser, video_decoder,
-            video_filter, video_capsfilter, video_sink, NULL) != TRUE) {
-      g_printerr ("Elements could not be linked.\n");
-      gst_object_unref (*p_video_pipeline);
-      destroy_wayland(data->wayland_handler);
-      return -1;
-    }
+  /* Link the elements together */
+  /* file-source -> parser -> decoder -> video-output */
+  if (!gst_element_link_many (video_source, video_parser, video_decoder,
+          video_sink, NULL)) {
+    g_printerr ("Video elements could not be linked.\n");
+    gst_object_unref (*p_video_pipeline);
+    destroy_wayland(data->wayland_handler);
+    return 0;
   }
 
   return video_bus_watch_id;
@@ -607,16 +559,10 @@ main (int argc, char *argv[])
   const char *audio_ext, *video_ext;
   char* file_name;
 
-  if (((argc != 3) && (argc != ARG_COUNT))
-      || ((argc == ARG_COUNT) && (strcmp (argv[ARG_SCALE], "-s")))) {
+  if ((argc != 3) && (argc != ARG_COUNT)) {
     g_printerr ("Error: Invalid arugments.\n");
-    g_printerr ("Usage: %s <OGG file> <H264/H265 file> [-s]\n", argv[ARG_PROGRAM_NAME]);
+    g_printerr ("Usage: %s <OGG file> <H264 file> \n", argv[ARG_PROGRAM_NAME]);
     return -1;
-  }
-
-  /* Check full-screen option */
-  if (argc == ARG_COUNT) {
-    shared_data.fullscreen = true;
   }
 
   /* Get a list of available screen */
@@ -654,9 +600,9 @@ main (int argc, char *argv[])
   /* Check extension of input file */
   if ((strcasecmp ("ogg", audio_ext) != 0)
       || ((strcasecmp ("h264", video_ext) != 0)
-      && (strcasecmp ("h265", video_ext) != 0))) {
+      && (strcasecmp ("264", video_ext) != 0))) {
     g_printerr ("Error: Unsupported input type.\n");
-    g_printerr ("OGG audio format and H264/H265 video format are required.\n");
+    g_printerr ("OGG audio format and H264 video format are required.\n");
     return -1;
   }
 
