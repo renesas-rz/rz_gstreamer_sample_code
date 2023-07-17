@@ -9,8 +9,7 @@
 
 #define ARG_PROGRAM_NAME     0
 #define ARG_INPUT            1
-#define ARG_SCALE            2
-#define ARG_COUNT            3
+#define ARG_COUNT            2
 #define INDEX                0
 #define AUDIO_SAMPLE_RATE    44100
 
@@ -25,7 +24,6 @@ typedef struct _CustomData
   GstElement *video_capsfilter;
   GstElement *video_sink;
   GstElement *audio_queue;
-  bool fullscreen;
   struct screen_t *main_screen;
 } CustomData;
 
@@ -316,7 +314,6 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
   GstCaps *new_pad_caps = NULL;
   GstStructure *new_pad_struct = NULL;
   const gchar *new_pad_type = NULL;
-  GstCaps *caps;
 
   new_pad_caps = gst_pad_query_caps (pad, NULL);
   new_pad_struct = gst_caps_get_structure (new_pad_caps, INDEX);
@@ -342,11 +339,6 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
            gst_element_factory_make ("h264parse", "h264-parser");
       user_data->video_decoder =
            gst_element_factory_make ("omxh264dec", "omxh264-decoder");
-    } else if (g_str_has_prefix (new_pad_type, "video/x-h265")) {
-      user_data->video_parser =
-           gst_element_factory_make ("h265parse", "h265-parser");
-      user_data->video_decoder =
-           gst_element_factory_make ("omxh265dec", "omxh265-decoder");
     } else {
       g_print ("Unsupported video format\n");
     }
@@ -362,50 +354,12 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
     gst_element_set_state (user_data->video_parser, GST_STATE_PAUSED);
     gst_element_set_state (user_data->video_decoder, GST_STATE_PAUSED);
 
-    if (!user_data->fullscreen) {
-      /* Link the elements together:
-      - video-queue -> parser -> decoder -> video-output
-      */
-      if (gst_element_link_many (user_data->video_queue, user_data->video_parser,
-              user_data->video_decoder, user_data->video_sink, NULL) != TRUE) {
-          g_printerr ("Video elements could not be linked.\n");
-      }
-    } else {
-      user_data->filter = gst_element_factory_make ("vspmfilter", "vspm-filter");
-      user_data->video_capsfilter = gst_element_factory_make ("capsfilter", "video-capsfilter");
-
-      if (!user_data->filter || !user_data->video_capsfilter) {
-          g_printerr ("One element could not be created. Exiting.\n");
-      }
-
-      /* Need to set Gst State to PAUSED before change state from NULL to PLAYING */
-      gst_element_set_state (user_data->filter, GST_STATE_PAUSED);
-      gst_element_set_state (user_data->video_capsfilter, GST_STATE_PAUSED);
-
-      /* Set property "dmabuf-use" of vspmfilter to true */
-      /* Without it, waylandsink will display broken video */
-      g_object_set (G_OBJECT (user_data->filter), "dmabuf-use", TRUE, NULL);
-
-      /* Create simple cap which contains video's resolution */
-      caps = gst_caps_new_simple ("video/x-raw",
-          "width", G_TYPE_INT, user_data->main_screen->width,
-          "height", G_TYPE_INT, user_data->main_screen->height, NULL);
-
-      /* Add cap to capsfilter element */
-      g_object_set (G_OBJECT (user_data->video_capsfilter), "caps", caps, NULL);
-      gst_caps_unref (caps);
-
-      /* Add filter, capsfilter into the pipeline */
-      gst_bin_add_many (GST_BIN (user_data->pipeline), user_data->filter, user_data->video_capsfilter, NULL);
-
-      /* Link the elements together:
-        - video-queue -> parser -> decoder -> video-filter -> capsfilter -> video-output
-      */
-
-      if (gst_element_link_many (user_data->video_queue, user_data->video_parser, user_data->video_decoder, user_data->filter,
-              user_data->video_capsfilter, user_data->video_sink, NULL) != TRUE) {
+    /* Link the elements together:
+    - video-queue -> parser -> decoder -> video-output
+    */
+    if (gst_element_link_many (user_data->video_queue, user_data->video_parser,
+            user_data->video_decoder, user_data->video_sink, NULL) != TRUE) {
         g_printerr ("Video elements could not be linked.\n");
-      }
     }
 
     /* In case link this pad with the decoder sink pad */
@@ -472,20 +426,14 @@ main (int argc, char *argv[])
   GstCaps *caps;
   GstBus *bus;
   GstMessage *msg;
-  bool fullscreen = false;
   const char* ext;
   char* file_name;
 
   const gchar *input_file = argv[ARG_INPUT];
-  if ((argc > ARG_COUNT) || (argc == 1) || ((argc == ARG_COUNT) && (strcmp (argv[ARG_SCALE], "-s")))) {
+  if ((argc > ARG_COUNT) || (argc == 1)) {
     g_print ("Error: Invalid arugments.\n");
-    g_print ("Usage: %s <path to MP4 file> [-s]\n", argv[ARG_PROGRAM_NAME]);
+    g_print ("Usage: %s <path to MP4 file>\n", argv[ARG_PROGRAM_NAME]);
     return -1;
-  }
-
-  /* Check full-screen option */
-  if (argc == ARG_COUNT) {
-      fullscreen = true;
   }
 
   if (!is_file_exist(input_file))
@@ -590,7 +538,6 @@ main (int argc, char *argv[])
   }
 
   user_data.main_screen = main_screen;
-  user_data.fullscreen = fullscreen;
   user_data.pipeline = pipeline;
   user_data.video_sink = video_sink;
   user_data.audio_queue = audio_queue;
