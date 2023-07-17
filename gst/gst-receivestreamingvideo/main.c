@@ -328,25 +328,17 @@ bus_call (GstBus * bus, GstMessage * msg, gpointer data)
 int
 main (int argc, char *argv[])
 {
-  bool fullscreen = false;
-  if ((argc > 2) || ((argc == 2) && (strcmp (argv[1], "-s")))) {
+  if ((argc != 1)) {
     g_print ("Error: Invalid arguments.\n");
-    g_print ("Usage: %s [-s]\n", argv[0]);
+    g_print ("Usage: %s \n", argv[0]);
     return -1;
-  }
-
-  /* Check -s option */
-  if (argc == 2) {
-    if (strcmp (argv[1], "-s") == 0) {
-      fullscreen = true;
-    }
   }
 
   struct wayland_t *wayland_handler = NULL;
   struct screen_t *main_screen = NULL;
 
   GstElement *pipeline, *source, *depayloader, *parser,
-      *decoder, *filter, *capsfilter, *sink;
+      *decoder, *sink;
   GstCaps *caps;
   GstBus *bus;
   guint bus_watch_id;
@@ -408,52 +400,13 @@ main (int argc, char *argv[])
   /* unref cap after use */
   gst_caps_unref (caps);
 
-  if (!fullscreen) {
-    /* Link the elements together */
-    if (gst_element_link_many (source, depayloader, parser,
-            decoder, sink, NULL) != TRUE) {
-      g_printerr ("Elements could not be linked.\n");
-      gst_object_unref (pipeline);
-      destroy_wayland(wayland_handler);
-      return -1;
-    }
-  }
-  else {
-    /* Create 2 more elements */
-    filter = gst_element_factory_make ("vspmfilter", "vspm-filter");
-    capsfilter = gst_element_factory_make ("capsfilter", "caps-filter");
-
-    if (!filter || !capsfilter) {
-      g_printerr ("One element could not be created. Exiting.\n");
-      gst_object_unref (pipeline);
-      destroy_wayland(wayland_handler);
-      return -1;
-    }
-
-    /* Set property "dmabuf-use" of vspmfilter to true */
-    /* Without it, waylandsink will display broken video */
-    g_object_set (G_OBJECT (filter), "dmabuf-use", TRUE, NULL);
-
-    /* Create simple cap which contains video's resolution */
-    caps = gst_caps_new_simple ("video/x-raw",
-        "width", G_TYPE_INT, main_screen->width,
-        "height", G_TYPE_INT, main_screen->height, NULL);
-
-    /* Add cap to capsfilter element */
-    g_object_set (G_OBJECT (capsfilter), "caps", caps, NULL);
-    gst_caps_unref (caps);
-
-    /* Add elements into the pipeline */
-    gst_bin_add_many (GST_BIN (pipeline), filter, capsfilter, NULL);
-
-    /* Link the elements together */
-    if (gst_element_link_many (source, depayloader, parser,
-            decoder, filter, capsfilter, sink, NULL) != TRUE) {
-      g_printerr ("Elements could not be linked.\n");
-      gst_object_unref (pipeline);
-      destroy_wayland(wayland_handler);
-      return -1;
-    }
+  /* Link the elements together */
+  if (gst_element_link_many (source, depayloader, parser,
+          decoder, sink, NULL) != TRUE) {
+    g_printerr ("Elements could not be linked.\n");
+    gst_object_unref (pipeline);
+    destroy_wayland(wayland_handler);
+    return -1;
   }
 
   /* Set the pipeline to "playing" state */
