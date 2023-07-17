@@ -38,7 +38,6 @@ enum camera_type {
 const char *mipi_resolutions[] = {
   "1280x960",
   "1920x1080",
-  "2592x1944",
   NULL,
 };
 
@@ -107,7 +106,7 @@ check_camera_type (const char *device)
   }
 
   /* Detecting type of camera base on driver*/
-  if (strstr ((char*) info.driver, "vin")) {
+  if (strstr ((char*) info.driver, "rzg2l_cru")) {
     g_print ("MIPI camera detected.\n");
     camera = MIPI_CAMERA;
   } else if (strstr ((char*) info.driver, "uvc")) {
@@ -206,7 +205,7 @@ main (int argc, char *argv[])
 
   const gchar *output_file = OUTPUT_FILE;
 
-  if ((argc != 3) && (argc != ARG_COUNT)) {
+  if (argc != ARG_COUNT) {
     g_print ("Error: Invalid arugments.\n");
     g_print ("Usage: %s <microphone device> <camera device> [width] [height]\n", argv[ARG_PROGRAM_NAME]);
     return -1;
@@ -224,18 +223,9 @@ main (int argc, char *argv[])
   }
 
   /* Parse resolution from program argument */
-  if (argc == ARG_COUNT) {
-    char hostname[20];
-    gethostname (hostname, 20);
-    if (!strcmp (hostname, "ek874") && (camera == MIPI_CAMERA)) {
-      g_print ("RZ/G2E only supports 1280x960 resolution.\n");
-      g_print ("Set 1280x960 resolution as default.\n");
-    } else {
-      if (!get_resolution (argv[ARG_WIDTH], argv[ARG_HEIGHT],
-               &width, &height, camera)) {
-        return -1;
-      }
-    }
+  if (!get_resolution (argv[ARG_WIDTH], argv[ARG_HEIGHT],
+           &width, &height, camera)) {
+    return -1;
   }
 
   /* Initialization */
