@@ -414,6 +414,7 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
 
       /* Set position for displaying (0, 0) */
       g_object_set (G_OBJECT (puser_data->video_sink), "position-x", main_screen->x, "position-y", main_screen->y, NULL);
+
     }
 
     /* Create decoder and parser for H264 video */
@@ -429,22 +430,6 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
       if (NULL == puser_data->video_decoder) {
         puser_data->video_decoder =
             gst_element_factory_make ("omxh264dec", "omxh264-decoder");
-        LOGD ("Re-create gst_element_factory_make video_decoder: %s\n",
-            (NULL == puser_data->video_decoder) ? ("FAILED") : ("SUCCEEDED"));
-      }
-    /* Create decoder and parser for H265 video */
-    } else if (g_str_has_prefix (new_pad_type, "video/x-h265")) {
-      /* Recreate video-parser */
-      if (NULL == puser_data->video_parser) {
-        puser_data->video_parser =
-            gst_element_factory_make ("h265parse", "h265-parser");
-        LOGD ("Re-create gst_element_factory_make video_parser: %s\n",
-            (NULL == puser_data->video_parser) ? ("FAILED") : ("SUCCEEDED"));
-      }
-      /* Recreate video-decoder */
-      if (NULL == puser_data->video_decoder) {
-        puser_data->video_decoder =
-            gst_element_factory_make ("omxh265dec", "omxh265-decoder");
         LOGD ("Re-create gst_element_factory_make video_decoder: %s\n",
             (NULL == puser_data->video_decoder) ? ("FAILED") : ("SUCCEEDED"));
       }
@@ -941,18 +926,9 @@ main (int argc, char *argv[])
   struct screen_t main_screen;
 
   /* Check input arguments */
-  if ((argc != 2) && (argc != 3)) {   
+  if (argc != 2) {
     g_printerr ("Usage: %s <MP4 filename or directory>\n", argv[0]);
-    g_printerr ("Usage: %s -s <MP4 filename or directory> to scale full screen\n", argv[0]);
     return -1;
-  }
-
-  if (argc == 3) {
-    if (strcmp ("-s", argv[1]) != 0) {
-      g_printerr ("Usage: %s <MP4 filename or directory>\n", argv[0]);
-      g_printerr ("Usage: %s -s <MP4 filename or directory> to scale full screen\n", argv[0]);
-      return -1;
-    }
   }
 
   /* Get a list of available screen */
