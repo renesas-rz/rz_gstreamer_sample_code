@@ -4,12 +4,12 @@
 
 #define BITRATE          10485760
 #define CONTROL_RATE     2   /* Constant bitrate */
-#define BLOCKSIZE        576000 /* Blocksize of NV12 is width*heigh*3/2 */
-#define INPUT_FILE       "/home/media/videos/h264-wvga-30.yuv"
-#define OUTPUT_FILE      "/home/media/videos/ENCODE_h264-wvga-30.h264"
+#define BLOCKSIZE        1382400 /* Blocksize of NV12 is width*heigh*3/2 */
+#define INPUT_FILE       "/home/media/videos/sintel_trailer-720p.yuv"
+#define OUTPUT_FILE      "/home/media/videos/ENCODE_h264-720p.264"
 #define VIDEO_FORMAT     "NV12"
-#define LVDS_WIDTH       800
-#define LVDS_HEIGHT      480
+#define LVDS_WIDTH       1280
+#define LVDS_HEIGHT      720
 #define FRAMERATE        30
 #define TYPE_FRACTION    1
 
@@ -81,7 +81,7 @@ main (int argc, char *argv[])
       gst_caps_new_simple ("video/x-raw",
       "format", G_TYPE_STRING, VIDEO_FORMAT,
       "framerate", GST_TYPE_FRACTION, FRAMERATE, TYPE_FRACTION,
-      "width", G_TYPE_INT, LVDS_WIDTH, "height", G_TYPE_INT, LVDS_HEIGHT, NULL); /* The raw video file is in NV12 format, resolution 800x480*/
+      "width", G_TYPE_INT, LVDS_WIDTH, "height", G_TYPE_INT, LVDS_HEIGHT, NULL); /* The raw video file is in NV12 format, resolution 1280x720*/
   g_object_set (G_OBJECT (capsfilter), "caps", caps, NULL);
   gst_caps_unref (caps);
 
