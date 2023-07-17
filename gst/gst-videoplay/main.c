@@ -9,8 +9,7 @@
 
 #define ARG_PROGRAM_NAME 0
 #define ARG_INPUT 1
-#define ARG_SCALE 2
-#define ARG_COUNT 3
+#define ARG_COUNT 2
 
 /* These structs contain information needed to get a list of available screens */
 struct screen_t
@@ -336,25 +335,16 @@ main (int argc, char *argv[])
   struct wayland_t *wayland_handler = NULL;
   struct screen_t *main_screen = NULL;
 
-  GstElement *pipeline, *source, *parser, *decoder, *filter, *capsfilter, *sink;
-  GstCaps *caps;
+  GstElement *pipeline, *source, *parser, *decoder, *sink;
   GstBus *bus;
   GstMessage *msg;
-  bool fullscreen = false;
   const char* ext;
   char* file_name;
 
-  if ((argc > ARG_COUNT) || (argc == 1) || ((argc == ARG_COUNT) && (strcmp (argv[ARG_SCALE], "-s")))) {
+  if ((argc > ARG_COUNT) || (argc == 1)) {
     g_print ("Error: Invalid arugments.\n");
-    g_print ("Usage: %s <path to H264/H265 file> [-s]\n", argv[ARG_PROGRAM_NAME]);
+    g_print ("Usage: %s <path to H264 file> \n", argv[ARG_PROGRAM_NAME]);
     return -1;
-  }
-
-  /* Check -s option */
-  if (argc == ARG_COUNT) {
-    if (strcmp (argv[ARG_SCALE], "-s") == 0) {
-      fullscreen = true;
-    }
   }
 
   /* Get a list of available screen */
@@ -385,18 +375,13 @@ main (int argc, char *argv[])
   ext = get_filename_ext (file_name);
 
   /* Check the extension and create parser, decoder */
-  if (strcasecmp ("h264", ext) == 0) {
+  if ((strcasecmp ("264", ext) == 0) || (strcasecmp ("h264", ext) == 0)) {
     parser = gst_element_factory_make ("h264parse", "h264-parser");
     decoder = gst_element_factory_make ("omxh264dec", "h264-decoder");
   }
-  else if (strcasecmp ("h265", ext) == 0)
-  {
-    parser = gst_element_factory_make ("h265parse", "h265-parser");
-    decoder = gst_element_factory_make ("omxh265dec", "h265-decoder");
-  }
   else
   {
-    g_print ("Unsupported video type. H264/H265 format is required.\n");
+    g_print ("Unsupported video type. H264 format is required.\n");
     destroy_wayland(wayland_handler);
     return -1;
   }
@@ -423,52 +408,13 @@ main (int argc, char *argv[])
   g_object_set (G_OBJECT (sink), "position-x", main_screen->x, "position-y",
       main_screen->y, NULL);
 
-  if (!fullscreen) {
-    /* Link the elements together */
-    if (gst_element_link_many (source, parser,
-            decoder, sink, NULL) != TRUE) {
-      g_printerr ("Elements could not be linked.\n");
-      gst_object_unref (pipeline);
-      destroy_wayland(wayland_handler);
-      return -1;
-    }
-  }
-  else {
-    /* Create vspm-filter and caps-filter */
-    filter = gst_element_factory_make ("vspmfilter", "vspm-filter");
-    capsfilter = gst_element_factory_make ("capsfilter", "caps-filter");
-
-    if (!filter || !capsfilter) {
-      g_printerr ("One element could not be created. Exiting.\n");
-      gst_object_unref (pipeline);
-      destroy_wayland(wayland_handler);
-      return -1;
-    }
-
-    /* Set property "dmabuf-use" of vspmfilter to true */
-    /* Without it, waylandsink will display broken video */
-    g_object_set (G_OBJECT (filter), "dmabuf-use", TRUE, NULL);
-
-    /* Create simple cap which contains video's resolution */
-    caps = gst_caps_new_simple ("video/x-raw",
-        "width", G_TYPE_INT, main_screen->width,
-        "height", G_TYPE_INT, main_screen->height, NULL);
-
-    /* Add cap to capsfilter element */
-    g_object_set (G_OBJECT (capsfilter), "caps", caps, NULL);
-    gst_caps_unref (caps);
-
-    /* Add filter, capsfilter into the pipeline */
-    gst_bin_add_many (GST_BIN (pipeline), filter, capsfilter, NULL);
-
-    /* Link the elements together */
-    /* file-source -> parser -> decoder -> vspm-filter -> caps-filter -> video-output */
-    if (gst_element_link_many (source, parser, decoder, filter, capsfilter, sink, NULL) != TRUE) {
-      g_printerr ("Elements could not be linked.\n");
-      gst_object_unref (pipeline);
-      destroy_wayland(wayland_handler);
-      return -1;
-    }
+  /* Link the elements together */
+  if (gst_element_link_many (source, parser,
+          decoder, sink, NULL) != TRUE) {
+    g_printerr ("Elements could not be linked.\n");
+    gst_object_unref (pipeline);
+    destroy_wayland(wayland_handler);
+    return -1;
   }
 
   /* Set the pipeline to "playing" state */
