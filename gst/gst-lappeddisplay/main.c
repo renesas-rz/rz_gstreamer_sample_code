@@ -387,6 +387,7 @@ create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
   /* Set up for the video pipeline */
   /* Set the input file location of the file source element */
   g_object_set (G_OBJECT (video_source), "location", input_file, NULL);
+
   g_object_set (G_OBJECT (video_sink), "position-x", screen->x, "position-y",
       screen->y, NULL);
 
@@ -514,9 +515,9 @@ main (int argc, char *argv[])
   shared_data.loop_reference = 0; 	/* Counter */
   g_mutex_init (&shared_data.mutex);
 
-  /* The video will be half the size of the screen */
-  temp.width = main_screen->width / 2;
-  temp.height = main_screen->height / 2;
+  /* The video will be displayed with VGA size */
+  temp.width = 640;
+  temp.height = 480;
 
   /* Create first pipeline */
   temp.x = 0;
