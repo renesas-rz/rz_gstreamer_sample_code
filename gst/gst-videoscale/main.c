@@ -10,15 +10,17 @@
 #define BITRATE_OMXH264ENC 40000000 /* Target bitrate of the encoder element - omxh264enc */
 #define OUTPUT_FILE        "SCALE_video.mp4"
 #define ARG_PROGRAM_NAME   0
-#define ARG_SCALE_RATIO    1
-#define ARG_INPUT          2
-#define ARG_COUNT          3
+#define ARG_INPUT          1
+#define ARG_WIDTH          2
+#define ARG_HEIGHT         3
+#define ARG_COUNT          4
 
 typedef struct tag_user_data
 {
   GstElement *parser1;
   GstElement *capsfilter;
-  float scale_ratio;
+  int scaled_width;
+  int scaled_height;
 } UserData;
 
 static void
@@ -57,11 +59,15 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
 
     g_print ("Resolution of original video: %dx%d\n", width, height);
 
-    scaled_width = (int) (width * puser_data->scale_ratio);
+    scaled_width = (int) (puser_data->scaled_width);
 
-    scaled_height = (int) (height * puser_data->scale_ratio);
+    scaled_height = (int) (puser_data->scaled_height);
 
     g_print ("Now scaling video to resolution %dx%d...\n", scaled_width, scaled_height);
+
+    if ((scaled_width > width) || (scaled_height > height)) {
+      g_printerr ("Do not support scale up. Exiting... \n");
+    }
 
     /* create simple caps */
     scale_caps =
@@ -149,12 +155,6 @@ const char* get_filename_ext (const char *filename) {
   }
 }
 
-/* Round off float number */
-float roundoff (float number, int exp)
-{
-  return floorf ((number) * pow (10, exp) + 0.5f) / pow (10, exp);
-}
-
 int
 main (int argc, char *argv[])
 {
@@ -166,23 +166,13 @@ main (int argc, char *argv[])
   const char* ext;
   char* file_name;
   UserData user_data;
-  float scale_ratio;
 
   const gchar *output_file = OUTPUT_FILE;
 
   if (argc != ARG_COUNT)
   {
     g_print ("Invalid arugments.\n");
-    g_print ("Usage: %s <scale ratio (0, 1]> <MP4 file> \n", argv[ARG_PROGRAM_NAME]);
-    return -1;
-  }
-
-  scale_ratio = roundoff (atof (argv[ARG_SCALE_RATIO]), 1);
-
-  if ((scale_ratio > 1) || (scale_ratio <= 0 ))
-  {
-    g_print ("Invalid arugments.\n");
-    g_print ("Usage: %s <scale ratio (0, 1]> <MP4 file> \n", argv[ARG_PROGRAM_NAME]);
+    g_print ("Usage: %s <MP4 file> <width> <height> \n", argv[ARG_PROGRAM_NAME]);
     return -1;
   }
 
@@ -212,7 +202,7 @@ main (int argc, char *argv[])
   demuxer = gst_element_factory_make ("qtdemux", "mp4-demuxer");
   parser1 = gst_element_factory_make ("h264parse", "h264-parser-1");
   decoder = gst_element_factory_make ("omxh264dec", "video-decoder");
-  filter = gst_element_factory_make ("vspfilter", "video-filter");
+  filter = gst_element_factory_make ("vspmfilter", "video-filter");
   capsfilter = gst_element_factory_make ("capsfilter", "capsfilter");
   encoder = gst_element_factory_make ("omxh264enc", "video-encoder");
   parser2 = gst_element_factory_make ("h264parse", "h264-parser-2");
@@ -225,8 +215,11 @@ main (int argc, char *argv[])
     return -1;
   }
 
-  /* Set input video device file of the source element - v4l2src */
+  /* Set input video file of the source element - filesrc */
   g_object_set (G_OBJECT (source), "location", input_file, NULL);
+
+  /* Set dmabuf-use mode of the filter element - vspmfilter */
+  g_object_set (G_OBJECT (filter), "dmabuf-use", TRUE, NULL);
 
   /* Set target-bitrate property of the encoder element - omxh264enc */
   g_object_set (G_OBJECT (encoder), "target-bitrate", BITRATE_OMXH264ENC,
@@ -260,7 +253,8 @@ main (int argc, char *argv[])
 
   user_data.parser1 = parser1;
   user_data.capsfilter = capsfilter;
-  user_data.scale_ratio = scale_ratio;
+  user_data.scaled_width = atoi (argv[ARG_WIDTH]);
+  user_data.scaled_height = atoi (argv[ARG_HEIGHT]);
 
   /* Dynamic link */
   g_signal_connect (demuxer, "pad-added", G_CALLBACK (on_pad_added), &user_data);
