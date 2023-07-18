@@ -1,14 +1,2 @@
-gst/*/gst-*
-gst/*/*.o
-
-qt/*/qt-*
-qt/*/*.o
-qt/*/Makefile
-qt/*/moc_*
-qt/*/qrc_*
-
-linux/*/linux-*
-linux/*/*.o
-
-app.manifest
-output
+*gst*/gst-*
+*gst*/*.o
