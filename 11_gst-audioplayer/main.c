@@ -307,7 +307,7 @@ play_new_file (UserData * data, gboolean refresh_console_message)
   GstElement *converter = data->converter;
   GstElement *capsfilter = data->capsfilter;
   GstElement *sink = data->sink;
-  gboolean ret = FALSE;
+  gboolean ret __attribute__((__unused__)) = FALSE;
 
   /* Seek to start and flush all old data */
   gst_element_seek_simple (data->pipeline, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH,
