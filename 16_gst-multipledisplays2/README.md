@@ -1,0 +1,76 @@
+# Multiple Display 2
+
+Display 2 H.264 video simultaneously on HDMI monitor.
+
+![Figure multiple display 2 pipeline](figure.png)
+
+## Development Environment
+
+GStreamer: 1.16.3 (edited by Renesas).
+
+## Application Content
+
++ [`main.c`](main.c)
+
+### Walkthrought
+>Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](/01_gst-audioplay/README.md) and [Audio Video play](/13_gst-audiovideoplay/README.md).
+
+#### Command-line argument
+```
+if ((argc > ARG_COUNT) || (argc <= 2)) {
+    g_print ("Error: Invalid arugments.\n");
+    g_print ("Usage: %s <path to the first H264 file> <path to the second H264 file> \n", argv[ARG_PROGRAM_NAME]);
+    return -1;
+}
+```
+This application accepts 2 command-line arguments which points to 2 H.264 files.
+
+#### Video pipeline
+```
+guint create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
+                                   struct screen_t * screen, CustomData * data)
+```
+Basically, the pipeline is just like [Video Play](/02_gst-videoplay/README.md) except it uses _gst_bus_add_watch()_ instead of _gst_bus_timed_pop_filtered()_ to receive messages (such as: error or EOS (End-of-Stream)) from _bus_call()_ asynchronously
+
+#### Create elements
+```
+create_video_pipeline (&video_pipeline_1, input_video_file_1,
+                            screens[PRIMARY_SCREEN_INDEX], &shared_data);
+
+create_video_pipeline (&video_pipeline_2, input_video_file_2,
+                            screens[SECONDARY_SCREEN_INDEX], &shared_data);
+```
+This code block creates 2 pipelines:
+-	 Pipeline video_pipeline_1 displays the first video in the main Wayland desktop.
+-	 Pipeline video_pipeline_2 displays the second video in the secondary Wayland desktop.
+
+## How to Build and Run GStreamer Application
+
+This section shows how to cross-compile and deploy GStreamer _multiple displays 2_ application.
+
+### How to Extract SDK
+Please refer to _hello word_ [README.md](../#00_gst-helloworld/README.md) for more details.
+
+### How to Build and Run GStreamer Application
+
+***Step 1***.	Go to gst-multipledisplays2 directory:
+```
+$   cd $WORK/16_gst-multipledisplays2
+```
+
+***Step 2***.	Cross-compile:
+```
+$   make
+```
+***Step 3***.	Copy all files inside this directory to /usr/share directory on the target board:
+```
+$   scp -r $WORK/16_gst-multipledisplays2/ <username>@<board IP>:/usr/share/
+```
+***Step 4***.	Run the application:
+
+Download the input file at: [vga1.h264](https://www.renesas.com/jp/ja/img/products/media/auto-j/microcontrollers-microprocessors/rz/rzg/doorphone-videos/vga1.h264) and [vga2.h264](https://www.renesas.com/jp/ja/img/products/media/auto-j/microcontrollers-microprocessors/rz/rzg/doorphone-videos/vga2.h264) then place it in _/home/media/videos_.
+
+```
+$   /usr/share/16_gst-multipledisplays2/gst-multipledisplays2 /home/media/videos/vga1.h264 /home/media/videos/vga2.h264
+```
+>RZ/G2L and RZ/V2L platform supports playing 2 1920x1080, 30 fps videos

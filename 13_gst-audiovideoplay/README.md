@@ -1,0 +1,190 @@
+# Audio Video Play
+
+Play H.264 video and Ogg/Vorbis audio file independently.
+
+![Figure Audio Video Play pipeline](figure.png)
+
+## Development Environment
+
+GStreamer: 1.16.3 (edited by Renesas).
+
+## Application Content
+
++ [`main.c`](main.c)
+
+### Walkthrought
+>Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](/01_gst-audioplay/README.md) and [Video Play](/02_gst-videoplay/README.md).
+
+#### Command-line argument
+```
+  if (((argc != 3) && (argc != ARG_COUNT)){
+    g_printerr ("Error: Invalid arugments.\n");
+    g_printerr ("Usage: %s <OGG file> <H264 file> \n", argv[ARG_PROGRAM_NAME]);
+    return -1;
+  }
+```
+This application accepts 2 command-line arguments which point to an Ogg/Vorbis file and an H.264 file.
+
+#### CustomData structure
+```
+typedef struct _CustomData
+{
+  GMainLoop *loop;
+  int loop_reference;
+  GMutex mutex;
+  const char *video_ext;
+  struct wayland_t *wayland_handler;
+  struct screen_t *main_screen;
+} CustomData;
+```
+This structure contains:
+-	 Variable loop (GMainLoop): An opaque data type to represent the main [event loop](https://en.wikipedia.org/wiki/Event_loop) of a Glib application.
+-	 Variable loop_reference (int): An integer variable to represent the number of PLAYING pipelines available. It is managed by mutex structure which controls GStreamer object release and program termination.
+-	 Variable mutex (GMutex): An opaque data type to represent [mutex](https://en.wikipedia.org/wiki/Lock_(computer_science)) (mutual exclusion). It can be used to protect data from critical section.
+-	 Variable video_ext (char): A string variable to represent video extension.
+-	 Variable wayland_handler (wayland_t): A pointer to wayland_t structure to contain list of monitors.
+-	 Variable main_screen (screen_t): A pointer to screen_t structure to contain monitor information, such as: (x, y), width, and height.
+-	 Variable fullscreen (qint64): A boolean variable to enable full-screen mode.
+
+#### Initialize CustomData structure
+```
+shared_data.loop = g_main_loop_new (NULL, FALSE);
+```
+This function creates a new [GMainLoop](https://developer.gnome.org/glib/stable/glib-The-Main-Event-Loop.html) structure with default (NULL) context (GMainContext).
+
+Basically, the main event loop manages all the available sources of events. To allow multiple independent sets of sources to be handled in different threads, each source is associated with a GMainContext. A GMainContext can only be running in a single thread, but sources can be added to it and removed from it from other threads.
+
+The application will use GMainLoop to catch events and signals from 2 independent GStreamer pipelines. One plays a video and the other plays an Ogg/Vorbis audio file.
+```
+shared_data.loop_reference = 0;
+```
+At this point, variable loop_reference is set to 0 to indicate that there are no running pipelines available.
+```
+g_mutex_init (&shared_data.mutex);
+```
+This function initializes a [GMutex](https://developer.gnome.org/glib/stable/glib-Threads.html#GMutex) so that it can be used. The structure protects loop_reference from read/write access of GStreamer threads.
+
+Please use [g_mutex_clear()](https://developer.gnome.org/glib/stable/glib-Threads.html#g-mutex-clear) if the mutex is no longer needed.
+```
+shared_data.video_ext = video_ext;
+```
+Variable video_ext contains the extension of video input file to create suitable video_parser and video_decoder
+```
+shared_data.main_screen = main_screen;
+```
+Variable main_screen contains the resolution of sreen to scale video to full-sreen.
+#### Audio pipeline
+```
+guint create_audio_pipeline (GstElement** p_audio_pipeline, const gchar* input_file, CustomData* data);
+```
+Basically, the audio pipeline is just like [Audio Play](/01_gst-audioplay/README.md) except it uses _gst_bus_add_watch()_ instead of _gst_bus_timed_pop_filtered()_ to receive messages (such as: error or EOS (End-of-Stream)) from _bus_call()_ asynchronously.
+```
+bus = gst_pipeline_get_bus (GST_PIPELINE (*p_audio_pipeline));
+audio_bus_watch_id = gst_bus_add_watch (bus, bus_call, data);
+gst_object_unref (bus);
+```
+>Note that the bus should be freed with _gst_caps_unref()_ if it is not used anymore.
+
+#### Video pipeline
+```
+guint create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file, CustomData* data)
+```
+Basically, the video pipeline is just like Video Play except it uses _gst_bus_add_watch()_ instead of _gst_bus_timed_pop_filtered()_ to receive messages (such as: error or EOS (End-of-Stream)) from _bus_call()_ asynchronously.
+```
+bus = gst_pipeline_get_bus (GST_PIPELINE (*p_video_pipeline));
+video_bus_watch_id = gst_bus_add_watch (bus, bus_call, data);
+gst_object_unref (bus);
+```
+>Note that the bus should be freed with _gst_caps_unref()_ if it is not used anymore.
+#### Function bus_call()
+```
+static gboolean bus_call (GstBus * bus, GstMessage * msg, gpointer data)
+```
+This function will be called if either audio or video pipeline posts messages to bus.
+```
+try_to_quit_loop ((CustomData *) data);
+```
+>Note that _bus_call()_ only processes error and EOS messages. Moreover, no matter what the messages are, it will eventally call _try_to_quit_loop()_ to try exiting main loop.
+
+#### Create pipelines
+```
+create_audio_pipeline (&audio_pipeline, input_audio_file, &shared_data);
+create_video_pipeline (&video_pipeline, input_video_file, &shared_data);
+```
+This code block creates 2 pipelines, one plays Ogg/Vorbis audio and the other displays MP4.
+
+#### Play pipelines
+```
+int main (int argc, char *argv[])
+{
+  play_pipeline (audio_pipeline, &shared_data);
+  play_pipeline (video_pipeline, &shared_data);
+}
+bool play_pipeline (GstElement * pipeline, CustomData * p_shared_data)
+{
+  g_mutex_lock (&p_shared_data->mutex);
+  ++(p_shared_data->loop_reference);
+  if (gst_element_set_state (pipeline,
+          GST_STATE_PLAYING) == GST_STATE_CHANGE_FAILURE) {
+    g_printerr ("Unable to set the pipeline to the playing state.\n");
+    --(p_shared_data->loop_reference);
+    gst_object_unref (pipeline);
+  }
+  g_mutex_unlock (&p_shared_data->mutex);
+}
+```
+
+Basically, this function sets the state of pipeline to PLAYING. If successful, it will increases loop_reference to indicate that there is 1 more running pipeline. Note that the variable must be 2 for this application to play both audio and video.
+
+#### Run main loop
+```
+g_main_loop_run (shared_data.loop);
+```
+This function runs main loop until _g_main_loop_quit()_ is called on the loop (context NULL). In other words, it will make the context check if anything it watches for has happened. For example, when a message has been posted on the bus (gst_element_get_bus), the default main context will automatically call _bus_call()_ to notify the message.
+
+#### Stop pipelines
+```
+static void try_to_quit_loop (CustomData * p_shared_data)
+{
+  g_mutex_lock (&p_shared_data->mutex);
+  --(p_shared_data->loop_reference);
+  if (0 == p_shared_data->loop_reference) {
+    g_main_loop_quit ((p_shared_data->loop));
+  }
+  g_mutex_unlock (&p_shared_data->mutex);
+}
+```
+The main event loop will stop only if variable _loop_reference_ reaches to 0. This means the application will exit when both audio and video pipeline stopped. Also note that mutex is used to prevent GStreamer threads from reading incorrect value of _loop_reference_.
+
+## How to Build and Run GStreamer Application
+
+This section shows how to cross-compile and deploy GStreamer _audio video play_ application.
+
+### How to Extract SDK
+Please refer to _hello word_ [README.md](../#00_gst-helloworld/README.md) for more details.
+
+### How to Build and Run GStreamer Application
+
+***Step 1***.	Go to gst-audiovideoplay directory:
+```
+$   cd $WORK/13_gst-audiovideoplay
+```
+
+***Step 2***.	Cross-compile:
+```
+$   make
+```
+***Step 3***.	Copy all files inside this directory to /usr/share directory on the target board:
+```
+$   scp -r $WORK/13_gst-audiovideoplay/ <username>@<board IP>:/usr/share/
+```
+***Step 4***.	Run the application:
+
+-  Download audio file Rondo_Alla_Turka.ogg at: https://upload.wikimedia.org/wikipedia/commons/b/bd/Rondo_Alla_Turka.ogg and place it in /home/media/audios.
+-	 Download video file vga1.h264 at:
+https://www.renesas.com/jp/ja/img/products/media/auto-j/microcontrollers-microprocessors/rz/rzg/doorphone-videos/vga1.h264 and place it in /home/media/videos.
+```
+$   /usr/share/13_gst-audiovideoplay/gst-audiovideoplay /home/media/audios/Rondo_Alla_Turka.ogg /home/media/videos/vga1.h264
+```
+### Special instruction:
+To set the playback volume: please use the alsamixer or amixer tool. It depends on the audio system on the specific board. Reference https://en.wikipedia.org/wiki/Alsamixer

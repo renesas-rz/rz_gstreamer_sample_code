@@ -1,0 +1,105 @@
+# Video Encode
+
+Encode video data from NV12 raw format to H.264 format.
+
+![Figure video encode pipeline](figure.png)
+
+## Development Environment
+
+GStreamer: 1.16.3 (edited by Renesas).
+
+## Application Content
+
++ [`main.c`](main.c)
+
+### Walkthrought
+>Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](../01_gst-audioplay/README.md).
+#### Input/output location
+```
+#define INPUT_FILE       "/home/media/videos/h264-wvga-30.yuv"
+#define OUTPUT_FILE      "/home/media/videos/ENCODE_h264-vga-30.h264"
+```
+> You can create input file by following section [Special Instruction](#special-instruction)
+
+#### Create elements
+```
+source = gst_element_factory_make ("filesrc", "file-source");
+capsfilter = gst_element_factory_make ("capsfilter", "caps-filter");
+encoder = gst_element_factory_make ("omxh264enc", "H264-encoder");
+sink = gst_element_factory_make ("filesink", "file-output");
+```
+To encode a raw video file to H.264 video format, the following elements are used:
+-	 Element filesrc reads data from a local file.
+-	 Element capsfilter specifies raw video format, framerate, and resolution.
+-	 Element omxh264enc encodes raw video into H.264 compressed data.
+-	 Element filesink writes incoming data to a local file.
+
+#### Set element’s properties
+```
+g_object_set (G_OBJECT (source), "location", input_file, NULL);
+g_object_set (G_OBJECT (source), "blocksize", BLOCKSIZE, NULL);
+g_object_set (G_OBJECT (encoder), "control-rate", CONTROL_RATE, NULL);
+g_object_set (G_OBJECT (encoder), "target-bitrate", BITRATE, NULL);
+g_object_set (G_OBJECT (sink), "location", output_file, NULL);
+```
+The _g_object_set()_ function is used to set some element’s properties, such as:
+-	 The location property of filesrc and filesink elements which points to input and output file.
+-	 The blocksize property of filesrc element which is calculated by multiplying 1.5 (NV12) x 800 (frame width) x 480 (frame height).
+-	 The control-rate property of omxh264enc element which enables low latency video.
+-	 The target-bitrate property of omxh264enc element which is set to 10 Mbps. The higher bitrate, the better quality.
+
+```
+caps = gst_caps_new_simple ("video/x-raw", "format", G_TYPE_STRING, VIDEO_FORMAT,
+       "framerate", GST_TYPE_FRACTION, FRAMERATE, TYPE_FRACTION,
+      "width", G_TYPE_INT, LVDS_WIDTH, "height", G_TYPE_INT, LVDS_HEIGHT, NULL);
+
+g_object_set (G_OBJECT (capsfilter), "caps", caps, NULL);
+gst_caps_unref (caps);
+```
+A capsfilter is needed between filesrc and omxh264enc because omxh264enc element needs to know what raw video format, frame rate, and resolution of the incoming data stream are. In this application, the output video is NV12 formatted, has 30 FPS, and resolution 800x480.
+The _gst_caps_new_simple()_ function creates a new cap which holds these values. This cap is then added to caps property of capsfilter element (g_object_set).
+Note that the caps should be freed with _gst_caps_unref()_ if it is not used anymore.
+
+## How to Build and Run GStreamer Application
+
+This section shows how to cross-compile and deploy GStreamer _video encode_ application.
+
+### How to Extract SDK
+Please refer to _hello word_ [README.md](../#00_gst-helloworld/README.md) for more details.
+
+### How to Build and Run GStreamer Application
+
+***Step 1***.	Go to gst-videoencode directory:
+```
+$   cd $WORK/04_gst-videoencode
+```
+
+***Step 2***.	Cross-compile:
+```
+$   make
+```
+***Step 3***.	Copy all files inside this directory to /usr/share directory on the target board:
+```
+$   scp -r $WORK/04_gst-videoencode/ <username>@<board IP>:/usr/share/
+```
+***Step 4***.	Run the application:
+```
+$   /usr/share/04_gst-videoencode/gst-videoencode
+```
+### Special instruction:
+#### Prepare raw video file:
+   1. Download file sintel_trailer-720p.mp4 at: https://download.blender.org/durian/trailer/sintel_trailer-720p.mp4.
+   2. Run this command (on board) to convert this file to raw video format (NV12):
+   ```
+   $ gst-launch-1.0 -e filesrc num-buffers=120 location=/home/media/videos/sintel_trailer-720p.mp4 ! qtdemux ! h264parse ! omxh264dec no-copy=false ! filesink location=/home/media/videos/sintel_trailer-720p.yuv
+   ```
+   3. Finally, the pipeline will create the input file sintel_trailer-720p.yuv at location /home/media/videos/
+
+   Note:
+   >Please remove num-buffers property if you would like to decode the whole video.
+
+#### To check the output file:
+Run this command on board:
+```
+	$ gst-launch-1.0 filesrc location=/home/media/videos/ENCODE_h264-720p.264 ! h264parse ! omxh264dec ! waylandsink
+```
