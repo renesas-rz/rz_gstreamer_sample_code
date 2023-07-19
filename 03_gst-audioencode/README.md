@@ -65,7 +65,7 @@ Note that the caps should be freed with _gst_caps_unref()_ if it is not used any
 This section shows how to cross-compile and deploy GStreamer _audio encode_ application.
 
 ### How to Extract SDK
-Please refer to _hello word_ [README.md](../#00_gst-helloworld/README.md) for more details.
+Please refer to _hello word_ [README.md](/00_gst-helloworld/README.md) for more details.
 
 ### How to Build and Run GStreamer Application
 

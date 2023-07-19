@@ -147,7 +147,7 @@ The _gst_element_release_request_pad()_ function releases the pads from tee, but
 This section shows how to cross-compile and deploy GStreamer _multiple displays 1_ application.
 
 ### How to Extract SDK
-Please refer to _hello word_ [README.md](../#00_gst-helloworld/README.md) for more details.
+Please refer to _hello word_ [README.md](/00_gst-helloworld/README.md) for more details.
 
 ### How to Build and Run GStreamer Application
 

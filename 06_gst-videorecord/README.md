@@ -194,7 +194,7 @@ It calls _gst_element_send_event()_ to send EOS (End-of-Stream) signal (gst_even
 This section shows how to cross-compile and deploy GStreamer _video record_ application.
 
 ### How to Extract SDK
-Please refer to _hello word_ [README.md](../#00_gst-helloworld/README.md) for more details.
+Please refer to _hello word_ [README.md](/00_gst-helloworld/README.md) for more details.
 
 ### How to Build and Run GStreamer Application
 

@@ -132,7 +132,7 @@ This function runs main loop until _g_main_loop_quit()_ is called on the loop (c
 This section shows how to cross-compile and deploy GStreamer _receive streaming video_ application.
 
 ### How to Extract SDK
-Please refer to _hello word_ [README.md](../#00_gst-helloworld/README.md) for more details.
+Please refer to _hello word_ [README.md](/00_gst-helloworld/README.md) for more details.
 
 ### How to Build and Run GStreamer Application
 

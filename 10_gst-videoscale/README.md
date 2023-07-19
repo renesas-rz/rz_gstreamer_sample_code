@@ -92,7 +92,7 @@ This code block gets the capabilities of pad, finds the structure in new_pad_cap
 This section shows how to cross-compile and deploy GStreamer _video scale_ application.
 
 ### How to Extract SDK
-Please refer to _hello word_ [README.md](../#00_gst-helloworld/README.md) for more details.
+Please refer to _hello word_ [README.md](/00_gst-helloworld/README.md) for more details.
 
 ### How to Build and Run GStreamer Application
 
