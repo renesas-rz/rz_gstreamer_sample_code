@@ -352,7 +352,7 @@ main (int argc, char *argv[])
   GstMessage *msg;
   GstPadTemplate *tee_src_pad_template;
 
-  if ((argc > ARG_COUNT) || (argc == 1)) {
+  if (argc != ARG_COUNT) {
     g_print ("Error: Invalid arugments.\n");
     g_print ("Usage: %s <path to H264 file> \n", argv[ARG_PROGRAM_NAME]);
     return -1;

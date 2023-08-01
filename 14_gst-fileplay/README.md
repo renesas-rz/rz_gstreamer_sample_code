@@ -17,7 +17,7 @@ GStreamer: 1.16.3 (edited by Renesas).
 
 #### Command-line argument
 ```c
-if ((argc > ARG_COUNT) || (argc == 1)) {
+if (argc != ARG_COUNT) {
     g_print ("Error: Invalid arugments.\n");
     g_print ("Usage: %s <path to MP4 file> \n", argv[ARG_PROGRAM_NAME]);
     return -1;

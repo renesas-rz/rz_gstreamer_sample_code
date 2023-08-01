@@ -20,7 +20,7 @@ const gchar *output_file = "RECORD-camera.mp4";
 ```
 #### Command-line argument
 ```c
-if ((argc != 2) && (argc != ARG_COUNT)) {
+if (argc != ARG_COUNT) {
   g_print ("Error: Invalid arugments.\n");
   g_print ("Usage: %s <camera device> [width] [height]\n", argv[ARG_PROGRAM_NAME]);
   return -1;

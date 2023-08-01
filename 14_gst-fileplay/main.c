@@ -430,7 +430,7 @@ main (int argc, char *argv[])
   char* file_name;
 
   const gchar *input_file = argv[ARG_INPUT];
-  if ((argc > ARG_COUNT) || (argc == 1)) {
+  if (argc != ARG_COUNT) {
     g_print ("Error: Invalid arugments.\n");
     g_print ("Usage: %s <path to MP4 file>\n", argv[ARG_PROGRAM_NAME]);
     return -1;

@@ -559,7 +559,7 @@ main (int argc, char *argv[])
   const char *audio_ext, *video_ext;
   char* file_name;
 
-  if ((argc != 3) && (argc != ARG_COUNT)) {
+  if (argc != ARG_COUNT) {
     g_printerr ("Error: Invalid arugments.\n");
     g_printerr ("Usage: %s <OGG file> <H264 file> \n", argv[ARG_PROGRAM_NAME]);
     return -1;

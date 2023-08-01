@@ -32,9 +32,6 @@ This application accepts 2 command-line argument:
 - The first points to USB microphone device card (hw:1,0, for example). Note: You can find this value by following section [Special Instruction](/05_gst-audiorecord/README.md).
 - The second points to USB camera/MIPI camera device file (/dev/video9, for example). Note: You can find this value by following section [Special Instruction](/06_gst-videorecord/README.md).
 
-Optional-argument width and height are used to set the resolution of camera.
-
-
 #### Create elements
 ```c
 cam_src = gst_element_factory_make ("v4l2src", "cam-src");

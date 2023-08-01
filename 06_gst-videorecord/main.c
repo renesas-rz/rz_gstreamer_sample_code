@@ -505,11 +505,9 @@ main (int argc, char *argv[])
   }
 
   /* Parse resolution from program argument */
-  if (argc == ARG_COUNT) {
-    if (!get_resolution (argv[ARG_WIDTH], argv[ARG_HEIGHT],
-             &width, &height, camera)) {
-      return -1;
-    }
+  if (!get_resolution (argv[ARG_WIDTH], argv[ARG_HEIGHT],
+            &width, &height, camera)) {
+    return -1;
   }
 
   /* Initialization */

@@ -17,7 +17,7 @@ GStreamer: 1.16.3 (edited by Renesas).
 
 #### Command-line argument
 ```c
-if ((argc > ARG_COUNT) || (argc <= 2)) {
+if (argc != ARG_COUNT) {
     g_print ("Error: Invalid arugments.\n");
     g_print ("Usage: %s <path to the first H264 file> <path to the second H264 file> \n", argv[ARG_PROGRAM_NAME]);
     return -1;

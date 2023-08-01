@@ -17,7 +17,7 @@ GStreamer: 1.16.3 (edited by Renesas).
 
 #### Command-line argument
 ```c
-  if (((argc != 3) && (argc != ARG_COUNT)){
+  if (argc != ARG_COUNT){
     g_printerr ("Error: Invalid arugments.\n");
     g_printerr ("Usage: %s <OGG file> <H264 file> \n", argv[ARG_PROGRAM_NAME]);
     return -1;
