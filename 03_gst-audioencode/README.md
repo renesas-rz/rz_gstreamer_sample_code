@@ -16,14 +16,14 @@ GStreamer: 1.16.3 (edited by Renesas).
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](../01_gst-audioplay/README.md).
 
 #### Input/output location
-```
+```c
 #define INPUT_FILE       "/home/media/audios/Rondo_Alla_Turka_F32LE_44100_stereo.raw"
 #define OUTPUT_FILE      "/home/media/audios/ENCODE_Rondo_Alla_Turka.ogg"
 ```
 Note:
 > You can create input file by following section [Special Instruction](#special-instruction)
 #### Create elements
-```
+```c
 source = gst_element_factory_make ("filesrc", "file-source");
 capsfilter = gst_element_factory_make ("capsfilter", "caps-filter");
 encoder = gst_element_factory_make ("vorbisenc", "vorbis-encoder");
@@ -40,7 +40,7 @@ To encode an audio file to Vorbis format, the following elements are used:
 -	 Element filesink writes incoming data to a local file.
 
 #### Set element’s properties
-```
+```c
 g_object_set (G_OBJECT (source), "location", input_file, NULL);
 g_object_set (G_OBJECT (encoder), "bitrate", BITRATE, NULL);
 g_object_set (G_OBJECT (sink), "location", output_file, NULL);
@@ -49,7 +49,7 @@ The _g_object_set()_ function is used to set some element’s properties, such a
 -	 The location property of filesrc element which points to a raw audio file.
 -	 The bitrate property of vorbisenc element which is set to 128 Kbps. Note that this value is just for demonstration purpose only. Users can define other value which will affect output quality.
 -	 The location property of filesink element which points to an output file.
-```
+```c
 caps = gst_caps_new_simple ("audio/x-raw", "format", G_TYPE_STRING, FORMAT,
                                  "rate", G_TYPE_INT, SAMPLE_RATE, "channels", G_TYPE_INT, CHANNEL, NULL);
 
@@ -70,26 +70,26 @@ Please refer to _hello word_ [README.md](/00_gst-helloworld/README.md) for more 
 ### How to Build and Run GStreamer Application
 
 ***Step 1***.	Go to gst-audioencode directory:
-```
+```sh
 $   cd $WORK/03_gst-audioencode
 ```
 ***Step 2***.	Cross-compile:
-```
+```sh
 $   make
 ```
 ***Step 3***.	Copy all files inside this directory to _/usr/share_ directory on the target board:
-```
+```sh
 $   scp -r $WORK/03_gst-audioencode/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
-```
+```sh
 $   /usr/share/03_gst-audioencode/gst-audioencode
 ```
 ### Special instruction:
 #### Prepare raw audio file:
 1.	Download file [Rondo_Alla_Turka.ogg](https://upload.wikimedia.org/wikipedia/commons/b/bd/Rondo_Alla_Turka.ogg)(128 Kbps, 44.1 kHz, stereo channel, and Vorbis audio format).
 2. Run this command (on board) to convert this file to raw audio format (F32LE, 44.1 kHz, and stereo channel).
-```
+```sh
 $ gst-launch-1.0 -e filesrc location=/home/media/audios/Rondo_Alla_Turka.ogg ! oggdemux ! vorbisdec ! audio/x-raw, format=F32LE, rate=44100, channels=2 ! filesink location=/home/media/audios/Rondo_Alla_Turka_F32LE_44100_stereo.raw
 ```
 >Note that this process will take a while depending on the file size and processor speed.
@@ -98,6 +98,6 @@ $ gst-launch-1.0 -e filesrc location=/home/media/audios/Rondo_Alla_Turka.ogg ! o
 Option 1: VLC media player (https://www.videolan.org/vlc/index.html).
 
 Option 2: Tool gst-launch-1.0 (on board):
-```
+```sh
 $ gst-launch-1.0 filesrc location=/home/media/audios/ENCODE_Rondo_Alla_Turka.ogg ! oggdemux ! vorbisdec ! audioconvert ! audio/x-raw, format=S16LE ! alsasink
 ```

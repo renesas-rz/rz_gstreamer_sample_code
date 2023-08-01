@@ -15,11 +15,11 @@ GStreamer: 1.16.3 (edited by Renesas).
 ### Walkthrought
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](../01_gst-audioplay/README.md).
 #### Output location
-```
+```c
 const gchar *output_file = "RECORD-camera.mp4";
 ```
 #### Command-line argument
-```
+```c
 if ((argc != 2) && (argc != ARG_COUNT)) {
   g_print ("Error: Invalid arugments.\n");
   g_print ("Usage: %s <camera device> [width] [height]\n", argv[ARG_PROGRAM_NAME]);
@@ -32,7 +32,7 @@ This application accepts a command-line argument which points to camera’s devi
 User can enter width and height options to set camera’s resolution.
 
 #### Create elements
-```
+```c
 source = gst_element_factory_make ("v4l2src", "camera-source");
 camera_capsfilter = gst_element_factory_make ("capsfilter", "camera_caps");
 convert_capsfilter = gst_element_factory_make ("capsfilter", "convert_caps");
@@ -65,7 +65,7 @@ To display and record camera then store it in MP4 container, the following eleme
 -	 Element waylandsink creates its own window and renders the decoded video frames to that.
 
 #### Set element’s properties
-```
+```c
 g_object_set (G_OBJECT (source), "device", argv[ARG_DEVICE], NULL);
 g_object_set (G_OBJECT (filesink), "location", output_file, NULL);
 
@@ -88,7 +88,7 @@ The _g_object_set()_ function is used to set some element’s properties, such a
 -	 The control-rate property of omxh264enc element is used to specify birate control method which is variable bitrate method in this case.
 -	 The interval_intraframes property of omxh264enc element is used to specify interval of coding intra frames.
 -	 The periodicty-idr property of omxh264enc is used to specify periodicity of IDR frames.
-```
+```c
 /*MIPI camera*/
 camera_caps = gst_caps_new_simple ("video/x-raw", "format", G_TYPE_STRING, "UYVY",
         "width", G_TYPE_INT, width, "height", G_TYPE_INT, height, NULL);
@@ -114,7 +114,7 @@ The _gst_caps_new_simple()_ function creates new caps which holds these values. 
 >Note that both camera_caps and convert_caps should be freed with _gst_caps_unref()_ if they are not used anymore.
 
 #### Build pipeline
-```
+```c
 gst_bin_add_many (GST_BIN (pipeline), source, camera_capsfilter, converter,
     convert_capsfilter, queue1, encoder, parser, muxer, filesink, NULL);
 
@@ -145,7 +145,7 @@ In case of displaying video on monitor, this code block adds elements to pipelin
 Note that the order counts, because links must follow the data flow (this is, from source elements to sink elements).
 
 ### Link request pads
-```
+```c
 srcpad = gst_element_get_static_pad (parser, "src");
 link_to_multiplexer (srcpad, muxer);
 gst_object_unref (srcpad);
@@ -153,7 +153,7 @@ gst_object_unref (srcpad);
 This block gets the source pad (srcpad) of h264parse (parser), then calls _link_to_multiplexer()_ to link it to the sink pad of _qtmux_ (muxer).
 
 >Note that the _srcpad_ should be freed with _gst_object_unref()_ if it is not used anymore.
-```
+```c
 static void link_to_multiplexer (GstPad * tolink_pad, GstElement * mux)
 {
   pad = gst_element_get_compatible_pad (mux, tolink_pad, NULL);
@@ -167,19 +167,19 @@ This function uses _gst_element_get_compatible_pad()_ to request a sink pad (pad
 >Note that the _pad_ should be freed with _gst_object_unref()_ if it is not used anymore.
 
 ### Play pipeline
-```
+```c
 gst_element_set_state (pipeline, GST_STATE_PLAYING);
 ```
 Every pipeline has an associated [state](https://gstreamer.freedesktop.org/documentation/plugin-development/basics/states.html). To start webcam recording, the pipeline needs to be set to PLAYING state.
 
-```
+```c
 signal (SIGINT, signalHandler);
 ```
 This application will stop recording if user presses Ctrl-C. To do so, it uses _signal()_ to bind SIGINT (interrupt from keyboard) to _signalHandler()_.
 
 To know how this function is implemented, please refer to the following code block:
 
-```
+```c
 void signalHandler (int signal)
 {
   if (signal == SIGINT) {
@@ -199,26 +199,26 @@ Please refer to _hello word_ [README.md](/00_gst-helloworld/README.md) for more 
 ### How to Build and Run GStreamer Application
 
 ***Step 1***.	Go to gst-videorecord directory:
-```
+```sh
 $   cd $WORK/06_gst-videorecord
 ```
 ***Step 2***.	Cross-compile:
-```
+```sh
 $   make
 ```
 ***Step 3***.	Copy all files inside this directory to /usr/share directory on the target board:
-```
+```sh
 $   scp -r $WORK/06_gst-videorecord/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.  Setup MIPI camera (With USB camera you can skip this step):
-```
+```sh
 $   /usr/share/06_gst-videorecord/setup_MIPI_camera.sh <width>x<height>
 ```
 For more detail about _setup_MIPI_camera.sh_ script at [Special instruction](#special-instruction)
 >Note: RZ/G2L and RZ/V2L only support 2 resolution for MIPI camera: 1920x1080, 1280x960
 
 ***Step 5***.	Run the application:
-```
+```sh
 $   /usr/share/06_gst-videorecord/gst-videorecord $(/usr/share/06_gst-videorecord/detect_camera.sh) <width> <height>
 ```
 >Note: Please enter the output width and height same as the resolution when initializing MIPI camera.
@@ -228,16 +228,16 @@ Logitech USB HD Webcam C270 (model: V-U0018), Logitech USB HD 1080p, Webcam C930
 #### Reference MIPI Camera:
 MIPI Mezzanine Adapter and OV5645 camera.
 #### Run the following script to find camera device file:
-```
+```sh
 $   ./detect_camera.sh
 ```
 Basically, this script uses v4l2-ctl tool to read all information of device files (/dev/video8, for example) and find out if the device file has “Crop Capability Video Capture”. If the string is exist, the device file is available to use.
 >This script can be used in combination with gst-videorecord application.
-```
+```sh
 $   ./gst-videorecord $( ./detect_camera.sh ) <width> <height>
 ```
 For further information on how this script is implemented, please refer to the following code block:
-```
+```sh
 #!/bin/bash
 
 ERR_NO_CAMERA=1
@@ -267,14 +267,14 @@ exit $PROG_STAT
 ```
 #### Run the following script to initialize MIPI camera:
 
-```
+```sh
 ./setup_MIPI_camera.sh <width>x<height>
 ```
 Basically, this script uses media-ctl tool to set up format of camera device. For RZ/G2L platform, 2 acceptable resolutions are 1280x960, 1920x1080.
 
 For further information on how this script is implemented, please refer to the following code block:
 
-```
+```sh
 #!/bin/bash
 
 if [[ $1 != "1280x960" ]] && [[ $1 != "1920x1080" ]]; then
@@ -293,6 +293,6 @@ fi
 Option 1: VLC media player (https://www.videolan.org/vlc/index.html).
 
 Option 2: Tool gst-launch-1.0 (on board):
-```
+```sh
 $ gst-launch-1.0 filesrc location=/home/media/videos/RECORD_USB-camera.mp4 ! qtdemux ! h264parse ! omxh264dec ! waylandsink
 ```

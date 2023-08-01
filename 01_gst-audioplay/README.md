@@ -15,7 +15,7 @@ GStreamer: 1.16.3 (edited by Renesas).
 ### Walkthrought
 
 #### Input location
-```
+```c
 if (argc != ARG_COUNT)
 {
   g_print ("Invalid arugments.\n");
@@ -26,13 +26,13 @@ if (argc != ARG_COUNT)
 This application accepts one command-line argument which points to an Ogg/Vorbis file.
 
 #### Create new pipeline
-```
+```c
 pipeline = gst_pipeline_new ("audio-play");
 ```
 The _gst_pipeline_new()_ function creates a new empty pipeline which is the top-level container with clocking and bus management functionality.
 
 #### Create elements
-```
+```c
 source = gst_element_factory_make ("filesrc", "file-source");
 demuxer = gst_element_factory_make ("oggdemux", "ogg-demuxer");
 decoder = gst_element_factory_make ("vorbisdec", "vorbis-decoder");
@@ -49,7 +49,7 @@ To play an Ogg/Vorbis audio file, the following elements are used:
 -	 Element autoaudiosink automatically detects an appropriate audio sink (such as: alsasink).
 
 #### Check elements
-```
+```c
 if (!pipeline || !source || !demuxer || !decoder || !capsfilter || !conv || !sink) {
   g_printerr ("One element could not be created. Exiting.\n");
   return -1;
@@ -59,11 +59,11 @@ If either _gst_element_factory_make()_ or _gst_pipeline_new()_ is unable to crea
 Note that this statement is used for reference purpose only. If an element cannot be created, the application should use _gst_object_unref()_ to free all created elements.
 
 #### Set element’s properties
-```
+```c
 g_object_set (G_OBJECT (source), "location", input_file, NULL);
 ```
 The _g_object_set()_ function is used to set the location property of filesrc (source) to an _Ogg/Vorbis_ file.
-```
+```c
 caps = gst_caps_new_simple ("audio/x-raw", "format", G_TYPE_STRING, FORMAT, NULL);
 
 g_object_set (G_OBJECT (capsfilter), "caps", caps, NULL);
@@ -73,7 +73,7 @@ Target audio format S16LE is added to a new cap (_gst_caps_new_simple_) which is
 Note that the caps should be freed with _gst_caps_unref()_ if it is not used anymore.
 
 #### Build pipeline
-```
+```c
 gst_bin_add_many (GST_BIN (pipeline), source, demuxer, decoder, conv, capsfilter, sink, NULL);
 
 gst_element_link (source, demuxer);
@@ -87,7 +87,7 @@ Note that the order counts, because links must follow the data flow (this is, fr
 
 #### Signal
 
-```
+```c
 g_signal_connect (demuxer, "pad-added", G_CALLBACK (on_pad_added), decoder);
 ```
 Signals are a crucial point in GStreamer. They allow you to be notified (by means of a callback) when something interesting has happened. Signals are identified by a name, and each element has its own signals.
@@ -95,13 +95,13 @@ In this application, _g_signal_connect()_ is used to bind pad-added signal of og
 
 ### Link oggdemux to vorbisdec
 When oggdemux (demuxer) finally has enough information to start producing data, it will create source pads, and trigger the pad-added signal. At this point our callback will be called:
-```
+```c
 	static void on_pad_added (GstElement * element, GstPad * pad, gpointer data);
 ```
 The element parameter is the GstElement which triggered the signal. In this application, it is oggdemux. The first parameter of a signal handler is always the object that has triggered it.
 The pad parameter is the GstPad that has just been added to the oggdemux. This is usually the pad to which we want to link.
 The data parameter is the decoder (vorbisdec) we provided earlier when attaching to the signal.
-```
+```c
 GstPad *sinkpad;
 GstElement *decoder = (GstElement *) data;
 
@@ -113,14 +113,14 @@ The application retrieves the sink pad of vorbisdec using _gst_element_get_stati
 Note that sinkpad should be freed with _gst_caps_unref()_ if it is not used anymore.
 
 ### Play pipeline
-```
+```c
 gst_element_set_state (pipeline, GST_STATE_PLAYING);
 ```
 
 Every pipeline has an associated state. To start audio playback, the pipeline needs to be set to PLAYING state.
 
 ### Wait until error or EOS
-```
+```c
 bus = gst_element_get_bus (pipeline);
 msg = gst_bus_timed_pop_filtered (bus, GST_CLOCK_TIME_NONE, GST_MESSAGE_ERROR | GST_MESSAGE_EOS);
 Now, the pipeline is running. gst_bus_timed_pop_filtered() waits for execution to end and returns a GstMessage which is either an error or an EOS (End-of-Stream) message.
@@ -155,7 +155,7 @@ If the message is GST_MESSAGE_EOS, the application will inform to users that the
 After the message is handled, it should be un-referred by _gst_message_unref()_.
 
 ### Clean up
-```
+```c
 gst_object_unref (bus);
 
 gst_element_set_state (pipeline, GST_STATE_NULL);
@@ -175,22 +175,22 @@ Please refer to _hello word_ [README.md](/00_gst-helloworld/README.md) for more 
 ### How to Build and Run GStreamer Application
 
 ***Step 1***.	Go to gst-audioplay directory:
-```
+```sh
 $   cd $WORK/01_gst-audioplay
 ```
 
 ***Step 2***.	Cross-compile:
-```
+```sh
 $   make
 ```
 ***Step 3***.	Copy all files inside this directory to /usr/share directory on the target board:
-```
+```sh
 $   scp -r $WORK/01_gst-audioplay/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
 
 Download the input file at: [Rondo_Alla_Turka.ogg](https://upload.wikimedia.org/wikipedia/commons/b/bd/Rondo_Alla_Turka.ogg) and place it in /home/media/audios.
-```
+```sh
 $   /usr/share/01_gst-audioplay/gst-audioplay /home/media/audios/Rondo_Alla_Turka.ogg
 ```
 ### Special instruction:

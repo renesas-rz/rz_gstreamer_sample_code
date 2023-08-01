@@ -16,7 +16,7 @@ GStreamer: 1.16.3 (edited by Renesas).
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Video Play](/02_gst-videoplay/README.md).
 
 #### Command-line argument
-```
+```c
 if ((argc > ARG_COUNT) || (argc == 1)) {
     g_print ("Error: Invalid arugments.\n");
     g_print ("Usage: %s <path to H264 file> \n", argv[ARG_PROGRAM_NAME]);
@@ -26,7 +26,7 @@ if ((argc > ARG_COUNT) || (argc == 1)) {
 This application accepts a command-line argument which points to an H.264 file.
 
 #### Create elements
-```
+```c
 source = gst_element_factory_make ("filesrc", "file-source");
 tee = gst_element_factory_make ("tee", "tee-element");
 
@@ -50,7 +50,7 @@ To play an H.264 video on 2 displays, the following elements are used:
 -	 Element waylandsink (video_sink_1 and video_sink_2) creates its own window and renders the decoded video frames to that.
 
 #### Set element’s properties
-```
+```c
 g_object_set (G_OBJECT (source), "location", input_video_file, NULL);
 g_object_set (G_OBJECT (sink), "position-x", screens[PRIMARY_SCREEN_INDEX]->x + PRIMARY_POS_OFFSET,
        "position-y", screens[PRIMARY_SCREEN_INDEX]->y + PRIMARY_POS_OFFSET, NULL);
@@ -63,7 +63,7 @@ The _g_object_set()_ function is used to set some element’s properties, such a
 -	 The position-x and position-y property of  waylandsink element which point to (x,y) coordinate of wayland desktop.
 
 #### Build pipeline
-```
+```c
 gst_bin_add_many (GST_BIN (pipeline), source, parser, decoder, tee,
       queue_1, video_sink_1, queue_2, video_sink_2, NULL);
 
@@ -83,7 +83,7 @@ The reason for the separation is that tee element contains no initial source pad
 Also, to request (or release) pads in the PLAYING or PAUSED states, you need to take additional cautions (pad blocking) which are not described in this manual. It is safe to request (or release) pads in the NULL or READY states, though.
 
 #### Link source pad (request pads of tee)
-```
+```c
 tee_src_pad_template = gst_element_class_get_pad_template (GST_ELEMENT_GET_CLASS (tee), "src_%u");
 
 /* Get request pad and manually link for Video Display 1 */
@@ -134,7 +134,7 @@ We then obtain the sink pads from queue/vspmfilter elements to which these Reque
 >Note that the sink pads need to be released with _gst_object_unref()_ if they are not used anymore.
 
 #### Free tee element
-```
+```c
 gst_element_release_request_pad (tee, req_pad_1);
 gst_element_release_request_pad (tee, req_pad_2);
 gst_object_unref (req_pad_1);
@@ -152,23 +152,23 @@ Please refer to _hello word_ [README.md](/00_gst-helloworld/README.md) for more 
 ### How to Build and Run GStreamer Application
 
 ***Step 1***.	Go to gst-multipledisplays1 directory:
-```
+```sh
 $   cd $WORK/15_gst-multipledisplays1
 ```
 
 ***Step 2***.	Cross-compile:
-```
+```sh
 $   make
 ```
 ***Step 3***.	Copy all files inside this directory to /usr/share directory on the target board:
-```
+```sh
 $   scp -r $WORK/15_gst-multipledisplays1/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
 
 Download the input file at: [vga1.h264](https://www.renesas.com/jp/ja/img/products/media/auto-j/microcontrollers-microprocessors/rz/rzg/doorphone-videos/vga1.h264) and place it in _/home/media/videos_.
 
-```
+```sh
 $   /usr/share/15_gst-multipledisplays1/gst-multipledisplays1 /home/media/videos/vga1.h264
 ```
 >RZ/G2L and RZ/V2L platform supports playing 2 1920x1080, 30 fps videos

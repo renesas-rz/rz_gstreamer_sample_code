@@ -15,14 +15,14 @@ GStreamer: 1.16.3 (edited by Renesas).
 ### Walkthrought
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](../01_gst-audioplay/README.md).
 #### Input/output location
-```
+```c
 #define INPUT_FILE       "/home/media/videos/h264-wvga-30.yuv"
 #define OUTPUT_FILE      "/home/media/videos/ENCODE_h264-vga-30.h264"
 ```
 > You can create input file by following section [Special Instruction](#special-instruction)
 
 #### Create elements
-```
+```c
 source = gst_element_factory_make ("filesrc", "file-source");
 capsfilter = gst_element_factory_make ("capsfilter", "caps-filter");
 encoder = gst_element_factory_make ("omxh264enc", "H264-encoder");
@@ -35,7 +35,7 @@ To encode a raw video file to H.264 video format, the following elements are use
 -	 Element filesink writes incoming data to a local file.
 
 #### Set element’s properties
-```
+```c
 g_object_set (G_OBJECT (source), "location", input_file, NULL);
 g_object_set (G_OBJECT (source), "blocksize", BLOCKSIZE, NULL);
 g_object_set (G_OBJECT (encoder), "control-rate", CONTROL_RATE, NULL);
@@ -48,7 +48,7 @@ The _g_object_set()_ function is used to set some element’s properties, such a
 -	 The control-rate property of omxh264enc element which enables low latency video.
 -	 The target-bitrate property of omxh264enc element which is set to 10 Mbps. The higher bitrate, the better quality.
 
-```
+```c
 caps = gst_caps_new_simple ("video/x-raw", "format", G_TYPE_STRING, VIDEO_FORMAT,
        "framerate", GST_TYPE_FRACTION, FRAMERATE, TYPE_FRACTION,
       "width", G_TYPE_INT, LVDS_WIDTH, "height", G_TYPE_INT, LVDS_HEIGHT, NULL);
@@ -70,27 +70,27 @@ Please refer to _hello word_ [README.md](/00_gst-helloworld/README.md) for more 
 ### How to Build and Run GStreamer Application
 
 ***Step 1***.	Go to gst-videoencode directory:
-```
+```sh
 $   cd $WORK/04_gst-videoencode
 ```
 
 ***Step 2***.	Cross-compile:
-```
+```sh
 $   make
 ```
 ***Step 3***.	Copy all files inside this directory to /usr/share directory on the target board:
-```
+```sh
 $   scp -r $WORK/04_gst-videoencode/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
-```
+```sh
 $   /usr/share/04_gst-videoencode/gst-videoencode
 ```
 ### Special instruction:
 #### Prepare raw video file:
    1. Download file sintel_trailer-720p.mp4 at: https://download.blender.org/durian/trailer/sintel_trailer-720p.mp4.
    2. Run this command (on board) to convert this file to raw video format (NV12):
-   ```
+   ```sh
    $ gst-launch-1.0 -e filesrc num-buffers=120 location=/home/media/videos/sintel_trailer-720p.mp4 ! qtdemux ! h264parse ! omxh264dec no-copy=false ! filesink location=/home/media/videos/sintel_trailer-720p.yuv
    ```
    3. Finally, the pipeline will create the input file sintel_trailer-720p.yuv at location /home/media/videos/
@@ -100,6 +100,6 @@ $   /usr/share/04_gst-videoencode/gst-videoencode
 
 #### To check the output file:
 Run this command on board:
-```
+```sh
 	$ gst-launch-1.0 filesrc location=/home/media/videos/ENCODE_h264-720p.264 ! h264parse ! omxh264dec ! waylandsink
 ```

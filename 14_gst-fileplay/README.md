@@ -16,7 +16,7 @@ GStreamer: 1.16.3 (edited by Renesas).
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Video Play](/02_gst-videoplay/README.md) and [Audio Play](/01_gst-audioplay/README.md).
 
 #### Command-line argument
-```
+```c
 if ((argc > ARG_COUNT) || (argc == 1)) {
     g_print ("Error: Invalid arugments.\n");
     g_print ("Usage: %s <path to MP4 file> \n", argv[ARG_PROGRAM_NAME]);
@@ -26,7 +26,7 @@ if ((argc > ARG_COUNT) || (argc == 1)) {
 This application accepts a command-line argument which points to an MP4 file.
 
 #### CustomData structure
-```
+```c
 typedef struct _CustomData
 {
   GstElement *pipeline;
@@ -51,7 +51,7 @@ This structure contains:
 -	 Variable main_screen (screen_t): A pointer to screen_t structure to contain monitor information, such as: (x, y), width, and height.
 
 #### Create elements
-```
+```c
 source = gst_element_factory_make ("filesrc", "file-source");
 demuxer = gst_element_factory_make ("qtdemux", "qt-demuxer");
 video_queue = gst_element_factory_make ("queue", "video-queue");
@@ -88,7 +88,7 @@ To play an MP4 video, the following elements are needed:
 -	 Element alsasink renders audio samples using the ALSA audio API.
 
 #### Set element’s properties
-```
+```c
 g_object_set (G_OBJECT (source), "location", input_file, NULL);
 g_object_set (G_OBJECT (sink), "position-x", main_screen->x, "position-y",
       main_screen->y, NULL);
@@ -102,7 +102,7 @@ The _g_object_set()_ function is used to set some element’s properties, such a
 -	 The caps property of capsfilter (audio_capsfilter) element which specifies output audio sample rate 44100 Hz.
 
 #### Link elements
-```
+```c
 gst_element_link (source, demuxer);
 gst_element_link_many (audio_queue, audio_decoder, audio_resample,
                            audio_capsfilter, audio_sink, NULL);
@@ -116,7 +116,7 @@ Because demuxer (qtdemux) contains no source pads at this point, this element ca
 >Note that the order counts, because links must follow the data flow (this is, from source elements to sink elements).
 
 #### Signal
-```
+```c
 CustomData user_data;
 user_data.audio_queue = audio_queue;
 user_data.video_queue = video_queue;
@@ -129,7 +129,7 @@ In this application, _g_signal_connect()_ is used to bind pad-added signal of qt
 #### Link qtdemux to audio_queue and video_queue
 
 When qtdemux (demuxer) element finally has enough information to start producing data, it will create source pads, and trigger the pad-added signal. At this point our callback will be called:
-```
+```c
 	static void on_pad_added (GstElement * element, GstPad * pad, gpointer data)
 ```
 The element parameter is the GstElement which triggered the signal. In this application, it is qtdemux. The first parameter of a signal handler is always the object that has triggered it.
@@ -137,7 +137,7 @@ The element parameter is the GstElement which triggered the signal. In this appl
 The pad element is the GstPad that has just been added to the qtdemux element. This is usually the pad to which we want to link.
 
 The data element is the user_data pointer which we provided earlier when attaching to the signal.
-```
+```c
 GstCaps *new_pad_caps = NULL;
 GstStructure *new_pad_struct = NULL;
 const gchar *new_pad_type = NULL;
@@ -150,7 +150,7 @@ The _gst_pad_query_caps()_ function gets the current [capabilities](https://gstr
 This application retrieves the first GstStructure with _gst_caps_get_structure()_.
 
 Finally, _gst_structure_get_name()_ recovers the name of the structure, which contains the main description of the format (video/x-h264 or audio/mpeg, for example).
-```
+```c
 if (g_str_has_prefix (new_pad_type, "audio")) {
 
   sinkpad = gst_element_get_static_pad (user_data->audio_queue, "sink");
@@ -173,7 +173,7 @@ If the name contains audio, the application retrieves the sink pad of audio_queu
 The procedure is the same if the name contains video.
 
 >Note that sinkpad should be freed with g_st_caps_unref()_ if it is not used anymore.
-```
+```c
   if (new_pad_caps != NULL) {
     gst_caps_unref (new_pad_caps);
   }
@@ -190,22 +190,22 @@ Please refer to _hello word_ [README.md](/00_gst-helloworld/README.md) for more 
 ### How to Build and Run GStreamer Application
 
 ***Step 1***.	Go to gst-fileplay directory:
-```
+```sh
 $   cd $WORK/14_gst-fileplay
 ```
 
 ***Step 2***.	Cross-compile:
-```
+```sh
 $   make
 ```
 ***Step 3***.	Copy all files inside this directory to /usr/share directory on the target board:
-```
+```sh
 $   scp -r $WORK/14_gst-fileplay/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
 
 Download the input file at: [sintel_trailer-720p](https://download.blender.org/durian/trailer/sintel_trailer-720p.mp4) and place it in _/home/media/videos_
-```
+```sh
 $   /usr/share/14_gst-fileplay/gst-fileplay /home/media/videos/sintel_trailer-720p.mp4
 ```
 ### Special instruction:

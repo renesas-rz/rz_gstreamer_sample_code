@@ -15,7 +15,7 @@ GStreamer: 1.16.3 (edited by Renesas).
 ### Walkthrought
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Player](/11_gst-audioplayer/README.md) and [File Play](/14_gst-fileplay/README.md).
 #### User data structure
-```
+```c
 typedef struct tag_user_data
 {
   GMainLoop *loop;
@@ -58,7 +58,7 @@ This structure contains:
 -	 Variable fullscreen (bool): A boolean variable to enable full-screen mode.
 
 #### Video pipeline
-```
+```c
 source = gst_element_factory_make ("filesrc", "file-source");
 demuxer = gst_element_factory_make ("qtdemux", "qt-demuxer");
 video_queue = gst_element_factory_make ("queue", "video-queue");
@@ -120,7 +120,7 @@ Note:
 >That’s why they are not created in _main()_.
 
 #### Function on_pad_added()
-```
+```c
 static void on_pad_added (GstElement * element, GstPad * pad, gpointer data)
 {  if (g_str_has_prefix (new_pad_type, "audio")) {
     gst_element_set_state (puser_data->audio_queue, GST_STATE_PAUSED);
@@ -160,7 +160,7 @@ If the pad is an audio pad, the application will set all audio elements, such as
 Note that we have to link demuxer (qtdemux) to audio_queue (queue) manually (gst_pad_link) just like [File Play](/14_gst-fileplay/README.md).
 
 Finally, the application sets the pipeline to PLAYING state.
-```
+```c
 static void on_pad_added (GstElement * element, GstPad * pad, gpointer data)
 {
   if (g_str_has_prefix (new_pad_type, "video")) {
@@ -251,7 +251,7 @@ Finally, the application sets the pipeline to PLAYING state.
 ### Walkthrough:
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Player](/11_gst-audioplayer/README.md).
 #### Macro
-```
+```c
 #define FILE_SUFFIX		  ".mp4"
 ```
 The FILE_SUFFIX macro defines the file extension that is supported by the pipeline. In this application, it only accepts video files whose extension are .mp4.
@@ -266,23 +266,23 @@ Please refer to _hello word_ [README.md](/00_gst-helloworld/README.md) for more 
 ### How to Build and Run GStreamer Application
 
 ***Step 1***.	Go to gst-videoplayer directory:
-```
+```sh
 $   cd $WORK/12_gst-videoplayer
 ```
 
 ***Step 2***.	Cross-compile:
-```
+```sh
 $   make
 ```
 ***Step 3***.	Copy all files inside this directory to /usr/share directory on the target board:
-```
+```sh
 $   scp -r $WORK/12_gst-videoplayer/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
 
 Download the input files at: [sintel_trailer-720p.mp4](https://download.blender.org/durian/trailer/sintel_trailer-720p.mp4)
  and [renesas-bigideasforeveryspace.mp4](https://www.renesas.com/jp/ja/img/products/media/auto-j/microcontrollers-microprocessors/rz/rzg/qt-videos/renesas-bigideasforeveryspace.mp4) then place all it in _/home/media/videos_.
-```
+```sh
 $   /usr/share/12_gst-videoplayer/gst-videoplayer /home/media/videos
 ```
 >RZ/G2L and RZ/V2L can maximum support Full HD video.

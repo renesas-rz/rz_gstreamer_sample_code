@@ -15,7 +15,7 @@ GStreamer: 1.16.3 (edited by Renesas).
 ### Walkthrought
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](../01_gst-audioplay/README.md).
 #### Command-line argument
-```
+```c
 if ((argc > ARG_COUNT) || (argc == 1)) {
   g_print ("Error: Invalid arugments.\n");
   g_print ("Usage: %s <path to H264 file> \n", argv[ARG_PROGRAM_NAME]);
@@ -25,7 +25,7 @@ if ((argc > ARG_COUNT) || (argc == 1)) {
 This application accepts a command-line argument which points to an H.264 file.
 
 #### Create elements
-```
+```c
 if ((strcasecmp ("264", ext) || (strcasecmp ("h264", ext) == 0)) {
   parser = gst_element_factory_make ("h264parse", "h264-parser");
   decoder = gst_element_factory_make ("omxh264dec", "h264-decoder");
@@ -43,7 +43,7 @@ To play an H.264 video file, the following elements are used:
 
 
 #### Set element’s properties
-```
+```c
 g_object_set (G_OBJECT (source), "location", input_file, NULL);
   g_object_set (G_OBJECT (sink), "position-x", main_screen->x, "position-y",
       main_screen->y, NULL);
@@ -54,7 +54,7 @@ g_object_set (G_OBJECT (source), "location", input_file, NULL);
 
 
 #### Build pipeline
-```
+```c
 gst_bin_add_many (GST_BIN (pipeline), source, parser, decoder, sink, NULL);
 
 /*Not display video in full-screen*/
@@ -72,21 +72,21 @@ Please refer to _hello word_ [README.md](/00_gst-helloworld/README.md) for more 
 ### How to Build and Run GStreamer Application
 
 ***Step 1***.	Go to gst-videoplay directory:
-```
+```sh
 $   cd $WORK/02_gst-videoplay
 ```
 ***Step 2***.	Cross-compile:
-```
+```sh
 $   make
 ```
 ***Step 3***.	Copy all files inside this directory to _/usr/share_ directory on the target board:
-```
+```sh
 $   scp -r $WORK/02_gst-videoplay/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
 
 Download the input file at: [vga1.h264](https://www.renesas.com/jp/ja/img/products/media/auto-j/microcontrollers-microprocessors/rz/rzg/doorphone-videos/vga1.h264) and place it in _/home/media/videos_.
-```
+```sh
 $   /usr/share/02_gst-videoplay/gst-videoplay /home/media/videos/vga1.h264
 ```
 > RZ/G2L & RZ/V2L platform maximum support Full HD video.

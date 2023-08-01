@@ -16,12 +16,12 @@ GStreamer: 1.16.3 (edited by Renesas).
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](../01_gst-audioplay/README.md), [Audio Record](../05_gst-audiorecord/README.md) and [video Record](../06_gst-videorecord/README.md).
 
 #### Output location
-```
+```c
 #define OUTPUT_FILE        "RECORD_Multimedia.mkv"
 const gchar *output_file = OUTPUT_FILE;
 ```
 #### Command-line argument
-```
+```c
 if (argc != ARG_COUNT) {
   g_print ("Error: Invalid arugments.\n");
   g_print ("Usage: %s <microphone device> <camera device> [width] [height]\n", argv[ARG_PROGRAM_NAME]);
@@ -36,7 +36,7 @@ Optional-argument width and height are used to set the resolution of camera.
 
 
 #### Create elements
-```
+```c
 cam_src = gst_element_factory_make ("v4l2src", "cam-src");
 cam_queue = gst_element_factory_make ("queue", "cam-queue");
 cam_capsfilter = gst_element_factory_make ("capsfilter", "cam_caps");
@@ -76,7 +76,7 @@ To record raw data from USB microphone and USB webcam or MIPI camera at the same
 -	 Element filesink writes incoming data to a local file.
 
 #### Set element’s properties
-```
+```c
 g_object_set (G_OBJECT (video_converter), "dmabuf-use", true, NULL);
 g_object_set (G_OBJECT (video_encoder), "target-bitrate", MIPI_BITRATE_OMXH264ENC,
     "control-rate", VARIABLE_RATE, "interval_intraframes", 14, "periodicty-idr", 2, NULL);
@@ -99,7 +99,7 @@ The g_object_set() function is used to set some element’s properties, such as:
 -	 The periodicty-idr property of omxh264enc is used to specify periodicity of IDR frames.
 -	 The device property of alsasrc element which points to a microphone device. Users will pass the device card as a command line argument to this application. Please refer to section [Audio record Special Instruction](/05_gst-audiorecord/README.md) to find the value.
 -  The bitrate property of vorbisenc element is used to specify encoding bit rate. The higher bitrate, the better quality.
-```
+```c
 /* MIPI camera*/
 cam_caps = gst_caps_new_simple ("video/x-raw", "format", G_TYPE_STRING, "UYVY",
             "width", G_TYPE_INT, width, "height", G_TYPE_INT, height, NULL);
@@ -124,7 +124,7 @@ The gst_caps_new_simple() function creates new caps which holds these values. Th
 Note that both caps should be freed with gst_caps_unref() if they are not used anymore.
 
 #### Build pipeline
-```
+```c
 gst_bin_add_many (GST_BIN (pipeline), cam_src, cam_queue, cam_capsfilter, video_converter,
     video_conv_capsfilter, video_encoder, video_parser, audio_src, audio_queue,
     audio_converter, audio_conv_capsfilter, audio_encoder, muxer, sink, NULL);
@@ -142,7 +142,7 @@ The reason for the separation is that the sink pad of matroskamux (muxer) cannot
 
 ### Link request pads
 When oggdemux (demuxer) finally has enough information to start producing data, it will create source pads, and trigger the pad-added signal. At this point our callback will be called:
-```
+```c
 srcpad = gst_element_get_static_pad (video_parser, "src");
 link_to_multiplexer (srcpad, muxer);
 gst_object_unref (srcpad);
@@ -155,7 +155,7 @@ gst_object_unref (srcpad);
 This block gets the source pad (srcpad) of vorbisenc (encoder) and h264parse (parser), then calls link_to_multiplexer() to link them to the sink pad of matroskamux (muxer).
 >Note that the srcpad should be freed with gst_object_unref() if it is not used anymore.
 
-```
+```c
 static void link_to_multiplexer (GstPad * tolink_pad, GstElement * mux)
 {
   pad = gst_element_get_compatible_pad (mux, tolink_pad, NULL);
@@ -167,16 +167,16 @@ This function uses gst_element_get_compatible_pad() to request a sink pad (pad) 
 >Note that the pad should be freed with gst_object_unref() if it is not used anymore.
 
 ### Play pipeline
-```
+```c
 gst_element_set_state (pipeline, GST_STATE_PLAYING);
 ```
 Every pipeline has an associated [state](https://gstreamer.freedesktop.org/documentation/plugin-development/basics/states.html). To start audio recording, the pipeline needs to be set to PLAYING state.
-```
+```c
 signal (SIGINT, signalHandler);
 ```
 This application will stop recording if user presses Ctrl-C. To do so, it uses signal() to bind SIGINT (interrupt from keyboard) to signalHandler().
 To know how this function is implemented, please refer to the following code block:
-```
+```c
 void signalHandler (int signal)
 {
   if (signal == SIGINT) {
@@ -196,20 +196,20 @@ Please refer to _hello word_ [README.md](/00_gst-helloworld/README.md) for more 
 ### How to Build and Run GStreamer Application
 
 ***Step 1***.	Go to gst-audiovideorecord directory:
-```
+```sh
 $   cd $WORK/07_gst-audiovideorecord
 ```
 
 ***Step 2***.	Cross-compile:
-```
+```sh
 $   make
 ```
 ***Step 3***.	Copy all files inside this directory to /usr/share directory on the target board:
-```
+```sh
 $   scp -r $WORK/07_gst-audiovideorecord/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
-```
+```sh
 $   /usr/share/07_gst-audiovideorecord/gst-audiovideorecord $(/usr/share/05_gst-audiorecord/detect_microphone.sh) $(/usr/share/06_gst-videorecord/detect_camera.sh) <width> <height>
 ```
 >For more details about _detect_microphone.sh_ and detect_camera.sh script. Please refer to [Audio record special instruction](/05_gst-audiorecord/README.md) and [Video record special instruction](/06_gst-videorecord/README.md)
@@ -228,6 +228,6 @@ Option 1: VLC media player (https://www.videolan.org/vlc/index.html).
 
 Option 2: Tool gst-launch-1.0 (on board):
 
-```
+```sh
 $ gst-launch-1.0 filesrc location=RECORD_Multimedia.mkv ! matroskademux name=d d. ! queue max-size-time=10000000000 ! vorbisdec ! audioconvert ! audioresample ! autoaudiosink d. ! queue ! h264parse ! omxh264dec ! waylandsink
 ```

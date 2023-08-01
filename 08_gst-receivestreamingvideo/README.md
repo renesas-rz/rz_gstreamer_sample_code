@@ -15,7 +15,7 @@ GStreamer: 1.16.3 (edited by Renesas).
 ### Walkthrought
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](/01_gst-audioplay/README.md) and section [Video Play](/02_gst-videoplay/README.md)
 #### Create event loop
-```
+```c
 main_loop = g_main_loop_new (NULL, FALSE);
 ```
 Function _g_main_loop_new()_ creates a new [GMainLoop](https://developer.gnome.org/glib/stable/glib-The-Main-Event-Loop.html) structure with default context (GMainContext).
@@ -23,7 +23,7 @@ Function _g_main_loop_new()_ creates a new [GMainLoop](https://developer.gnome.o
 Basically, the main event loop manages all the available sources of events. To allow multiple independent sets of sources to be handled in different threads, each source is associated with a _GMainContext_. A _GMainContext_ can only be running in a single thread, but sources can be added to it and removed from it from other threads.
 
 #### Create elements
-```
+```c
 source = gst_element_factory_make ("udpsrc", "udp-src");
 depayloader = gst_element_factory_make ("rtph264depay", "h264-depay");
 parser = gst_element_factory_make ("h264parse", "h264-parser");
@@ -38,7 +38,7 @@ To receive and display streaming video, the following elements are used:
 -	 Element waylandsink creates its own window and renders the decoded video frames to that.
 
 #### Set element’s properties
-```
+```c
 caps = gst_caps_new_empty_simple ("application/x-rtp");
 
 g_object_set (G_OBJECT (source), "port", PORT, "caps", caps, NULL);
@@ -56,7 +56,7 @@ The _g_object_set()_ function is used to set some element’s properties, such a
 -	 The position-x and position-y property of  waylandsink element which point to (x,y) coordinate of wayland desktop.
 
 #### Add bus watch and handle messages (GstMessage)
-```
+```c
 bus = gst_element_get_bus (pipeline)
 bus_watch_id = gst_bus_add_watch (bus, bus_call, main_loop);
 gst_object_unref (bus);
@@ -68,7 +68,7 @@ Basically, bus is the object responsible for delivering messages (GstMessage) ge
 In this application, the messages will be extracted from the bus asynchronously, using self-defined function _bus_call()_. Note that the bus should be freed with _gst_caps_unref()_ if it is not used anymore.
 
 To know how _bus_call()_ is implemented, please refer to the following code block:
-```
+```c
 static gboolean
 bus_call (GstBus * bus, GstMessage * msg, gpointer data)
 {
@@ -98,20 +98,20 @@ bus_call (GstBus * bus, GstMessage * msg, gpointer data)
 This function will be called when a message is received. If an error occurs, it will call _g_main_loop_quit()_ to stop GMainLoop. This makes _g_main_loop_run()_ return. Finally, the application cleans up GSteamer objects and exits.
 
 ### Play pipeline
-```
+```c
 gst_element_set_state (pipeline, GST_STATE_PLAYING);
 ```
 
 Every pipeline has an associated [state](https://gstreamer.freedesktop.org/documentation/plugin-development/basics/states.html). To start audio playback, the pipeline needs to be set to PLAYING state.
 
 ### Stop pipeline
-```
+```c
 signal (SIGINT, signalHandler);
 ```
 The application uses _signal()_ to bind SIGINT (interrupt from keryboard) to _signalHandler()_ function.
 
 To know how this function is implemented, please refer to the following code block:
-```
+```c
 void signalHandler (int signal)
 {
   if (signal == SIGINT) {
@@ -122,7 +122,7 @@ void signalHandler (int signal)
 
 ```
 ### Run main loop
-```
+```c
 g_main_loop_run (main_loop);
 ```
 This function runs main loop until _g_main_loop_quit()_ is called on the loop (context NULL). In other words, it will make the context check if anything it watches for has happened. For example, when a message has been posted on the bus (_gst_element_get_bus_), the default main context will automatically call _bus_call()_ to notify the message.
@@ -137,30 +137,30 @@ Please refer to _hello word_ [README.md](/00_gst-helloworld/README.md) for more 
 ### How to Build and Run GStreamer Application
 
 ***Step 1***.	Go to gst-receivestreamingvideo directory:
-```
+```sh
 $   cd $WORK/08_gst-receivestreamingvideo
 ```
 
 ***Step 2***.	Cross-compile:
-```
+```sh
 $   make
 ```
 ***Step 3***.	Copy all files inside this directory to /usr/share directory on the target board:
-```
+```sh
 $   scp -r $WORK/08_gst-receivestreamingvideo/ <username>@<board IP>:/usr/share/
 ```
 
 ***Step 4***.  Configure IPv4 address (as below) before running this application:
-```
+```sh
 $   ifconfig <Ethernet Interface> <IPv4 address>
 ```
 - For example:
-  ```
+  ```sh
   $   ifconfig eth0 192.168.5.237
   ```
 
 ***Step 5***.	Run the application:
-```
+```sh
 $   /usr/share/08_gst-receivestreamingvideo/gst-receivestreamingvideo
 ```
 ### Special instruction:

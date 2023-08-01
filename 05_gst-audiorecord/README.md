@@ -15,12 +15,12 @@ GStreamer: 1.16.3 (edited by Renesas).
 ### Walkthrought
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](../01_gst-audioplay/README.md).
 #### Output location
-```
+```c
 #define OUTPUT_FILE  "RECORD_microphone-mono.ogg"
 const gchar *output_file = OUTPUT_FILE;
 ```
 #### Command-line argument
-```
+```c
 if (argc != ARG_COUNT) {
   g_print ("Error: Invalid arugments.\n");
   g_print ("Usage: %s <microphone device> \n", argv[ARG_PROGRAM_NAME]);
@@ -32,7 +32,7 @@ This application accepts a command-line argument which points to a microphone (h
 >Note: You can find this value by following section [Special Instruction](#special-instruction)
 
 #### Create elements
-```
+```c
 pipeline = gst_pipeline_new ("audio-record");
 source = gst_element_factory_make ("alsasrc", "alsa-source");
 converter = gst_element_factory_make ("audioconvert", "audio-converter");
@@ -49,7 +49,7 @@ To record raw data from microphone then store it in Ogg container, the following
 -	 Element filesink writes incoming data to a local file.
 
 #### Set element’s properties
-```
+```c
 g_object_set (G_OBJECT (source), "device", argv[ARG_DEVICE], NULL);
 g_object_set (G_OBJECT (encoder), "bitrate", BITRATE, NULL);
 g_object_set (G_OBJECT (sink), "location", output_file, NULL);
@@ -59,7 +59,7 @@ The _g_object_set()_ function is used to set some element’s properties, such a
 -	 The location property of filesink element which points to the output file.
 -	 The bitrate property of vorbisenc element is used to specify encoding bit rate. The higher bitrate, the better quality.
 
-```
+```c
 caps = gst_caps_new_simple ("audio/x-raw", "format", G_TYPE_STRING, FORMAT,
            "channels", G_TYPE_INT, CHANNEL, "rate", G_TYPE_INT, SAMPLE_RATE, NULL);
 g_object_set (G_OBJECT (convert_capsfilter), "caps", caps, NULL);
@@ -70,7 +70,7 @@ The _gst_caps_new_simple()_ function creates new caps which holds these values. 
 Note that both caps should be freed with _gst_caps_unref()_ if they are not used anymore.
 
 #### Build pipeline
-```
+```c
 gst_bin_add_many (GST_BIN (pipeline), source, converter, convert_capsfilter,
     encoder, muxer, sink, NULL);
 gst_element_link_many (source, converter, convert_capsfilter, encoder, NULL);
@@ -81,7 +81,7 @@ Note that the order counts, because links must follow the data flow (this is, fr
 
 #### Link request pads
 
-```
+```c
 srcpad = gst_element_get_static_pad (encoder, "src");
 link_to_multiplexer (srcpad, muxer);
 gst_object_unref (srcpad);
@@ -89,7 +89,7 @@ gst_object_unref (srcpad);
 This block gets the source pad (srcpad) of vorbisenc (encoder), then calls _link_to_multiplexer()_ to link it to (the sink pad of) oggmux (muxer).
 Note that the srcpad should be freed with _gst_object_unref()_ if it is not used anymore.
 
-```
+```c
 static void link_to_multiplexer (GstPad * tolink_pad, GstElement * mux)
 {
   pad = gst_element_get_compatible_pad (mux, tolink_pad, NULL);
@@ -102,19 +102,19 @@ This function uses _gst_element_get_compatible_pad()_ to request a sink pad (pad
 Note that the pad should be freed with _gst_object_unref()_ if it is not used anymore.
 
 ### Play pipeline
-```
+```c
 gst_element_set_state (pipeline, GST_STATE_PLAYING);
 ```
 
 Every pipeline has an associated [state](https://gstreamer.freedesktop.org/documentation/plugin-development/basics/states.html). To start audio recording, the pipeline needs to be set to PLAYING state.
 
-```
+```c
 signal (SIGINT, signalHandler);
 ```
 This application will stop recording if user presses Ctrl-C. To do so, it uses _signal()_ to bind SIGINT (interrupt from keyboard) to _signalHandler()_.
 To know how this function is implemented, please refer to the following code block:
 
-```
+```c
 void signalHandler (int signal)
 {
   if (signal == SIGINT) {
@@ -134,34 +134,34 @@ Please refer to _hello word_ [README.md](/00_gst-helloworld/README.md) for more 
 ### How to Build and Run GStreamer Application
 
 ***Step 1***.	Go to gst-audiorecord directory:
-```
+```sh
 $   cd $WORK/05_gst-audiorecord
 ```
 
 ***Step 2***.	Cross-compile:
-```
+```sh
 $   make
 ```
 ***Step 3***.	Copy all files inside this directory to /usr/share directory on the target board:
-```
+```sh
 $   scp -r $WORK/05_gst-audiorecord/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
 
-```
+```sh
 $   /usr/share/05_gst-audiorecord/gst-audiorecord $(/usr/share/05_gst-audiorecord/detect_microphone.sh)
 ```
 For more details about _detect_microphone.sh_ script at [Special instruction](#special-instruction)
 ### Special instruction:
 #### Run the following script to find microphone device card:
-```
+```sh
 $ ./detect_microphone.sh
 ```
 Basically, this script analyzes the /proc/asound/cards file to get sound cards.
 >Note: This script can be used in combination with gst-audiorecord application.
 
 For further information on how this script is implemented, please refer to the following code block:
-```
+```sh
 ALSA_DEV_FILE="/proc/asound/cards"
 
 CMD_GET_SND="cat $ALSA_DEV_FILE | awk '{ print \$0 }'"
@@ -194,6 +194,6 @@ fi
 #### To check the output file:
 Option 1: VLC media player (https://www.videolan.org/vlc/index.html).
 Option 2: Tool gst-launch-1.0 (on board):
-```
+```sh
 $ gst-launch-1.0 filesrc location=RECORD_microphone-mono.ogg ! oggdemux ! vorbisdec ! audioconvert ! audioresample ! autoaudiosink
 ```
