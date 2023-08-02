@@ -202,4 +202,5 @@ Download the input file [sintel_trailer-720p](https://download.blender.org/duria
 $   /usr/share/14_gst-fileplay/gst-fileplay /home/media/videos/sintel_trailer-720p.mp4
 ```
 ### Special instruction:
-To set the playback volume: please use the alsamixer or amixer tool. It depends on the audio system on the specific board. Reference: https://en.wikipedia.org/wiki/Alsamixer
+To set the playback volume: please use the alsamixer or amixer tool. Reference: https://en.wikipedia.org/wiki/Alsamixer
+> A short guide that how to use alsamixer (https://wiki.ubuntu.com/Audio/Alsamixer).

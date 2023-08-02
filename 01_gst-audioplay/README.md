@@ -196,4 +196,5 @@ Download the input file [Rondo_Alla_Turka.ogg](https://upload.wikimedia.org/wiki
 $   /usr/share/01_gst-audioplay/gst-audioplay /home/media/audios/Rondo_Alla_Turka.ogg
 ```
 ### Special instruction:
-To set the playback volume: please use the alsamixer or amixer tool. It depends on the audio system on the specific board. Reference: https://en.wikipedia.org/wiki/Alsamixer
+To set the playback volume: please use the alsamixer or amixer tool. Reference: https://en.wikipedia.org/wiki/Alsamixer
+> A short guide that how to use alsamixer (https://wiki.ubuntu.com/Audio/Alsamixer).
