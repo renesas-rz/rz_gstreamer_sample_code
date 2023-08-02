@@ -1,6 +1,6 @@
 # Audio Play
 
-Play an Ogg/Vorbis audio file.
+Display 3 overlapping H.264 videos.
 
 ![Figure audio play pipeline](figure.png)
 
@@ -35,10 +35,10 @@ create_video_pipeline (&video_pipeline_1, input_video_file_1, &temp, &shared_dat
 create_video_pipeline (&video_pipeline_2, input_video_file_2, &temp, &shared_data);
 create_video_pipeline (&video_pipeline_3, input_video_file_3, &temp, &shared_data);
 ```
-This code block creates 3 pipelines:
--	 Pipeline video_pipeline_1 resizes video frames of vga1.h264 to half size of main Wayland desktop and displays them at the origin coordinate. In this application, it will always be at (0, 0).
--	 Pipeline video_pipeline_2 resizes video frames of vga2.h264 to half size of the main desktop and displays them at coordinate (width / 4, height / 4).
--	 Pipeline video_pipeline_3 resizes video frames of vga3.h264 to half size of the main desktop and displays them at coordinate (width / 2, height / 2).
+Above lines of code create 3 pipelines:
+-	 Pipeline video_pipeline_1 displays video vga1.h264 at the origin coordinate. In this application, it will always be at (0, 0).
+-	 Pipeline video_pipeline_2 displays video vga2.h264 at coordinate (width / 4, height / 4).
+-	 Pipeline video_pipeline_3 displays video vga3.h264 at coordinate (width / 2, height / 2).
 
 ### Play pipeline
 ```c
@@ -79,8 +79,8 @@ The main event loop will stop only if variable loop_reference reaches to 0. This
 
 This section shows how to cross-compile and deploy GStreamer _overlapped display_ application.
 
-### How to Extract SDK
-Please refer to _hello word_ [How to Extract SDK section](/00_gst-helloworld/README.md#how-to-extract-sdk) for more details.
+### How to Extract Renesas SDK
+Please refer to _hello word_ [How to Extract Renesas SDK section](/00_gst-helloworld/README.md#how-to-extract-renesas-sdk) for more details.
 
 ### How to Build and Run GStreamer Application
 
@@ -93,13 +93,12 @@ $   cd $WORK/17_gst-lappeddisplay
 ```sh
 $   make
 ```
-***Step 3***.	Copy all files inside this directory to /usr/share directory on the target board:
+***Step 3***.	Copy all files inside this directory to _/usr/share_ directory on the target board:
 ```sh
 $   scp -r $WORK/17_gst-lappeddisplay/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
--	 Download input files at:
-[vga1.h264](https://www.renesas.com/jp/ja/img/products/media/auto-j/microcontrollers-microprocessors/rz/rzg/doorphone-videos/vga1.h264), [vga2.h264](https://www.renesas.com/jp/ja/img/products/media/auto-j/microcontrollers-microprocessors/rz/rzg/doorphone-videos/vga2.h264) and [vga3.h264](https://www.renesas.com/jp/ja/img/products/media/auto-j/microcontrollers-microprocessors/rz/rzg/doorphone-videos/vga3.h264). Please place all it in _/home/media/videos_.
+-	 Download the input files [vga1.h264](https://www.renesas.com/jp/ja/img/products/media/auto-j/microcontrollers-microprocessors/rz/rzg/doorphone-videos/vga1.h264), [vga2.h264](https://www.renesas.com/jp/ja/img/products/media/auto-j/microcontrollers-microprocessors/rz/rzg/doorphone-videos/vga2.h264) and [vga3.h264](https://www.renesas.com/jp/ja/img/products/media/auto-j/microcontrollers-microprocessors/rz/rzg/doorphone-videos/vga3.h264). Please place all in _/home/media/videos_.
 ```sh
 $   /usr/share/17_gst-lappeddisplay/gst-lappeddisplay
 ```

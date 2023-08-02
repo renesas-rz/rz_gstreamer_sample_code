@@ -65,9 +65,9 @@ caps = gst_caps_new_simple ("audio/x-raw", "format", G_TYPE_STRING, FORMAT,
 g_object_set (G_OBJECT (convert_capsfilter), "caps", caps, NULL);
 gst_caps_unref (caps);
 ```
-Capabilities (short: caps) describe the type of data which is streamed between two pads. This data includes raw audio format, channel, and sample rate.
+Capabilities (short: caps) describe the type of data which is streamed between two pads. This data includes raw audio format, channel, and sample rate.\
 The _gst_caps_new_simple()_ function creates new caps which holds these values. These caps are then added to caps property of capsfilter elements (g_object_set).
-Note that both caps should be freed with _gst_caps_unref()_ if they are not used anymore.
+>Note that both caps should be freed with _gst_caps_unref()_ if they are not used anymore.
 
 #### Build pipeline
 ```c
@@ -77,7 +77,7 @@ gst_element_link_many (source, converter, convert_capsfilter, encoder, NULL);
 gst_element_link (muxer, sink);
 ```
 The reason for the separation is that the sink pad of oggmux (muxer) cannot be created automatically but is only created on demand. This application uses self-defined function _link_to_multiplexer()_ to link the sink pad to source pad of vorbisenc (encoder). That’s why its sink pad is called Request Pad.
-Note that the order counts, because links must follow the data flow (this is, from source elements to sink elements).
+>Note that the order counts, because links must follow the data flow (this is, from source elements to sink elements).
 
 #### Link request pads
 
@@ -87,7 +87,7 @@ link_to_multiplexer (srcpad, muxer);
 gst_object_unref (srcpad);
 ```
 This block gets the source pad (srcpad) of vorbisenc (encoder), then calls _link_to_multiplexer()_ to link it to (the sink pad of) oggmux (muxer).
-Note that the srcpad should be freed with _gst_object_unref()_ if it is not used anymore.
+>Note that the srcpad should be freed with _gst_object_unref()_ if it is not used anymore.
 
 ```c
 static void link_to_multiplexer (GstPad * tolink_pad, GstElement * mux)
@@ -99,7 +99,7 @@ static void link_to_multiplexer (GstPad * tolink_pad, GstElement * mux)
 }
 ```
 This function uses _gst_element_get_compatible_pad()_ to request a sink pad (pad) which is compatible with the source pad (tolink_pad) of oggmux (mux), then calls _gst_pad_link()_ to link them together.
-Note that the pad should be freed with _gst_object_unref()_ if it is not used anymore.
+>Note that the pad should be freed with _gst_object_unref()_ if it is not used anymore.
 
 ### Play pipeline
 ```c
@@ -112,7 +112,7 @@ Every pipeline has an associated [state](https://gstreamer.freedesktop.org/docum
 signal (SIGINT, signalHandler);
 ```
 This application will stop recording if user presses Ctrl-C. To do so, it uses _signal()_ to bind SIGINT (interrupt from keyboard) to _signalHandler()_.
-To know how this function is implemented, please refer to the following code block:
+To know how this function is implemented, please refer to the following lines of code:
 
 ```c
 void signalHandler (int signal)
@@ -128,8 +128,8 @@ It calls _gst_element_send_event()_ to send EOS (End-of-Stream) signal (gst_even
 
 This section shows how to cross-compile and deploy GStreamer _audio record_ application.
 
-### How to Extract SDK
-Please refer to _hello word_ [How to Extract SDK section](/00_gst-helloworld/README.md#how-to-extract-sdk) for more details.
+### How to Extract Renesas SDK
+Please refer to _hello word_ [How to Extract Renesas SDK section](/00_gst-helloworld/README.md#how-to-extract-renesas-sdk) for more details.
 
 ### How to Build and Run GStreamer Application
 
@@ -142,7 +142,7 @@ $   cd $WORK/05_gst-audiorecord
 ```sh
 $   make
 ```
-***Step 3***.	Copy all files inside this directory to /usr/share directory on the target board:
+***Step 3***.	Copy all files inside this directory to _/usr/share_ directory on the target board:
 ```sh
 $   scp -r $WORK/05_gst-audiorecord/ <username>@<board IP>:/usr/share/
 ```
@@ -160,7 +160,7 @@ $ ./detect_microphone.sh
 Basically, this script analyzes the /proc/asound/cards file to get sound cards.
 >Note: This script can be used in combination with gst-audiorecord application.
 
-For further information on how this script is implemented, please refer to the following code block:
+For further information on how this script is implemented, please refer to the following lines of code:
 ```sh
 ALSA_DEV_FILE="/proc/asound/cards"
 

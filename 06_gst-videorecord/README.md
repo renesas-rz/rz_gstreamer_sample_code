@@ -27,8 +27,7 @@ if (argc != ARG_COUNT) {
 }
 camera = check_camera_type (argv[ARG_DEVICE]);
 ```
-This application accepts a command-line argument which points to camera’s device file (/dev/video9, for example). The type of camera is determined by function check_camera_type. Note: You can find this value by following section [Special Instruction](#special-instruction)
-
+This application accepts a command-line argument which points to camera’s device file (/dev/video9, for example). The type of camera is determined by function check_camera_type. Note: You can find this value by following section [Special Instruction](#special-instruction)\
 User can enter width and height options to set camera’s resolution.
 
 #### Create elements
@@ -105,12 +104,9 @@ g_object_set (G_OBJECT (convert_capsfilter), "caps", convert_caps, NULL);
 gst_caps_unref (camera_caps);
 gst_caps_unref (convert_caps);
 ```
-Capabilities (short: caps) describe the type of data which is streamed between two pads. This data includes raw video format, resolution, and framerate.
-
-In this application, two caps are required, one specifies video resolution captured from v4l2src, the other specifies video format (NV12) generated from converter.
-
+Capabilities (short: caps) describe the type of data which is streamed between two pads. This data includes raw video format, resolution, and framerate.\
+In this application, two caps are required, one specifies video resolution captured from v4l2src, the other specifies video format (NV12) generated from converter.\
 The _gst_caps_new_simple()_ function creates new caps which holds these values. These caps are then added to caps property of capsfilter elements (g_object_set).
-
 >Note that both camera_caps and convert_caps should be freed with _gst_caps_unref()_ if they are not used anymore.
 
 #### Build pipeline
@@ -131,18 +127,19 @@ gst_element_link_many (tee, queue2, waylandsink, NULL);
 
 gst_element_link (muxer, filesink);
 ```
-In case of not displaying video on monitor, this code block adds elements to pipeline and then links them into separated groups as below:
+In case of not displaying video on monitor, these lines of code adds elements to pipeline and then links them into separated groups as below:
 -	 Group #1: source, camera_capsfilter, converter, convert_capsfilter, queue1, encoder and parser.
 -	 Group #2: muxer and filesink.
-The reason for the separation is that the sink pad of qtmux (muxer) cannot be created automatically but is only created on demand. This application uses self-defined function _link_to_multiplexer()_ to link the sink pad to source pad of h264parse (parser). That’s why its sink pad is called Request Pad.
-Note that the order counts, because links must follow the data flow (this is, from source elements to sink elements).
 
-In case of displaying video on monitor, this code block adds elements to pipeline and then links them into separated groups as below:
+The reason for the separation is that the sink pad of qtmux (muxer) cannot be created automatically but is only created on demand. This application uses self-defined function _link_to_multiplexer()_ to link the sink pad to source pad of h264parse (parser). That’s why its sink pad is called Request Pad.
+>Note that the order counts, because links must follow the data flow (this is, from source elements to sink elements).
+
+In case of displaying video on monitor, this lines of code adds elements to pipeline and then links them into separated groups as below:
 -	 Group #1: source, camera_capsfilter, converter, convert_capsfilter and tee.
 -	 Group #2: queue1, encoder and parser.
 -	 Group #3: muxer and filesink.
 -	 Group #4: queue2 and waylandsink.
-Note that the order counts, because links must follow the data flow (this is, from source elements to sink elements).
+>Note that the order counts, because links must follow the data flow (this is, from source elements to sink elements).
 
 ### Link request pads
 ```c
@@ -177,7 +174,7 @@ signal (SIGINT, signalHandler);
 ```
 This application will stop recording if user presses Ctrl-C. To do so, it uses _signal()_ to bind SIGINT (interrupt from keyboard) to _signalHandler()_.
 
-To know how this function is implemented, please refer to the following code block:
+To know how this function is implemented, please refer to the following lines of code:
 
 ```c
 void signalHandler (int signal)
@@ -193,8 +190,8 @@ It calls _gst_element_send_event()_ to send EOS (End-of-Stream) signal (gst_even
 
 This section shows how to cross-compile and deploy GStreamer _video record_ application.
 
-### How to Extract SDK
-Please refer to _hello word_ [How to Extract SDK section](/00_gst-helloworld/README.md#how-to-extract-sdk) for more details.
+### How to Extract Renesas SDK
+Please refer to _hello word_ [How to Extract Renesas SDK section](/00_gst-helloworld/README.md#how-to-extract-renesas-sdk) for more details.
 
 ### How to Build and Run GStreamer Application
 
@@ -206,7 +203,7 @@ $   cd $WORK/06_gst-videorecord
 ```sh
 $   make
 ```
-***Step 3***.	Copy all files inside this directory to /usr/share directory on the target board:
+***Step 3***.	Copy all files inside this directory to _/usr/share_ directory on the target board:
 ```sh
 $   scp -r $WORK/06_gst-videorecord/ <username>@<board IP>:/usr/share/
 ```
@@ -215,7 +212,7 @@ $   scp -r $WORK/06_gst-videorecord/ <username>@<board IP>:/usr/share/
 $   /usr/share/06_gst-videorecord/setup_MIPI_camera.sh <width>x<height>
 ```
 For more detail about _setup_MIPI_camera.sh_ script at [Special instruction](#special-instruction)
->Note: RZ/G2L and RZ/V2L only support 2 resolution for MIPI camera: 1920x1080, 1280x960
+>Note: Only 2 resolutions are supported by MIPI camera (OV5645 camera): 1920x1080, 1280x960
 
 ***Step 5***.	Run the application:
 ```sh
@@ -236,7 +233,7 @@ Basically, this script uses v4l2-ctl tool to read all information of device file
 ```sh
 $   ./gst-videorecord $( ./detect_camera.sh ) <width> <height>
 ```
-For further information on how this script is implemented, please refer to the following code block:
+For further information on how this script is implemented, please refer to the following lines of code:
 ```sh
 #!/bin/bash
 
@@ -270,9 +267,9 @@ exit $PROG_STAT
 ```sh
 ./setup_MIPI_camera.sh <width>x<height>
 ```
-Basically, this script uses media-ctl tool to set up format of camera device. For RZ/G2L platform, 2 acceptable resolutions are 1280x960, 1920x1080.
+Basically, this script uses media-ctl tool to set up format of OV5645 camera. This camera only support 2 resolutions are 1280x960, 1920x1080.
 
-For further information on how this script is implemented, please refer to the following code block:
+For further information on how this script is implemented, please refer to the following lines of code:
 
 ```sh
 #!/bin/bash
@@ -281,10 +278,10 @@ if [[ $1 != "1280x960" ]] && [[ $1 != "1920x1080" ]]; then
 	echo "RZG2L and RZV2L only support 2 camera resolutions"
 	echo -e "1. 1920x1080\n2. 1280x960"
 else
-        media-ctl -d /dev/media0 -r
-        media-ctl -d /dev/media0 -V "'ov5645 0-003c':0 [fmt:UYVY8_2X8/$1 field:none]"
-        media-ctl -d /dev/media0 -l "'rzg2l_csi2 10830400.csi2':1 -> 'CRU output':0 [1]"
-        media-ctl -d /dev/media0 -V "'rzg2l_csi2 10830400.csi2':1 [fmt:UYVY8_2X8/$1 field:none]"
+  media-ctl -d /dev/media0 -r
+  media-ctl -d /dev/media0 -V "'ov5645 0-003c':0 [fmt:UYVY8_2X8/$1 field:none]"
+  media-ctl -d /dev/media0 -l "'rzg2l_csi2 10830400.csi2':1 -> 'CRU output':0 [1]"
+  media-ctl -d /dev/media0 -V "'rzg2l_csi2 10830400.csi2':1 [fmt:UYVY8_2X8/$1 field:none]"
 	echo "/dev/video0 is configured successfully with resolution "$1""
 fi
 ```

@@ -55,8 +55,9 @@ if (!pipeline || !source || !demuxer || !decoder || !capsfilter || !conv || !sin
   return -1;
 }
 ```
+
 If either _gst_element_factory_make()_ or _gst_pipeline_new()_ is unable to create an element, NULL will be returned. Next, the application prints error and exit.
-Note that this statement is used for reference purpose only. If an element cannot be created, the application should use _gst_object_unref()_ to free all created elements.
+>Note that this statement is used for reference purpose only. If an element cannot be created, the application should use _gst_object_unref()_ to free all created elements.
 
 #### Set element’s properties
 ```c
@@ -70,7 +71,7 @@ g_object_set (G_OBJECT (capsfilter), "caps", caps, NULL);
 gst_caps_unref (caps);
 ```
 Target audio format S16LE is added to a new cap (_gst_caps_new_simple_) which is then added to caps property of capsfilter (_g_object_set_). Then, audioconvert will use this element to convert audio format F32LE (of vorbisdec) to S16LE which is supported by sound driver.
-Note that the caps should be freed with _gst_caps_unref()_ if it is not used anymore.
+>Note that the caps should be freed with _gst_caps_unref()_ if it is not used anymore.
 
 #### Build pipeline
 ```c
@@ -79,27 +80,28 @@ gst_bin_add_many (GST_BIN (pipeline), source, demuxer, decoder, conv, capsfilter
 gst_element_link (source, demuxer);
 gst_element_link_many (decoder, conv, capsfilter, sink, NULL);
 ```
-This code block adds all elements to pipeline and then links them into separated groups as below:
+Above lines of code add all elements to pipeline and then links them into separated groups as below:
 -	 Group #1: source and demuxer.
 -	 Group #2: decoder, conv, capsfilter, and sink.
+
 The reason for the separation is that demuxer (oggdemux) contains no source pads at this point, so it cannot link to decoder (vorbisdec) until pad-added signal is emitted (see below).
-Note that the order counts, because links must follow the data flow (this is, from source elements to sink elements).
+>Note that the order counts, because links must follow the data flow (this is, from source elements to sink elements).
 
 #### Signal
 
 ```c
 g_signal_connect (demuxer, "pad-added", G_CALLBACK (on_pad_added), decoder);
 ```
-Signals are a crucial point in GStreamer. They allow you to be notified (by means of a callback) when something interesting has happened. Signals are identified by a name, and each element has its own signals.
+Signals are a crucial point in GStreamer. They allow you to be notified (by means of a callback) when something interesting has happened. Signals are identified by a name, and each element has its own signals.\
 In this application, _g_signal_connect()_ is used to bind pad-added signal of oggdemux (demuxer) to callback function _pad_added_handler()_ and decoder (vorbisdec). GStreamer does nothing with this element, it just forwards it to the callback. 
 
 ### Link oggdemux to vorbisdec
 When oggdemux (demuxer) finally has enough information to start producing data, it will create source pads, and trigger the pad-added signal. At this point our callback will be called:
 ```c
-	static void on_pad_added (GstElement * element, GstPad * pad, gpointer data);
+static void on_pad_added (GstElement * element, GstPad * pad, gpointer data);
 ```
-The element parameter is the GstElement which triggered the signal. In this application, it is oggdemux. The first parameter of a signal handler is always the object that has triggered it.
-The pad parameter is the GstPad that has just been added to the oggdemux. This is usually the pad to which we want to link.
+The element parameter is the GstElement which triggered the signal. In this application, it is oggdemux. The first parameter of a signal handler is always the object that has triggered it.\
+The pad parameter is the GstPad that has just been added to the oggdemux. This is usually the pad to which we want to link.\
 The data parameter is the decoder (vorbisdec) we provided earlier when attaching to the signal.
 ```c
 GstPad *sinkpad;
@@ -110,7 +112,7 @@ gst_pad_link (pad, sinkpad);
 gst_object_unref (sinkpad);
 ```
 The application retrieves the sink pad of vorbisdec using _gst_element_get_static_pad()_, then uses _gst_pad_link()_ to connect it to the source pad of oggdemux.
-Note that sinkpad should be freed with _gst_caps_unref()_ if it is not used anymore.
+>Note that sinkpad should be freed with _gst_caps_unref()_ if it is not used anymore.
 
 ### Play pipeline
 ```c
@@ -150,8 +152,8 @@ if (msg != NULL) {
   gst_message_unref (msg);
 }
 ```
-If the message is GST_MESSAGE_ERROR, the application will print the error message and debugging information.
-If the message is GST_MESSAGE_EOS, the application will inform to users that the audio is finished.
+If the message is GST_MESSAGE_ERROR, the application will print the error message and debugging information.\
+If the message is GST_MESSAGE_EOS, the application will inform to users that the audio is finished.\
 After the message is handled, it should be un-referred by _gst_message_unref()_.
 
 ### Clean up
@@ -162,15 +164,15 @@ gst_element_set_state (pipeline, GST_STATE_NULL);
 gst_object_unref (GST_OBJECT (pipeline));
 ```
 The _gst_element_get_bus()_ function added the bus that must be freed with _gst_object_unref()_.
-Next, setting the pipeline to the NULL state will make sure it frees any resources it has allocated.
+Next, setting the pipeline to the NULL state will make sure it frees any resources it has allocated.\
 Finally, un-referencing the pipeline will destroy it, and all its contents.
 
 ## How to Build and Run GStreamer Application
 
 This section shows how to cross-compile and deploy GStreamer _audio play_ application.
 
-### How to Extract SDK
-Please refer to _hello word_ [How to Extract SDK section](/00_gst-helloworld/README.md#how-to-extract-sdk) for more details.
+### How to Extract Renesas SDK
+Please refer to _hello word_ [How to Extract Renesas SDK section](/00_gst-helloworld/README.md#how-to-extract-renesas-sdk) for more details.
 
 ### How to Build and Run GStreamer Application
 
@@ -183,13 +185,13 @@ $   cd $WORK/01_gst-audioplay
 ```sh
 $   make
 ```
-***Step 3***.	Copy all files inside this directory to /usr/share directory on the target board:
+***Step 3***.	Copy all files inside this directory to _/usr/share_ directory on the target board:
 ```sh
 $   scp -r $WORK/01_gst-audioplay/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
 
-Download the input file at: [Rondo_Alla_Turka.ogg](https://upload.wikimedia.org/wikipedia/commons/b/bd/Rondo_Alla_Turka.ogg) and place it in /home/media/audios.
+Download the input file [Rondo_Alla_Turka.ogg](https://upload.wikimedia.org/wikipedia/commons/b/bd/Rondo_Alla_Turka.ogg) and place it in _/home/media/audios_.
 ```sh
 $   /usr/share/01_gst-audioplay/gst-audioplay /home/media/audios/Rondo_Alla_Turka.ogg
 ```

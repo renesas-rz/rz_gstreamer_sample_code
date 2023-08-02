@@ -45,11 +45,11 @@ then
             echo "hw:$SND_INDEX,$DEVICE_NUMBER"
 
             # Change volume of microphone
-	    amixer cset name='Left Input Mixer L2 Switch' on > /dev/null
-	    amixer cset name='Right Input Mixer R2 Switch' on > /dev/null
-	    amixer cset name='Headphone Playback Volume' 100 > /dev/null
-	    amixer cset name='PCM Volume' 100% > /dev/null
-	    amixer cset name='Input PGA Volume' 25 > /dev/null
+            amixer cset name='Left Input Mixer L2 Switch' on > /dev/null
+            amixer cset name='Right Input Mixer R2 Switch' on > /dev/null
+            amixer cset name='Headphone Playback Volume' 100 > /dev/null
+            amixer cset name='PCM Volume' 100% > /dev/null
+            amixer cset name='Input PGA Volume' 25 > /dev/null
             break
         fi
     done

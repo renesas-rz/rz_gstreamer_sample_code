@@ -23,7 +23,7 @@ if (argc != ARG_COUNT) {
     return -1;
 }
 ```
-This application accepts a command-line argument which points to an MP4 file.
+This application accepts a command-line argument which points to a MP4 file.
 
 #### CustomData structure
 ```c
@@ -98,7 +98,7 @@ gst_caps_unref (caps);
 ```
 The _g_object_set()_ function is used to set some element’s properties, such as:
 -	 The location property of filesrc element which points to an MP4 file.
--	 The position-x and position-y property of  waylandsink element which point to (x,y) coordinate of wayland desktop.
+-	 The position-x and position-y are properties of waylandsink element which point to (x,y) coordinate of wayland desktop.
 -	 The caps property of capsfilter (audio_capsfilter) element which specifies output audio sample rate 44100 Hz.
 
 #### Link elements
@@ -122,8 +122,7 @@ user_data.audio_queue = audio_queue;
 user_data.video_queue = video_queue;
 g_signal_connect (demuxer, "pad-added", G_CALLBACK (on_pad_added), &user_data);
 ```
-Signals are a crucial point in GStreamer. They allow you to be notified (by means of a callback) when something interesting has happened. Signals are identified by a name, and each element has its own signals.
-
+Signals are a crucial point in GStreamer. They allow you to be notified (by means of a callback) when something interesting has happened. Signals are identified by a name, and each element has its own signals.\
 In this application, _g_signal_connect()_ is used to bind pad-added signal of qtdemux (demuxer) to callback function _on_pad_added()_ and user_data pointer. GStreamer does nothing with this pointer, it just forwards it to the callback.
 
 #### Link qtdemux to audio_queue and video_queue
@@ -132,10 +131,8 @@ When qtdemux (demuxer) element finally has enough information to start producing
 ```c
 	static void on_pad_added (GstElement * element, GstPad * pad, gpointer data)
 ```
-The element parameter is the GstElement which triggered the signal. In this application, it is qtdemux. The first parameter of a signal handler is always the object that has triggered it.
-
-The pad element is the GstPad that has just been added to the qtdemux element. This is usually the pad to which we want to link.
-
+The element parameter is the GstElement which triggered the signal. In this application, it is qtdemux. The first parameter of a signal handler is always the object that has triggered it.\
+The pad element is the GstPad that has just been added to the qtdemux element. This is usually the pad to which we want to link.\
 The data element is the user_data pointer which we provided earlier when attaching to the signal.
 ```c
 GstCaps *new_pad_caps = NULL;
@@ -145,10 +142,8 @@ new_pad_caps = gst_pad_query_caps (pad, NULL);
 new_pad_struct = gst_caps_get_structure (new_pad_caps, INDEX);
 new_pad_type = gst_structure_get_name (new_pad_struct);
 ```
-The _gst_pad_query_caps()_ function gets the current [capabilities](https://gstreamer.freedesktop.org/documentation/tutorials/basic/media-formats-and-pad-capabilities.html?gi-language=c) of the pad (that is, the kind of data it currently outputs), wrapped in a GstCaps structure. A pad can offer many capabilities, and hence GstCaps can contain many GstStructure, each representing a different capability. The current caps on a pad will always have a single GstStructure and represent a single media format, or if there are no current caps yet, NULL will be returned.
-
-This application retrieves the first GstStructure with _gst_caps_get_structure()_.
-
+The _gst_pad_query_caps()_ function gets the current [capabilities](https://gstreamer.freedesktop.org/documentation/tutorials/basic/media-formats-and-pad-capabilities.html?gi-language=c) of the pad (that is, the kind of data it currently outputs), wrapped in a GstCaps structure. A pad can offer many capabilities, and hence GstCaps can contain many GstStructure, each representing a different capability. The current caps on a pad will always have a single GstStructure and represent a single media format, or if there are no current caps yet, NULL will be returned.\
+This application retrieves the first GstStructure with _gst_caps_get_structure()_.\
 Finally, _gst_structure_get_name()_ recovers the name of the structure, which contains the main description of the format (video/x-h264 or audio/mpeg, for example).
 ```c
 if (g_str_has_prefix (new_pad_type, "audio")) {
@@ -168,24 +163,22 @@ if (g_str_has_prefix (new_pad_type, "audio")) {
   g_print ("Video pad linked!\n");
 }
 ```
-If the name contains audio, the application retrieves the sink pad of audio_queue (queue) using _gst_element_get_static_pad()_, then uses _gst_pad_link()_ to connect it to the source pad of qtdemux.
-
+If the name contains audio, the application retrieves the sink pad of audio_queue (queue) using _gst_element_get_static_pad()_, then uses _gst_pad_link()_ to connect it to the source pad of qtdemux.\
 The procedure is the same if the name contains video.
-
 >Note that sinkpad should be freed with g_st_caps_unref()_ if it is not used anymore.
 ```c
   if (new_pad_caps != NULL) {
     gst_caps_unref (new_pad_caps);
   }
 ```
-This code block un-refers new_pad_caps if it exists and is not used anymore.
+Above lines of code un-refer new_pad_caps if it exists and is not used anymore.
 
 ## How to Build and Run GStreamer Application
 
 This section shows how to cross-compile and deploy GStreamer _file_ play_ application.
 
-### How to Extract SDK
-Please refer to _hello word_ [How to Extract SDK section](/00_gst-helloworld/README.md#how-to-extract-sdk) for more details.
+### How to Extract Renesas SDK
+Please refer to _hello word_ [How to Extract Renesas SDK section](/00_gst-helloworld/README.md#how-to-extract-sdk) for more details.
 
 ### How to Build and Run GStreamer Application
 
@@ -198,13 +191,13 @@ $   cd $WORK/14_gst-fileplay
 ```sh
 $   make
 ```
-***Step 3***.	Copy all files inside this directory to /usr/share directory on the target board:
+***Step 3***.	Copy all files inside this directory to _/usr/share_ directory on the target board:
 ```sh
 $   scp -r $WORK/14_gst-fileplay/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
 
-Download the input file at: [sintel_trailer-720p](https://download.blender.org/durian/trailer/sintel_trailer-720p.mp4) and place it in _/home/media/videos_
+Download the input file [sintel_trailer-720p](https://download.blender.org/durian/trailer/sintel_trailer-720p.mp4) and place it in _/home/media/videos_
 ```sh
 $   /usr/share/14_gst-fileplay/gst-fileplay /home/media/videos/sintel_trailer-720p.mp4
 ```

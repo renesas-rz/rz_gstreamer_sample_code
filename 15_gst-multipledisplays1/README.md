@@ -23,7 +23,7 @@ if (argc != ARG_COUNT) {
     return -1;
 }
 ```
-This application accepts a command-line argument which points to an H.264 file.
+This application accepts a command-line argument which points to a H.264 file.
 
 #### Create elements
 ```c
@@ -60,7 +60,7 @@ g_object_set (G_OBJECT (sink), "position-x", screens[PRIMARY_SCREEN_INDEX]->x + 
 
 The _g_object_set()_ function is used to set some element’s properties, such as:
 -	 The location property of filesrc element which points to an H.264 video file.
--	 The position-x and position-y property of  waylandsink element which point to (x,y) coordinate of wayland desktop.
+-	 The position-x and position-y are properties of waylandsink element which point to (x,y) coordinate of wayland desktop.
 
 #### Build pipeline
 ```c
@@ -73,13 +73,12 @@ gst_element_link_many (source, parser, decoder, tee, NULL)
 gst_element_link_many (queue_1, video_sink_1, NULL);
 gst_element_link_many (queue_2, video_sink_2, NULL);
 ```
-This code block adds all elements to pipeline and then links them into separated groups as below:
+Above lines of code add all elements to pipeline and then links them into separated groups as below:
 -	 Group #1: source, parser, decoder, and tee.
 -	 Group #2: queue_1, and video_sink_1.
 -	 Group #3: queue_2, and video_sink_2.
 
-The reason for the separation is that tee element contains no initial source pads: they need to be requested manually and then tee adds them. That is why these source pads are called Request Pads. In this way, an input stream can be replicated any number of times.
-
+The reason for the separation is that tee element contains no initial source pads: they need to be requested manually and then tee adds them. That is why these source pads are called Request Pads. In this way, an input stream can be replicated any number of times.\
 Also, to request (or release) pads in the PLAYING or PAUSED states, you need to take additional cautions (pad blocking) which are not described in this manual. It is safe to request (or release) pads in the NULL or READY states, though.
 
 #### Link source pad (request pads of tee)
@@ -127,8 +126,7 @@ if (gst_pad_link (req_pad_2, sink_pad) != GST_PAD_LINK_OK) {
 gst_object_unref (sink_pad);
 ```
 
-To link Request Pads, they need to be obtained by “requesting” them from tee element. Note that it might be able to produce different kinds of Request Pads, so, when requesting them, the desired Pad Template name must be provided. In the documentation for the tee element, we see that it has two [pad templates](https://gstreamer.freedesktop.org/documentation/tutorials/basic/media-formats-and-pad-capabilities.html?gi-language=c) named sink (for its sink pads) and src_%u (for the source pad (Request Pads)). We request two source pads from the tee (for video branches) with _gst_element_get_request_pad()_.
-
+To link Request Pads, they need to be obtained by “requesting” them from tee element. Note that it might be able to produce different kinds of Request Pads, so, when requesting them, the desired Pad Template name must be provided. In the documentation for the tee element, we see that it has two [pad templates](https://gstreamer.freedesktop.org/documentation/tutorials/basic/media-formats-and-pad-capabilities.html?gi-language=c) named sink (for its sink pads) and src_%u (for the source pad (Request Pads)). We request two source pads from the tee (for video branches) with _gst_element_get_request_pad()_.\
 We then obtain the sink pads from queue/vspmfilter elements to which these Request Pads need to be linked using _gst_element_get_static_pad()_. Finally, we link the pads with _gst_pad_link()_.
 
 >Note that the sink pads need to be released with _gst_object_unref()_ if they are not used anymore.
@@ -146,8 +144,8 @@ The _gst_element_release_request_pad()_ function releases the pads from tee, but
 
 This section shows how to cross-compile and deploy GStreamer _multiple displays 1_ application.
 
-### How to Extract SDK
-Please refer to _hello word_ [How to Extract SDK section](/00_gst-helloworld/README.md#how-to-extract-sdk) for more details.
+### How to Extract Renesas SDK
+Please refer to _hello word_ [How to Extract Renesas SDK section](/00_gst-helloworld/README.md#how-to-extract-renesas-sdk) for more details.
 
 ### How to Build and Run GStreamer Application
 
@@ -160,13 +158,13 @@ $   cd $WORK/15_gst-multipledisplays1
 ```sh
 $   make
 ```
-***Step 3***.	Copy all files inside this directory to /usr/share directory on the target board:
+***Step 3***.	Copy all files inside this directory to _/usr/share_ directory on the target board:
 ```sh
 $   scp -r $WORK/15_gst-multipledisplays1/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
 
-Download the input file at: [vga1.h264](https://www.renesas.com/jp/ja/img/products/media/auto-j/microcontrollers-microprocessors/rz/rzg/doorphone-videos/vga1.h264) and place it in _/home/media/videos_.
+Download the input file [vga1.h264](https://www.renesas.com/jp/ja/img/products/media/auto-j/microcontrollers-microprocessors/rz/rzg/doorphone-videos/vga1.h264) and place it in _/home/media/videos_.
 
 ```sh
 $   /usr/share/15_gst-multipledisplays1/gst-multipledisplays1 /home/media/videos/vga1.h264

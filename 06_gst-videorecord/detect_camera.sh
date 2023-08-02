@@ -12,7 +12,7 @@
 #*   This script can be used in combination with gst-videorecord application
 #*   Example: ./gst-videorecord $( ./detect_camera.sh )
 #*
-#* AUTHOR: RVC       START DATE: 02/05/2020
+#* AUTHOR: RVC       START DATE: 07/18/2023
 #*
 #* CHANGES:
 #* 

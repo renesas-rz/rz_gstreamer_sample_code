@@ -58,8 +58,7 @@ This structure contains:
 pthread_t id_ui_thread = 0;
 pthread_t id_autoplay_thread = 0;
 ```
-Variable id_ui_thread contains ID of text-based UI thread which handles inputs from user.
-
+Variable id_ui_thread contains ID of text-based UI thread which handles inputs from user.\
 Variable id_autoplay_thread contains ID of auto-play thread which automatically plays the next audio file if the current one has just finished.
 #### Validate user input
 ```c
@@ -119,7 +118,7 @@ At this point, the pipeline is not running (NULL), so it is not safe to query au
 update_file_list ();
 ```
 
-If the input is a path to a directory, this code block will get the number of files whose extension is .ogg inside the directory.
+If the input is a path to a directory, these lines of code will get the number of files of which extension is .ogg inside the directory.
 ```c
 if (try_to_update_file_path ()) {
   sync_to_play_new_file (&user_data, FALSE);
@@ -181,10 +180,8 @@ play_new_file (UserData * data, gboolean refresh_console_message)
 }
 ```
 
-This function seeks pipeline to the beginning of playback position and changes its state to READY to prepare for the next audio file (get_current_file_path).
-
-Next, it removes audio elements from pipeline, such as: vorbisdec (decoder), audioconvert (converter), capsfilter, and autoaudiosink (sink) from pipeline everytime location property of filesrc (source) changes (g_object_set). After this step, the pipeline only contains upstream elements, such as: filesrc and oggdemux.
-
+This function seeks pipeline to the beginning of playback position and changes its state to READY to prepare for the next audio file (get_current_file_path).\
+Next, it removes audio elements from pipeline, such as: vorbisdec (decoder), audioconvert (converter), capsfilter, and autoaudiosink (sink) from pipeline everytime location property of filesrc (source) changes (g_object_set). After this step, the pipeline only contains upstream elements, such as: filesrc and oggdemux.\
 Finally, the pipeline is set to PLAYING state. This will later call on_pad_added() asynchronously.
 
 Note:
@@ -242,10 +239,8 @@ static gboolean bus_call (GstBus * bus, GstMessage * msg, gpointer data)
 }
 ```
 
-This function will be called when a message is received from bus.
-
-If the message is GST_MESSAGE_ERROR, the application will call g_main_loop_quit() to stop loop. This makes g_main_loop_run() return. Finally, the application cleans up GSteamer objects and exits.
-
+This function will be called when a message is received from bus.\
+If the message is GST_MESSAGE_ERROR, the application will call g_main_loop_quit() to stop loop. This makes g_main_loop_run() return. Finally, the application cleans up GStreamer objects and exits.\
 If the message is GST_MESSAGE_EOS, the application will execute id_autoplay_thread thread (pthread_create) to play the next audio file (request_update_file_path) automatically.
 
 #### Thread handler auto_play_thread_func()
@@ -302,7 +297,7 @@ case QUIT:
   return NULL;
   break;
 ```
-Command QUIT calls g_main_loop_quit() to stop the loop and UI thread from running. This makes g_main_loop_run() return. Finally, the application cleans up GSteamer objects, and exits.
+Command QUIT calls g_main_loop_quit() to stop the loop and UI thread from running. This makes g_main_loop_run() return. Finally, the application cleans up GStreamer objects, and exits.
 ```c
 case PAUSE_PLAY:
   if (GST_STATE_PLAYING == current_state) {
@@ -457,8 +452,7 @@ This function returns variable file_path (see above).
 ```c
 gboolean inject_dir_path_to_player (const gchar * path);
 ```
-If the input is a file, this function will get and store its absolute path in file_path and dir_path variables.
-
+If the input is a file, this function will get and store its absolute path in file_path and dir_path variables.\
 If the input is a directory, this function will get and store its absolute path in dir_path variable.
 ```c
 void update_file_list (void);
@@ -472,10 +466,8 @@ audio immediately if user inputs an Ogg/Vorbis file.
 ```c
 gboolean request_update_file_path (gint32 offset_file);
 ```
-If the offset_file is 0, this function will get an absolute path of the current audio file.
-
-If the offset_file is -1, this function will get an absolute path of the previous audio file.
-
+If the offset_file is 0, this function will get an absolute path of the current audio file.\
+If the offset_file is -1, this function will get an absolute path of the previous audio file.\
 If the offset_file is 1, this function will get an absolute path of the next audio file.
 ```c
 UserCommand get_user_command (void);
@@ -494,8 +486,8 @@ This function prints a name and index of the current audio file.
 
 This section shows how to cross-compile and deploy GStreamer _audio player_ application.
 
-### How to Extract SDK
-Please refer to _hello word_ [How to Extract SDK section](/00_gst-helloworld/README.md#how-to-extract-sdk) for more details.
+### How to Extract Renesas SDK
+Please refer to _hello word_ [How to Extract Renesas SDK section](/00_gst-helloworld/README.md#how-to-extract-renesas-sdk) for more details.
 
 ### How to Build and Run GStreamer Application
 
@@ -508,12 +500,12 @@ $   cd $WORK/11_gst-audioplayer
 ```sh
 $   make
 ```
-***Step 3***.	Copy all files inside this directory to /usr/share directory on the target board:
+***Step 3***.	Copy all files inside this directory to _/usr/share_ directory on the target board:
 ```sh
 $   scp -r $WORK/11_gst-audioplayer/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
->Download the input files at: http://file-examples.com/index.php/sample-audio-files/sample-ogg-download/ and place it in /home/media/audios.
+>Download the input files at: http://file-examples.com/index.php/sample-audio-files/sample-ogg-download/ and place it in _/home/media/audios_.
 ```sh
 $   /usr/share/11_gst-audioplayer/gst-audioplayer /home/media/audios
 ```

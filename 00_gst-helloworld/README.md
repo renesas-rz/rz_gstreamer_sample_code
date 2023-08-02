@@ -35,9 +35,9 @@ The first thing that always needs to do is initializing GStreamer library by cal
 ```c
 pipeline = gst_parse_launch ("audiotestsrc num-buffers=100 ! autoaudiosink", NULL);
 ```
-In GStreamer, you usually build the pipeline by manually assembling the individual elements like the [sample applications](/README.md#application-samples). For this application, the pipeline is easy and you do not need any advanced features so you can take the shortcut: gst_parse_launch(). This function takes a textual representation of a pipeline and turns it into an actual pipeline.
-Element audiotestsrc generates basic audio signals. It supports several different waveforms and allows to set the frequency and volume. The number of buffers to output before sending EOS (End-of-Stream) signal is set to 100. If not, the audio will not stop unless you press Ctrl-C to terminate the program.
-Element autoaudiosink is an audio sink that automatically detects an appropriate audio sink to use. In RZ/G2L platform, the audio sink is alsasink.
+In GStreamer, you usually build the pipeline by manually assembling the individual elements like the [sample applications](/README.md#application-samples). For this application, the pipeline is simple and you do not need any advanced features. Therefore, you can take the shortcut: gst_parse_launch(). This function takes a textual representation of a pipeline and turns it into an actual pipeline.
+The element audiotestsrc generates basic audio signals. It supports several different waveforms and allows to set the frequency and volume. The number of buffers to output before sending EOS (End-of-Stream) signal is set to 100. If not, the audio will not stop unless you press Ctrl-C to terminate the program.\
+The element autoaudiosink is an audio sink that automatically detects an appropriate audio sink to use. In RZ/G2L platform, the audio sink is alsasink.
 
 #### Play pipeline
 ```c
@@ -50,7 +50,7 @@ Every pipeline has an associated [state](https://gstreamer.freedesktop.org/docum
 bus = gst_element_get_bus (pipeline);
 msg = gst_bus_timed_pop_filtered (bus, GST_CLOCK_TIME_NONE, GST_MESSAGE_ERROR | GST_MESSAGE_EOS);
 ```
-gst_element_get_bus() retrieves the pipeline's bus, then gst_bus_timed_pop_filtered() will block until you receive either an error or EOS through that bus.
+gst_element_get_bus() retrieves the pipeline's bus, then gst_bus_timed_pop_filtered() will block until you receive either an error or EOS through that bus.\
 Basically, the bus is an object responsible for delivering the generated messages (GstMessage) from the elements to the application. Note that the actual streaming of media is done in another thread. The application can always be stopped by pressing Ctrl-C in the console.
 #### Clean up
 ```c
@@ -76,16 +76,21 @@ At last, we need to do tidy up correctly after the pipeline ends:
 
 This section shows how to cross-compile and deploy GStreamer _hello world_ application.
 
-### How to Extract SDK
+### How to Extract Renesas SDK
 ***Step 1***.	Install toolchain on a Host PC:
 ```sh
-$   sudo sh ./poky-glibc-x86_64-core-image-weston-aarch64-smarc-rzg2l-toolchain-3.1.5.sh
+$   sudo sh ./poky-glibc-x86_64-core-image-weston-aarch64-smarc-rzg2l-toolchain-3.1.17.sh
 ```
 Note:
 > sudo is optional in case user wants to extract SDK into a restricted directory (such as: /opt/)
 
 If the installation is successful, the following messages will appear:
-
+```sh
+SDK has been successfully set up and is ready to be used.
+Each time you wish to use the SDK in a new shell session, you need to source the environment setup script e.g.
+$ . /opt/poky/3.1.17/environment-setup-aarch64-poky-linux
+$ . /opt/poky/3.1.17/environment-setup-armv7vet2hf-neon-vfpv4-pokymllib32-linux-gnueabi
+```
 ***Step 2***.	Set up cross-compile environment:
 ```sh
 $   source /<Location in which SDK is extracted>/environment-setup-aarch64-poky-linux
@@ -104,7 +109,7 @@ $   cd $WORK/gst-helloworld
 ```sh
 $   make
 ```
-***Step 3***.	Copy all files inside this directory to /usr/share directory on the target board:
+***Step 3***.	Copy all files inside this directory to _/usr/share_ directory on the target board:
 ```sh
 $   scp -r $WORK/gst-helloworld/ <username>@<board IP>:/usr/share/
 ```

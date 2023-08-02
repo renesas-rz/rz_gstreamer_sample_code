@@ -56,16 +56,16 @@ caps = gst_caps_new_simple ("audio/x-raw", "format", G_TYPE_STRING, FORMAT,
 g_object_set (G_OBJECT (capsfilter), "caps", caps, NULL);
 gst_caps_unref (caps);
 ```
-A capsfilter is needed between filesrc and vorbisenc because the vorbisenc element needs to know what raw audio format, sample rate, and channels of the incoming data stream are. In this application, audio file is formatted to F32LE, has sample rate 44.1 kHz and stereo channel.
+A capsfilter is needed between filesrc and vorbisenc because the vorbisenc element needs to know what raw audio format, sample rate, and channels of the incoming data stream are. In this application, audio file is formatted to F32LE, has sample rate 44.1 kHz and stereo audio.\
 The _gst_caps_new_simple()_ function creates a new cap which holds these values. This cap is then added to caps property of capsfilter element (g_object_set).
-Note that the caps should be freed with _gst_caps_unref()_ if it is not used anymore.
+>Note that the caps should be freed with _gst_caps_unref()_ if it is not used anymore.
 
 ## How to Build and Run GStreamer Application
 
 This section shows how to cross-compile and deploy GStreamer _audio encode_ application.
 
-### How to Extract SDK
-Please refer to _hello word_ [How to Extract SDK section](/00_gst-helloworld/README.md#how-to-extract-sdk) for more details.
+### How to Extract Renesas SDK
+Please refer to _hello word_ [How to Extract Renesas SDK section](/00_gst-helloworld/README.md#how-to-extract-renesas-sdk) for more details.
 
 ### How to Build and Run GStreamer Application
 
@@ -87,8 +87,8 @@ $   /usr/share/03_gst-audioencode/gst-audioencode
 ```
 ### Special instruction:
 #### Prepare raw audio file:
-1.	Download file [Rondo_Alla_Turka.ogg](https://upload.wikimedia.org/wikipedia/commons/b/bd/Rondo_Alla_Turka.ogg)(128 Kbps, 44.1 kHz, stereo channel, and Vorbis audio format).
-2. Run this command (on board) to convert this file to raw audio format (F32LE, 44.1 kHz, and stereo channel).
+1.	Download the input file [Rondo_Alla_Turka.ogg](https://upload.wikimedia.org/wikipedia/commons/b/bd/Rondo_Alla_Turka.ogg)(128 Kbps, 44.1 kHz, stereo audio, and Vorbis audio format) and place it in _/home/media/audios_.
+2. Run this command (on board) to convert this file to raw audio format (F32LE, 44.1 kHz, and stereo audio).
 ```sh
 $ gst-launch-1.0 -e filesrc location=/home/media/audios/Rondo_Alla_Turka.ogg ! oggdemux ! vorbisdec ! audio/x-raw, format=F32LE, rate=44100, channels=2 ! filesink location=/home/media/audios/Rondo_Alla_Turka_F32LE_44100_stereo.raw
 ```

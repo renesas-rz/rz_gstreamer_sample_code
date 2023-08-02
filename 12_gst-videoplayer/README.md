@@ -115,9 +115,8 @@ g_signal_connect (demuxer, "no-more-pads", G_CALLBACK (no_more_pads), NULL);
 Basically, this pipeline is just like File Play except it uses _gst_bus_add_watch()_ instead of _gst_bus_timed_pop_filtered()_ to receive messages (such as: error or EOS (End-of-Stream)) from _bus_call()_ asynchronously.
 
 Note:
->The video_parser, video_decoder, waylandsink, vspmfilter and capsfilter element will be created at runtime and removed right before playing new video file to reset their settings. If not, the pipeline cannot play the video.
-
->That’s why they are not created in _main()_.
+>The video_parser, video_decoder, waylandsink, vspmfilter and capsfilter element will be created at runtime and removed right before playing new video file to reset their settings. If not, the pipeline cannot play the video.\
+That’s why they are not created in _main()_.
 
 #### Function on_pad_added()
 ```c
@@ -157,7 +156,7 @@ static void on_pad_added (GstElement * element, GstPad * pad, gpointer data)
 }
 ```
 If the pad is an audio pad, the application will set all audio elements, such as: audio_queue (queue), audio_decoder (faad), audio_resample (audioresample), audio_capsfilter (capsfilter), and audio_sink (alsasink) to PAUSED state, then link, and add them to the pipeline.
-Note that we have to link demuxer (qtdemux) to audio_queue (queue) manually (gst_pad_link) just like [File Play](/14_gst-fileplay/README.md).
+>Note that we have to link demuxer (qtdemux) to audio_queue (queue) manually (gst_pad_link) just like [File Play](/14_gst-fileplay/README.md).
 
 Finally, the application sets the pipeline to PLAYING state.
 ```c
@@ -260,8 +259,8 @@ The FILE_SUFFIX macro defines the file extension that is supported by the pipeli
 
 This section shows how to cross-compile and deploy GStreamer _video player_ application.
 
-### How to Extract SDK
-Please refer to _hello word_ [How to Extract SDK section](/00_gst-helloworld/README.md#how-to-extract-sdk) for more details.
+### How to Extract Renesas SDK
+Please refer to _hello word_ [How to Extract Renesas SDK section](/00_gst-helloworld/README.md#how-to-extract-renesas-sdk) for more details.
 
 ### How to Build and Run GStreamer Application
 
@@ -274,13 +273,13 @@ $   cd $WORK/12_gst-videoplayer
 ```sh
 $   make
 ```
-***Step 3***.	Copy all files inside this directory to /usr/share directory on the target board:
+***Step 3***.	Copy all files inside this directory to _/usr/share_ directory on the target board:
 ```sh
 $   scp -r $WORK/12_gst-videoplayer/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
 
-Download the input files at: [sintel_trailer-720p.mp4](https://download.blender.org/durian/trailer/sintel_trailer-720p.mp4)
+Download the input files [sintel_trailer-720p.mp4](https://download.blender.org/durian/trailer/sintel_trailer-720p.mp4)
  and [renesas-bigideasforeveryspace.mp4](https://www.renesas.com/jp/ja/img/products/media/auto-j/microcontrollers-microprocessors/rz/rzg/qt-videos/renesas-bigideasforeveryspace.mp4) then place all it in _/home/media/videos_.
 ```sh
 $   /usr/share/12_gst-videoplayer/gst-videoplayer /home/media/videos

@@ -13,7 +13,7 @@ GStreamer: 1.16.3 (edited by Renesas).
 + [`main.c`](main.c)
 
 ### Walkthrought
->Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](/01_gst-audioplay/README.md), [Audio Record](/05_gst-audiorecord/README.md) and [video Record](/06_gst-videorecord/README.md).
+>Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](/01_gst-audioplay/README.md), [Audio Record](/05_gst-audiorecord/README.md) and [Video Record](/06_gst-videorecord/README.md).
 
 #### Output location
 ```c
@@ -116,9 +116,9 @@ gst_caps_unref (cam_caps);
 gst_caps_unref (video_conv_caps);
 gst_caps_unref (audio_conv_caps);
 ```
-Capabilities (short: caps) describe the type of data which is streamed between two pads.
+Capabilities (short: caps) describe the type of data which is streamed between two pads.\
 The gst_caps_new_simple() function creates new caps which holds these values. These caps are then added to caps property of capsfilter elements (g_object_set).
-Note that both caps should be freed with gst_caps_unref() if they are not used anymore.
+>Note that both caps should be freed with gst_caps_unref() if they are not used anymore.
 
 #### Build pipeline
 ```c
@@ -167,12 +167,12 @@ This function uses gst_element_get_compatible_pad() to request a sink pad (pad) 
 ```c
 gst_element_set_state (pipeline, GST_STATE_PLAYING);
 ```
-Every pipeline has an associated [state](https://gstreamer.freedesktop.org/documentation/plugin-development/basics/states.html). To start audio recording, the pipeline needs to be set to PLAYING state.
+Every pipeline has an associated [state](https://gstreamer.freedesktop.org/documentation/plugin-development/basics/states.html). To start audio video recording, the pipeline needs to be set to PLAYING state.
 ```c
 signal (SIGINT, signalHandler);
 ```
-This application will stop recording if user presses Ctrl-C. To do so, it uses signal() to bind SIGINT (interrupt from keyboard) to signalHandler().
-To know how this function is implemented, please refer to the following code block:
+This application will stop recording if user presses Ctrl-C. To do so, it uses signal() to bind SIGINT (interrupt from keyboard) to signalHandler().\
+To know how this function is implemented, please refer to the following lines of code:
 ```c
 void signalHandler (int signal)
 {
@@ -185,10 +185,10 @@ It calls gst_element_send_event() to send EOS (End-of-Stream) signal (gst_event_
 
 ## How to Build and Run GStreamer Application
 
-This section shows how to cross-compile and deploy GStreamer _audio play_ application.
+This section shows how to cross-compile and deploy GStreamer _audio video play_ application.
 
-### How to Extract SDK
-Please refer to _hello word_ [How to Extract SDK section](/00_gst-helloworld/README.md#how-to-extract-sdk) for more details.
+### How to Extract Renesas SDK
+Please refer to _hello word_ [How to Extract Renesas SDK section](/00_gst-helloworld/README.md#how-to-extract-renesas-sdk) for more details.
 
 ### How to Build and Run GStreamer Application
 
@@ -201,7 +201,7 @@ $   cd $WORK/07_gst-audiovideorecord
 ```sh
 $   make
 ```
-***Step 3***.	Copy all files inside this directory to /usr/share directory on the target board:
+***Step 3***.	Copy all files inside this directory to _/usr/share_ directory on the target board:
 ```sh
 $   scp -r $WORK/07_gst-audiovideorecord/ <username>@<board IP>:/usr/share/
 ```

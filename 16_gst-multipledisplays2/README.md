@@ -40,7 +40,7 @@ create_video_pipeline (&video_pipeline_1, input_video_file_1,
 create_video_pipeline (&video_pipeline_2, input_video_file_2,
                             screens[SECONDARY_SCREEN_INDEX], &shared_data);
 ```
-This code block creates 2 pipelines:
+Above lines of code create 2 pipelines:
 -	 Pipeline video_pipeline_1 displays the first video in the main Wayland desktop.
 -	 Pipeline video_pipeline_2 displays the second video in the secondary Wayland desktop.
 
@@ -48,8 +48,8 @@ This code block creates 2 pipelines:
 
 This section shows how to cross-compile and deploy GStreamer _multiple displays 2_ application.
 
-### How to Extract SDK
-Please refer to _hello word_ [How to Extract SDK section](/00_gst-helloworld/README.md#how-to-extract-sdk) for more details.
+### How to Extract Renesas SDK
+Please refer to _hello word_ [How to Extract Renesas SDK section](/00_gst-helloworld/README.md#how-to-extract-renesas-sdk) for more details.
 
 ### How to Build and Run GStreamer Application
 
@@ -62,13 +62,13 @@ $   cd $WORK/16_gst-multipledisplays2
 ```sh
 $   make
 ```
-***Step 3***.	Copy all files inside this directory to /usr/share directory on the target board:
+***Step 3***.	Copy all files inside this directory to _/usr/share_ directory on the target board:
 ```sh
 $   scp -r $WORK/16_gst-multipledisplays2/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
 
-Download the input file at: [vga1.h264](https://www.renesas.com/jp/ja/img/products/media/auto-j/microcontrollers-microprocessors/rz/rzg/doorphone-videos/vga1.h264) and [vga2.h264](https://www.renesas.com/jp/ja/img/products/media/auto-j/microcontrollers-microprocessors/rz/rzg/doorphone-videos/vga2.h264) then place it in _/home/media/videos_.
+Download the input file [vga1.h264](https://www.renesas.com/jp/ja/img/products/media/auto-j/microcontrollers-microprocessors/rz/rzg/doorphone-videos/vga1.h264) and [vga2.h264](https://www.renesas.com/jp/ja/img/products/media/auto-j/microcontrollers-microprocessors/rz/rzg/doorphone-videos/vga2.h264) then place it in _/home/media/videos_.
 
 ```sh
 $   /usr/share/16_gst-multipledisplays2/gst-multipledisplays2 /home/media/videos/vga1.h264 /home/media/videos/vga2.h264

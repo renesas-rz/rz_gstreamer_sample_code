@@ -72,8 +72,7 @@ scale_caps =
 g_object_set (G_OBJECT (puser_data->capsfilter), "caps", scale_caps, NULL);
 gst_caps_unref (scale_caps);
 ```
-Capabilities (short: caps) describe the type of data which is streamed between two pads. This data includes raw video format, resolution, and framerate.
-
+Capabilities (short: caps) describe the type of data which is streamed between two pads. This data includes raw video format, resolution, and framerate.\
 The _gst_caps_new_simple()_ function creates a new cap (conv_caps) which holds output’s resolution. This cap is then added to caps property of capsfilter (g_object_set) so that vspfilter will use these values to resize video frames.
 
 >Note that the scale_caps should be freed with _gst_caps_unref()_ if it is not used anymore.
@@ -85,14 +84,14 @@ new_pad_struct = gst_caps_get_structure (new_pad_caps, 0);
 gst_structure_get_int (new_pad_struct, "width", &width);
 gst_structure_get_int (new_pad_struct, "height", &height);
 ```
-This code block gets the capabilities of pad, finds the structure in new_pad_caps then gets resolution of video.
+Above lines of code get the capabilities of pad, finds the structure in new_pad_caps then gets resolution of video.
 
 ## How to Build and Run GStreamer Application
 
 This section shows how to cross-compile and deploy GStreamer _video scale_ application.
 
-### How to Extract SDK
-Please refer to _hello word_ [How to Extract SDK section](/00_gst-helloworld/README.md#how-to-extract-sdk) for more details.
+### How to Extract Renesas SDK
+Please refer to _hello word_ [How to Extract Renesas SDK section](/00_gst-helloworld/README.md#how-to-extract-renesas-sdk) for more details.
 
 ### How to Build and Run GStreamer Application
 
@@ -105,7 +104,7 @@ $   cd $WORK/10_gst-videoscale
 ```sh
 $   make
 ```
-***Step 3***.	Copy all files inside this directory to /usr/share directory on the target board:
+***Step 3***.	Copy all files inside this directory to _/usr/share_ directory on the target board:
 ```sh
 $   scp -r $WORK/10_gst-videoscale/ <username>@<board IP>:/usr/share/
 ```
@@ -116,8 +115,8 @@ $   /usr/share/10_gst-videoscale/gst-videoscale <MP4 file> <width> <height>
 ```
 - In this case, a 640x360 MP4 file will be generated after running this application.
 
-  Download the input file at: [sintel_trailer-720p.mp4](https://download.blender.org/durian/trailer/sintel_trailer-720p.mp4).
+  Download the input file [sintel_trailer-720p.mp4](https://download.blender.org/durian/trailer/sintel_trailer-720p.mp4) and place it in _/home/media/videos_.
   ```sh
   $   /usr/share/10_gst-videoscale/gst-videoscale /home/media/videos/sintel_trailer-720p.mp4 640 360
   ```
-  >Note that it does not have audio and if the output’s resolution is abnormal, this application will not work
+  >Note that output does not have audio. If it's resolution is abnormal, this application will not work.

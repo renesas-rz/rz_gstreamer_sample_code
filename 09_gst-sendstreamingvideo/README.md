@@ -68,10 +68,8 @@ parser_caps = gst_caps_new_simple ("video/x-h264", "stream-format", G_TYPE_STRIN
 g_object_set (G_OBJECT (parser_capsfilter), "caps", parser_caps, NULL);
 gst_caps_unref (parser_caps);
 ```
-Capabilities (short: caps) describe the type of data which is streamed between two pads.
-
-This application creates new cap (gst_caps_new_simple) which specifies data format video/x-h264, AVC, and au alignment. This cap is then added to caps property of capsfilter element (_g_object_set_).
-
+Capabilities (short: caps) describe the type of data which is streamed between two pads.\
+This application creates new cap (gst_caps_new_simple) which specifies data format video/x-h264, AVC, and au alignment. This cap is then added to caps property of capsfilter element (_g_object_set_).\
 Next, capsfilter is linked between h264parse and rtph264pay to negotiate the data format flowing through these 2 elements.
 >Note that the cap should be freed with _gst_caps_unref()_ if it is not used anymore.
 
@@ -79,8 +77,8 @@ Next, capsfilter is linked between h264parse and rtph264pay to negotiate the dat
 
 This section shows how to cross-compile and deploy GStreamer _send streaming video_ application.
 
-### How to Extract SDK
-Please refer to _hello word_ [How to Extract SDK section](/00_gst-helloworld/README.md#how-to-extract-sdk) for more details.
+### How to Extract Renesas SDK
+Please refer to _hello word_ [How to Extract Renesas SDK section](/00_gst-helloworld/README.md#how-to-extract-renesas-sdk) for more details.
 
 ### How to Build and Run GStreamer Application
 
@@ -93,7 +91,7 @@ $   cd $WORK/09_gst-sendstreamingvideo
 ```sh
 $   make
 ```
-***Step 3***.	Copy all files inside this directory to /usr/share directory on the target board:
+***Step 3***.	Copy all files inside this directory to _/usr/share_ directory on the target board:
 ```sh
 $   scp -r $WORK/09_gst-sendstreamingvideo/ <username>@<board IP>:/usr/share/
 ```
@@ -106,8 +104,8 @@ $   ifconfig <Ethernet Interface> <IP address>
 ```sh
 $   /usr/share/09_gst-sendstreamingvideo/gst-sendstreamingvideo <IP address> <path to MP4>
 ```
--  Input an IP address (192.168.5.101, for example) to which you would like to stream video like below:
+-  Input an IP address (192.168.5.237, for example) to which you would like to stream video like below:
    ```sh
-   $   /usr/share/09_gst-sendstreamingvideo/gst-sendstreamingvideo 192.168.5.101 /home/media/videos/sintel_trailer-720p.mp4
+   $   /usr/share/09_gst-sendstreamingvideo/gst-sendstreamingvideo 192.168.5.237 /home/media/videos/sintel_trailer-720p.mp4
    ```
-   - Download the input file at: [sintel_trailer-720p.mp4](https://download.blender.org/durian/trailer/sintel_trailer-720p.mp4)
+   - Download the input file [sintel_trailer-720p.mp4](https://download.blender.org/durian/trailer/sintel_trailer-720p.mp4) and place it in _/home/media/videos_.
