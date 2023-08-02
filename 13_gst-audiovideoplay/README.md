@@ -50,7 +50,7 @@ This structure contains:
 ```c
 shared_data.loop = g_main_loop_new (NULL, FALSE);
 ```
-This function creates a new [GMainLoop](https://developer.gnome.org/glib/stable/glib-The-Main-Event-Loop.html) structure with default (NULL) context (GMainContext).
+This function creates a new [GMainLoop](https://docs.gtk.org/glib/main-loop.html) structure with default (NULL) context (GMainContext).
 
 Basically, the main event loop manages all the available sources of events. To allow multiple independent sets of sources to be handled in different threads, each source is associated with a GMainContext. A GMainContext can only be running in a single thread, but sources can be added to it and removed from it from other threads.
 
@@ -62,9 +62,9 @@ At this point, variable loop_reference is set to 0 to indicate that there are no
 ```c
 g_mutex_init (&shared_data.mutex);
 ```
-This function initializes a [GMutex](https://developer.gnome.org/glib/stable/glib-Threads.html#GMutex) so that it can be used. The structure protects loop_reference from read/write access of GStreamer threads.
+This function initializes a [GMutex](https://docs.gtk.org/glib/union.Mutex.html) so that it can be used. The structure protects loop_reference from read/write access of GStreamer threads.
 
-Please use [g_mutex_clear()](https://developer.gnome.org/glib/stable/glib-Threads.html#g-mutex-clear) if the mutex is no longer needed.
+Please use [g_mutex_clear()](https://docs.gtk.org/glib/method.Mutex.clear.html) if the mutex is no longer needed.
 ```c
 shared_data.video_ext = video_ext;
 ```
@@ -161,7 +161,7 @@ The main event loop will stop only if variable _loop_reference_ reaches to 0. Th
 This section shows how to cross-compile and deploy GStreamer _audio video play_ application.
 
 ### How to Extract SDK
-Please refer to _hello word_ [README.md](/00_gst-helloworld/README.md) for more details.
+Please refer to _hello word_ [How to Extract SDK section](/00_gst-helloworld/README.md#how-to-extract-sdk) for more details.
 
 ### How to Build and Run GStreamer Application
 

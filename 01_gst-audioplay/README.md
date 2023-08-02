@@ -170,7 +170,7 @@ Finally, un-referencing the pipeline will destroy it, and all its contents.
 This section shows how to cross-compile and deploy GStreamer _audio play_ application.
 
 ### How to Extract SDK
-Please refer to _hello word_ [README.md](/00_gst-helloworld/README.md) for more details.
+Please refer to _hello word_ [How to Extract SDK section](/00_gst-helloworld/README.md#how-to-extract-sdk) for more details.
 
 ### How to Build and Run GStreamer Application
 

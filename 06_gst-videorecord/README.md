@@ -13,7 +13,7 @@ GStreamer: 1.16.3 (edited by Renesas).
 + [`main.c`](main.c)
 
 ### Walkthrought
->Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](../01_gst-audioplay/README.md).
+>Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Video Play](/02_gst-videoplay/README.md).
 #### Output location
 ```c
 const gchar *output_file = "RECORD-camera.mp4";
@@ -194,7 +194,7 @@ It calls _gst_element_send_event()_ to send EOS (End-of-Stream) signal (gst_even
 This section shows how to cross-compile and deploy GStreamer _video record_ application.
 
 ### How to Extract SDK
-Please refer to _hello word_ [README.md](/00_gst-helloworld/README.md) for more details.
+Please refer to _hello word_ [How to Extract SDK section](/00_gst-helloworld/README.md#how-to-extract-sdk) for more details.
 
 ### How to Build and Run GStreamer Application
 

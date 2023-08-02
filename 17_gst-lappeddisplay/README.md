@@ -80,7 +80,7 @@ The main event loop will stop only if variable loop_reference reaches to 0. This
 This section shows how to cross-compile and deploy GStreamer _overlapped display_ application.
 
 ### How to Extract SDK
-Please refer to _hello word_ [README.md](/00_gst-helloworld/README.md) for more details.
+Please refer to _hello word_ [How to Extract SDK section](/00_gst-helloworld/README.md#how-to-extract-sdk) for more details.
 
 ### How to Build and Run GStreamer Application
 

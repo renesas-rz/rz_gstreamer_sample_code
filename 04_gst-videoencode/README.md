@@ -13,7 +13,7 @@ GStreamer: 1.16.3 (edited by Renesas).
 + [`main.c`](main.c)
 
 ### Walkthrought
->Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](../01_gst-audioplay/README.md).
+>Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](/01_gst-audioplay/README.md).
 #### Input/output location
 ```c
 #define INPUT_FILE       "/home/media/videos/h264-wvga-30.yuv"
@@ -65,7 +65,7 @@ Note that the caps should be freed with _gst_caps_unref()_ if it is not used any
 This section shows how to cross-compile and deploy GStreamer _video encode_ application.
 
 ### How to Extract SDK
-Please refer to _hello word_ [README.md](/00_gst-helloworld/README.md) for more details.
+Please refer to _hello word_ [How to Extract SDK section](/00_gst-helloworld/README.md#how-to-extract-sdk) for more details.
 
 ### How to Build and Run GStreamer Application
 

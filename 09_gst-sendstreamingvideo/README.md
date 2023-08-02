@@ -80,7 +80,7 @@ Next, capsfilter is linked between h264parse and rtph264pay to negotiate the dat
 This section shows how to cross-compile and deploy GStreamer _send streaming video_ application.
 
 ### How to Extract SDK
-Please refer to _hello word_ [README.md](/00_gst-helloworld/README.md) for more details.
+Please refer to _hello word_ [How to Extract SDK section](/00_gst-helloworld/README.md#how-to-extract-sdk) for more details.
 
 ### How to Build and Run GStreamer Application
 

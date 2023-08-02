@@ -13,7 +13,7 @@ GStreamer: 1.16.3 (edited by Renesas).
 + [`main.c`](main.c)
 
 ### Walkthrought
->Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](../01_gst-audioplay/README.md), [Audio Record](../05_gst-audiorecord/README.md) and [video Record](../06_gst-videorecord/README.md).
+>Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](/01_gst-audioplay/README.md), [Audio Record](/05_gst-audiorecord/README.md) and [video Record](/06_gst-videorecord/README.md).
 
 #### Output location
 ```c
@@ -29,8 +29,8 @@ if (argc != ARG_COUNT) {
 }
 ```
 This application accepts 2 command-line argument:
-- The first points to USB microphone device card (hw:1,0, for example). Note: You can find this value by following section [Special Instruction](/05_gst-audiorecord/README.md).
-- The second points to USB camera/MIPI camera device file (/dev/video9, for example). Note: You can find this value by following section [Special Instruction](/06_gst-videorecord/README.md).
+- The first points to USB microphone device card (hw:1,0, for example). Note: You can find this value by following section [Special Instruction](/05_gst-audiorecord/README.md#special-instruction).
+- The second points to USB camera/MIPI camera device file (/dev/video9, for example). Note: You can find this value by following section [Special Instruction](/06_gst-videorecord/README.md#special-instruction).
 
 #### Create elements
 ```c
@@ -87,14 +87,14 @@ g_object_set (G_OBJECT (audio_encoder), "bitrate", BITRATE_ALSASRC, NULL);
 g_object_set (G_OBJECT (sink), "location", output_file, NULL);
 ```
 The g_object_set() function is used to set some element’s properties, such as:
--	 The device property of v4l2src element which points to camera’s device file. Users will pass the device file as a command line argument to this application. Please refer to section [Video Record Special Instruction](/06_gst-videorecord/README.md) to find the value.
+-	 The device property of v4l2src element which points to camera’s device file. Users will pass the device file as a command line argument to this application. Please refer to section [Video Record Special Instruction](/06_gst-videorecord/README.md#special-instruction) to find the value.
 -	 The location property of filesink element which points to MKV output file.
 -	 The dmabuf-use property of vspmfilter element which is set to true. This disallows dmabuf to be output buffer. If it is not set, the output file will be broken.
 -	 The target-bitrate property of omxh264enc element is used to specify encoding bit rate. The higher bitrate, the better quality.
 -	 The control-rate property of omxh264enc element is used to specify birate control method which is variable bitrate method in this case.
 -	 The interval_intraframes property of omxh264enc element is used to specify interval of coding intra frames.
 -	 The periodicty-idr property of omxh264enc is used to specify periodicity of IDR frames.
--	 The device property of alsasrc element which points to a microphone device. Users will pass the device card as a command line argument to this application. Please refer to section [Audio record Special Instruction](/05_gst-audiorecord/README.md) to find the value.
+-	 The device property of alsasrc element which points to a microphone device. Users will pass the device card as a command line argument to this application. Please refer to section [Audio record Special Instruction](/05_gst-audiorecord/README.md#special-instruction) to find the value.
 -  The bitrate property of vorbisenc element is used to specify encoding bit rate. The higher bitrate, the better quality.
 ```c
 /* MIPI camera*/
@@ -188,7 +188,7 @@ It calls gst_element_send_event() to send EOS (End-of-Stream) signal (gst_event_
 This section shows how to cross-compile and deploy GStreamer _audio play_ application.
 
 ### How to Extract SDK
-Please refer to _hello word_ [README.md](/00_gst-helloworld/README.md) for more details.
+Please refer to _hello word_ [How to Extract SDK section](/00_gst-helloworld/README.md#how-to-extract-sdk) for more details.
 
 ### How to Build and Run GStreamer Application
 
@@ -209,7 +209,7 @@ $   scp -r $WORK/07_gst-audiovideorecord/ <username>@<board IP>:/usr/share/
 ```sh
 $   /usr/share/07_gst-audiovideorecord/gst-audiovideorecord $(/usr/share/05_gst-audiorecord/detect_microphone.sh) $(/usr/share/06_gst-videorecord/detect_camera.sh) <width> <height>
 ```
->For more details about _detect_microphone.sh_ and detect_camera.sh script. Please refer to [Audio record special instruction](/05_gst-audiorecord/README.md) and [Video record special instruction](/06_gst-videorecord/README.md)
+>For more details about _detect_microphone.sh_ and detect_camera.sh script. Please refer to [Audio record special instruction](/05_gst-audiorecord/README.md#special-instruction) and [Video record special instruction](/06_gst-videorecord/README.md#special-instruction)
 ### Special instruction:
 #### Recommended USB cameras:
 Option 1: Logitech USB HD Webcam C270 (model: V-U0018).
