@@ -2,7 +2,7 @@
 
 [GStreamer](https://gstreamer.freedesktop.org/) is a framework designed to handle multimedia flows. Media data travels from source elements (the producers) to sink elements (the consumers), passing through a series of intermediate elements performing all kinds of tasks. The set of all interconnected elements is called a pipeline.
 
-Let's get started with this application. Instead of printing “hello world”, we are going to create a sound and send it to the audio output jack. You need to connect [PCM5102A DAC Sound Card](https://www.ebay.com/p/819603476) to the board, then plug a speaker or headphone in it to listen.
+Let's get started with this application. Instead of printing “hello world”, we are going to create a sound and send it to the audio output jack. You need to plug a speaker or headphone to 3.5 port to listen.
 
 ![Figure Hello World pipeline](figure.png)
 
