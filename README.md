@@ -2,19 +2,17 @@
 
 This is a GStreamer Sample Code that provided for the RZ/G2L Group and RZ/V2L Group of 64bit Arm-based MPUs from Renesas Electronics.
 
-## Supported VLP (Verified Linux Package)
+## Evaluation Environment
 
-Currently the following VLP versions are supported:
+Renesas evaluates all source codes here in the environment as below:
 
-* [RZ/G Verified Linux Package [5.10-CIP]](https://www.renesas.com/us/en/products/microcontrollers-microprocessors/rz-mpus/rzg-linux-platform/rzg-marketplace/verified-linux-package/rzg-verified-linux-package)
-* [RZ/V Verified Linux Package [5.10-CIP]](https://www.renesas.com/us/en/software-tool/rzv-verified-linux-package)
+1. Verified Linux Package (VLP)
+    * [RZ/G Verified Linux Package [5.10-CIP]](https://www.renesas.com/us/en/products/microcontrollers-microprocessors/rz-mpus/rzg-linux-platform/rzg-marketplace/verified-linux-package/rzg-verified-linux-package) Version 3.0.3
+    * [RZ/V Verified Linux Package [5.10-CIP]](https://www.renesas.com/us/en/software-tool/rzv-verified-linux-package) Version 3.0.4
 
-## Supported Boards and MPUs
-
-Currently the following boards and MPUs are supported:
-
-* Board: RZG2L SMARC Evaluation Kit / MPU: R9A07G044L (RZ/G2L)
-* Board: RZV2L SMARC Evaluation Kit / MPU: R9A07G054L (RZ/V2L)
+2. Boards and MPUs
+    * Board: RZG2L SMARC Evaluation Kit / MPU: R9A07G044L (RZ/G2L)
+    * Board: RZV2L SMARC Evaluation Kit / MPU: R9A07G054L (RZ/V2L)
 
 ## LICENSE
 
@@ -22,21 +20,13 @@ Each [Application Samples](#application-samples) (including [Hello World](#hello
 
 Each LICENSE is placed within each [Application Samples](#application-samples) (including [Hello World](#hello-world)) directory.
 
-## Disclaimer
-
-All sample code here is only provided and tested for specific boards and MPUs with specific VLP versions (here, called platform).
-
-Renesas does not guarantee all sample code provided will run on different platforms.
-
 # GStreamer Applications
 
 [GStreamer](https://gstreamer.freedesktop.org/) is a library for constructing graphs of media-handling components. The applications it supports range from simple Ogg/Vorbis playback, audio/video streaming to complex audio (mixing) and video (non-linear editing) processing.
 
 GStreamer is released under the LGPL. This section explains how to create and run the GStreamer applications on Wayland Window System. The applications can take advantage of codec, filter technology, and hardware processing of RZ/G2L & RZ/V2L SoC by using Renesas GStreamer elements: `omxh264dec`, `omxh264enc`, `vspmfilter`, `waylandsink`.
 
-## Hello World
-
-Before you proceed to [Application Samples](#application-samples) Section, please make sure to check [Hello World](00_gst-helloworld) README.
+Before you proceed to [Application Samples](#application-samples) section, please make sure to check [Hello World](00_gst-helloworld) README.
 
 ## Application Samples
 
