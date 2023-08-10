@@ -11,8 +11,9 @@ GStreamer: 1.16.3 (edited by Renesas).
 ## Application Content
 
 + [`main.c`](main.c)
++ [`Makefile`](Makefile)
 
-### Walkthrought
+### Walkthrough: [`main.c`](main.c)
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Video Play](/02_gst-videoplay/README.md) and [Audio Play](/01_gst-audioplay/README.md).
 
 #### Command-line argument
@@ -41,14 +42,14 @@ typedef struct _CustomData
 } CustomData;
 ```
 This structure contains:
--	 Variable pipeline (GstElement): A GStreamer pipeline which contains connected video elements.
--	 Variable audio_queue and video_queue (GstElement): A GStreamer element to queue data until one of the limits specified by the max-size-buffers, max-size-bytes, and/or max-size-time properties has been reached. Any attempt to push more buffers into the queue will block the pushing thread until more space becomes available.
--	 Variable video_parser (GstElement): A GStreamer element to parse H.264 stream to format which video_decoder can recognize and process.
--	 Variable video_decoder (GstElement): A GStreamer element to decompress H.264 stream to raw NV12-formatted video.
--	 Variable filter (GstElement): A GStreamer element to handle video scaling.
--	 Variable video_capfilter (GstElement): A GStreamer element to contain screen resolution.
--	 Variable video_sink (GstElement): A GStreamer element to create its own window and renders the decoded video frames to that.
--	 Variable main_screen (screen_t): A pointer to screen_t structure to contain monitor information, such as: (x, y), width, and height.
+-	 Variable `pipeline (GstElement)`: A GStreamer pipeline which contains connected video elements.
+-	 Variable `audio_queue` and `video_queue` (GstElement): A GStreamer element to queue data until one of the limits specified by the max-size-buffers, max-size-bytes, and/or max-size-time properties has been reached. Any attempt to push more buffers into the queue will block the pushing thread until more space becomes available.
+-	 Variable `video_parser (GstElement)`: A GStreamer element to parse H.264 stream to format which video_decoder can recognize and process.
+-	 Variable `video_decoder (GstElement)`: A GStreamer element to decompress H.264 stream to raw NV12-formatted video.
+-	 Variable `filter (GstElement)`: A GStreamer element to handle video scaling.
+-	 Variable `video_capfilter (GstElement)`: A GStreamer element to contain screen resolution.
+-	 Variable `video_sink (GstElement)`: A GStreamer element to create its own window and renders the decoded video frames to that.
+-	 Variable `main_screen (screen_t)`: A pointer to screen_t structure to contain monitor information, such as: (x, y), width, and height.
 
 #### Create elements
 ```c
@@ -76,16 +77,16 @@ static void on_pad_added (GstElement * element, GstPad * pad, gpointer data) {
 }
 ```
 To play an MP4 video, the following elements are needed:
--	 Element filesrc reads data from a local file.
--	 Element qtdemux de-multiplexes an MP4 file into audio and video stream.
--	 Element queue (audio_queue and video_queue) queues data until one of the limits specified by the max-size-buffers, max-size-bytes, and/or max-size-time properties has been reached. Any attempt to push more buffers into the queue will block the pushing thread until more space becomes available.
--	 Element h264parse parses H.264 stream to format which omxh264dec can recognize and process.
--	 Element omxh264dec decompresses H.264 stream to raw NV12-formatted video.
--	 Element waylandsink creates its own window and renders the decoded video frames to that.
--	 Element faad decompresses MPEG-2/4 AAC stream to raw S16LE-formatted audio.
--	 Element audioresample resamples raw audio buffers to different sample rates using a configurable windowing function to enhance quality.
--	 Element capsfilter (audio_capfilter) contains target sample rate 44100 Hz so that audioresample can resample audio based on this value.
--	 Element alsasink renders audio samples using the ALSA audio API.
+-	 Element `filesrc` reads data from a local file.
+-	 Element `qtdemux` de-multiplexes an MP4 file into audio and video stream.
+-	 Element queue (`audio_queue` and `video_queue`) queues data until one of the limits specified by the max-size-buffers, max-size-bytes, and/or max-size-time properties has been reached. Any attempt to push more buffers into the queue will block the pushing thread until more space becomes available.
+-	 Element `h264parse` parses H.264 stream to format which `omxh264dec` can recognize and process.
+-	 Element `omxh264dec` decompresses H.264 stream to raw NV12-formatted video.
+-	 Element `waylandsink` creates its own window and renders the decoded video frames to that.
+-	 Element `faad` decompresses MPEG-2/4 AAC stream to raw S16LE-formatted audio.
+-	 Element `audioresample` resamples raw audio buffers to different sample rates using a configurable windowing function to enhance quality.
+-	 Element `capsfilter` (audio_capfilter) contains target sample rate 44100 Hz so that audioresample can resample audio based on this value.
+-	 Element `alsasink` renders audio samples using the ALSA audio API.
 
 #### Set element’s properties
 ```c
@@ -96,10 +97,10 @@ caps = gst_caps_new_simple ("audio/x-raw", "rate", G_TYPE_INT, AUDIO_SAMPLE_RATE
 g_object_set (G_OBJECT (audio_capsfilter), "caps", caps, NULL);
 gst_caps_unref (caps);
 ```
-The _g_object_set()_ function is used to set some element’s properties, such as:
--	 The location property of filesrc element which points to an MP4 file.
--	 The position-x and position-y are properties of waylandsink element which point to (x,y) coordinate of wayland desktop.
--	 The caps property of capsfilter (audio_capsfilter) element which specifies output audio sample rate 44100 Hz.
+The `g_object_set()` function is used to set some element’s properties, such as:
+-	 The `location` property of filesrc element which points to an MP4 file.
+-	 The `position-x` and `position-y` are properties of waylandsink element which point to (x,y) coordinate of wayland desktop.
+-	 The `caps` property of capsfilter `(audio_capsfilter)` element which specifies output audio sample rate 44100 Hz.
 
 #### Link elements
 ```c
@@ -111,7 +112,7 @@ gst_element_link_many (audio_queue, audio_decoder, audio_resample,
 gst_element_link_many (user_data->video_queue, user_data->video_parser,
               user_data->video_decoder, user_data->video_sink, NULL);
 ```
-Because demuxer (qtdemux) contains no source pads at this point, this element cannot link to either video_queue (queue) or audio_queue (queue) until its pad-added signal is emitted (see below).
+Because `demuxer` (qtdemux) contains no source pads at this point, this element cannot link to either `video_queue` (queue) or `audio_queue` (queue) until its pad-added signal is emitted (see below).
 
 >Note that the order counts, because links must follow the data flow (this is, from source elements to sink elements).
 
@@ -123,17 +124,17 @@ user_data.video_queue = video_queue;
 g_signal_connect (demuxer, "pad-added", G_CALLBACK (on_pad_added), &user_data);
 ```
 Signals are a crucial point in GStreamer. They allow you to be notified (by means of a callback) when something interesting has happened. Signals are identified by a name, and each element has its own signals.\
-In this application, _g_signal_connect()_ is used to bind pad-added signal of qtdemux (demuxer) to callback function _on_pad_added()_ and user_data pointer. GStreamer does nothing with this pointer, it just forwards it to the callback.
+In this application, `g_signal_connect()` is used to bind pad-added signal of qtdemux (demuxer) to callback function `on_pad_added()` and user_data pointer. GStreamer does nothing with this pointer, it just forwards it to the callback.
 
 #### Link qtdemux to audio_queue and video_queue
 
-When qtdemux (demuxer) element finally has enough information to start producing data, it will create source pads, and trigger the pad-added signal. At this point our callback will be called:
+When `qtdemux` (demuxer) element finally has enough information to start producing data, it will create source pads, and trigger the pad-added signal. At this point our callback will be called:
 ```c
 	static void on_pad_added (GstElement * element, GstPad * pad, gpointer data)
 ```
-The element parameter is the GstElement which triggered the signal. In this application, it is qtdemux. The first parameter of a signal handler is always the object that has triggered it.\
-The pad element is the GstPad that has just been added to the qtdemux element. This is usually the pad to which we want to link.\
-The data element is the user_data pointer which we provided earlier when attaching to the signal.
+The `element` parameter is the GstElement which triggered the signal. In this application, it is qtdemux. The first parameter of a signal handler is always the object that has triggered it.\
+The `pad` element is the GstPad that has just been added to the qtdemux element. This is usually the pad to which we want to link.\
+The `data` element is the user_data pointer which we provided earlier when attaching to the signal.
 ```c
 GstCaps *new_pad_caps = NULL;
 GstStructure *new_pad_struct = NULL;
@@ -142,9 +143,9 @@ new_pad_caps = gst_pad_query_caps (pad, NULL);
 new_pad_struct = gst_caps_get_structure (new_pad_caps, INDEX);
 new_pad_type = gst_structure_get_name (new_pad_struct);
 ```
-The _gst_pad_query_caps()_ function gets the current [capabilities](https://gstreamer.freedesktop.org/documentation/tutorials/basic/media-formats-and-pad-capabilities.html?gi-language=c) of the pad (that is, the kind of data it currently outputs), wrapped in a GstCaps structure. A pad can offer many capabilities, and hence GstCaps can contain many GstStructure, each representing a different capability. The current caps on a pad will always have a single GstStructure and represent a single media format, or if there are no current caps yet, NULL will be returned.\
-This application retrieves the first GstStructure with _gst_caps_get_structure()_.\
-Finally, _gst_structure_get_name()_ recovers the name of the structure, which contains the main description of the format (video/x-h264 or audio/mpeg, for example).
+The `gst_pad_query_caps()` function gets the current [capabilities](https://gstreamer.freedesktop.org/documentation/tutorials/basic/media-formats-and-pad-capabilities.html?gi-language=c) of the pad (that is, the kind of data it currently outputs), wrapped in a `GstCaps` structure. A pad can offer many capabilities, and hence `GstCaps` can contain many `GstStructure`, each representing a different capability. The current caps on a pad will always have a single GstStructure and represent a single media format, or if there are no current caps yet, NULL will be returned.\
+This application retrieves the first GstStructure with `gst_caps_get_structure()`.\
+Finally, `gst_structure_get_name()` recovers the name of the structure, which contains the main description of the format (video/x-h264 or audio/mpeg, for example).
 ```c
 if (g_str_has_prefix (new_pad_type, "audio")) {
 
@@ -163,15 +164,15 @@ if (g_str_has_prefix (new_pad_type, "audio")) {
   g_print ("Video pad linked!\n");
 }
 ```
-If the name contains audio, the application retrieves the sink pad of audio_queue (queue) using _gst_element_get_static_pad()_, then uses _gst_pad_link()_ to connect it to the source pad of qtdemux.\
+If the name contains audio, the application retrieves the sink pad of `audio_queue` (queue) using `gst_element_get_static_pad()`, then uses `gst_pad_link()` to connect it to the source pad of qtdemux.\
 The procedure is the same if the name contains video.
->Note that sinkpad should be freed with g_st_caps_unref()_ if it is not used anymore.
+>Note that `sinkpad` should be freed with `g_st_caps_unref()` if it is not used anymore.
 ```c
   if (new_pad_caps != NULL) {
     gst_caps_unref (new_pad_caps);
   }
 ```
-Above lines of code un-refer new_pad_caps if it exists and is not used anymore.
+Above lines of code un-refer `new_pad_caps` if it exists and is not used anymore.
 
 ## How to Build and Run GStreamer Application
 

@@ -11,8 +11,9 @@ GStreamer: 1.16.3 (edited by Renesas).
 ## Application Content
 
 + [`main.c`](main.c)
++ [`Makefile`](Makefile)
 
-### Walkthrought
+### Walkthrough: [`main.c`](main.c)
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](/01_gst-audioplay/README.md), [Audio Video play](/13_gst-audiovideoplay/README.md) and [Multiple Display 1](/15_gst-multipledisplays1/README.md)
 #### Input location
 ```c
@@ -27,7 +28,7 @@ This application accepts one command-line argument which points to an Ogg/Vorbis
 guint create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
                                    struct screen_t * screen, CustomData * data)
 ```
-Basically, the pipeline is just like [Video Play](/02_gst-videoplay/README.md) except it uses gst_bus_add_watch() instead of gst_bus_timed_pop_filtered() to receive messages (such as: error or EOS (End-of-Stream)) from bus_call() asynchronously.
+Basically, the pipeline is just like [Video Play](/02_gst-videoplay/README.md) except it uses `gst_bus_add_watch()` instead of `gst_bus_timed_pop_filtered()` to receive messages (such as: error or EOS (End-of-Stream)) from `bus_call()` asynchronously.
 
 #### Create elements
 ```c
@@ -36,9 +37,9 @@ create_video_pipeline (&video_pipeline_2, input_video_file_2, &temp, &shared_dat
 create_video_pipeline (&video_pipeline_3, input_video_file_3, &temp, &shared_data);
 ```
 Above lines of code create 3 pipelines:
--	 Pipeline video_pipeline_1 displays video vga1.h264 at the origin coordinate. In this application, it will always be at (0, 0).
--	 Pipeline video_pipeline_2 displays video vga2.h264 at coordinate (width / 4, height / 4).
--	 Pipeline video_pipeline_3 displays video vga3.h264 at coordinate (width / 2, height / 2).
+-	 Pipeline `video_pipeline_1` displays video vga1.h264 at the origin coordinate. In this application, it will always be at (0, 0).
+-	 Pipeline `video_pipeline_2` displays video vga2.h264 at coordinate (width / 4, height / 4).
+-	 Pipeline `video_pipeline_3` displays video vga3.h264 at coordinate (width / 2, height / 2).
 
 ### Play pipeline
 ```c
@@ -59,7 +60,7 @@ void play_pipeline (GstElement * pipeline, CustomData * p_shared_data)
   }
 }
 ```
-Basically, this function sets the state of pipeline to PLAYING. If successful, it will increase loop_reference to indicate that there is 1 more running pipeline. Note that this variable must be 3 for this application to play 3 H.264 videos.
+Basically, this function sets the state of pipeline to PLAYING. If successful, it will increase `loop_reference` to indicate that there is 1 more running pipeline. Note that this variable must be 3 for this application to play 3 H.264 videos.
 
 ### Stop pipelines
 ```c
@@ -73,7 +74,7 @@ static void try_to_quit_loop (CustomData * p_shared_data)
   g_mutex_unlock (&p_shared_data->mutex);
 }
 ```
-The main event loop will stop only if variable loop_reference reaches to 0. This means the application will exit when all 3 pipelines stopped. Also note that mutex is used to prevent GStreamer threads from reading incorrect value of loop_reference.
+The main event loop will stop only if variable `loop_reference` reaches to 0. This means the application will exit when all 3 pipelines stopped. Also note that mutex is used to prevent GStreamer threads from reading incorrect value of `loop_reference`.
 
 ## How to Build and Run GStreamer Application
 

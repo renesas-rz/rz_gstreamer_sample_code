@@ -11,8 +11,9 @@ GStreamer: 1.16.3 (edited by Renesas).
 ## Application Content
 
 + [`main.c`](main.c)
++ [`Makefile`](Makefile)
 
-### Walkthrought
+### Walkthrough: [`main.c`](main.c)
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](/01_gst-audioplay/README.md) and [Audio Video play](/13_gst-audiovideoplay/README.md).
 
 #### Command-line argument
@@ -30,7 +31,7 @@ This application accepts 2 command-line arguments which points to 2 H.264 files.
 guint create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
                                    struct screen_t * screen, CustomData * data)
 ```
-Basically, the pipeline is just like [Video Play](/02_gst-videoplay/README.md) except it uses _gst_bus_add_watch()_ instead of _gst_bus_timed_pop_filtered()_ to receive messages (such as: error or EOS (End-of-Stream)) from _bus_call()_ asynchronously
+Basically, the pipeline is just like [Video Play](/02_gst-videoplay/README.md) except it uses `gst_bus_add_watch()` instead of `gst_bus_timed_pop_filtered()` to receive messages (such as: error or EOS (End-of-Stream)) from `bus_call()` asynchronously
 
 #### Create elements
 ```c
@@ -41,8 +42,8 @@ create_video_pipeline (&video_pipeline_2, input_video_file_2,
                             screens[SECONDARY_SCREEN_INDEX], &shared_data);
 ```
 Above lines of code create 2 pipelines:
--	 Pipeline video_pipeline_1 displays the first video in the main Wayland desktop.
--	 Pipeline video_pipeline_2 displays the second video in the secondary Wayland desktop.
+-	 Pipeline `video_pipeline_1` displays the first video in the main Wayland desktop.
+-	 Pipeline `video_pipeline_2` displays the second video in the secondary Wayland desktop.
 
 ## How to Build and Run GStreamer Application
 

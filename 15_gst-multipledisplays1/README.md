@@ -11,8 +11,9 @@ GStreamer: 1.16.3 (edited by Renesas).
 ## Application Content
 
 + [`main.c`](main.c)
++ [`Makefile`](Makefile)
 
-### Walkthrought
+### Walkthrough: [`main.c`](main.c)
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Video Play](/02_gst-videoplay/README.md).
 
 #### Command-line argument
@@ -42,12 +43,12 @@ if (strcasecmp ("h264", ext) == 0) {
 }
 ```
 To play an H.264 video on 2 displays, the following elements are used:
--	 Element filesrc reads data from a local file.
--	 Element h264parse parses H.264 stream to format which omxh264dec can recognize and process.
--	 Element omxh264dec decompresses H.264 stream to raw NV12-formatted video.
--	 Element tee splits (video) data to multiple pads.
--	 Element queue (queue_1 and queue_2) queues data until one of the limits specified by the max-size-buffers, max-size-bytes, and/or max-size-time properties has been reached. Any attempt to push more buffers into the queue will block the pushing thread until more space becomes available.
--	 Element waylandsink (video_sink_1 and video_sink_2) creates its own window and renders the decoded video frames to that.
+-	 Element `filesrc` reads data from a local file.
+-	 Element `h264parse` parses H.264 stream to format which omxh264dec can recognize and process.
+-	 Element `omxh264dec` decompresses H.264 stream to raw NV12-formatted video.
+-	 Element `tee` splits (video) data to multiple pads.
+-	 Element `queue (queue_1 and queue_2)` queues data until one of the limits specified by the max-size-buffers, max-size-bytes, and/or max-size-time properties has been reached. Any attempt to push more buffers into the queue will block the pushing thread until more space becomes available.
+-	 Element `waylandsink (video_sink_1 and video_sink_2)` creates its own window and renders the decoded video frames to that.
 
 #### Set element’s properties
 ```c
@@ -58,9 +59,9 @@ g_object_set (G_OBJECT (sink), "position-x", screens[PRIMARY_SCREEN_INDEX]->x + 
        "position-y", screens[SECONDARY_SCREEN_INDEX]->y + SECONDARY_POS_OFFSET, NULL);
 ```
 
-The _g_object_set()_ function is used to set some element’s properties, such as:
--	 The location property of filesrc element which points to an H.264 video file.
--	 The position-x and position-y are properties of waylandsink element which point to (x,y) coordinate of wayland desktop.
+The `g_object_set()` function is used to set some element’s properties, such as:
+-	 The `location` property of filesrc element which points to an H.264 video file.
+-	 The `position-x` and `position-y` are properties of waylandsink element which point to (x,y) coordinate of wayland desktop.
 
 #### Build pipeline
 ```c
@@ -74,11 +75,11 @@ gst_element_link_many (queue_1, video_sink_1, NULL);
 gst_element_link_many (queue_2, video_sink_2, NULL);
 ```
 Above lines of code add all elements to pipeline and then links them into separated groups as below:
--	 Group #1: source, parser, decoder, and tee.
--	 Group #2: queue_1, and video_sink_1.
--	 Group #3: queue_2, and video_sink_2.
+-	 Group #1: `source, parser, decoder, and tee`.
+-	 Group #2: `queue_1, and video_sink_1`.
+-	 Group #3: `queue_2, and video_sink_2`.
 
-The reason for the separation is that tee element contains no initial source pads: they need to be requested manually and then tee adds them. That is why these source pads are called Request Pads. In this way, an input stream can be replicated any number of times.\
+The reason for the separation is that `tee` element contains no initial source pads: they need to be requested manually and then `tee` adds them. That is why these source pads are called Request Pads. In this way, an input stream can be replicated any number of times.\
 Also, to request (or release) pads in the PLAYING or PAUSED states, you need to take additional cautions (pad blocking) which are not described in this manual. It is safe to request (or release) pads in the NULL or READY states, though.
 
 #### Link source pad (request pads of tee)
@@ -126,10 +127,10 @@ if (gst_pad_link (req_pad_2, sink_pad) != GST_PAD_LINK_OK) {
 gst_object_unref (sink_pad);
 ```
 
-To link Request Pads, they need to be obtained by “requesting” them from tee element. Note that it might be able to produce different kinds of Request Pads, so, when requesting them, the desired Pad Template name must be provided. In the documentation for the tee element, we see that it has two [pad templates](https://gstreamer.freedesktop.org/documentation/tutorials/basic/media-formats-and-pad-capabilities.html?gi-language=c) named sink (for its sink pads) and src_%u (for the source pad (Request Pads)). We request two source pads from the tee (for video branches) with _gst_element_get_request_pad()_.\
-We then obtain the sink pads from queue/vspmfilter elements to which these Request Pads need to be linked using _gst_element_get_static_pad()_. Finally, we link the pads with _gst_pad_link()_.
+To link Request Pads, they need to be obtained by “requesting” them from `tee` element. Note that it might be able to produce different kinds of Request Pads, so, when requesting them, the desired Pad Template name must be provided. In the documentation for the tee element, we see that it has two [pad templates](https://gstreamer.freedesktop.org/documentation/tutorials/basic/media-formats-and-pad-capabilities.html?gi-language=c) named sink (for its sink pads) and src_%u (for the source pad (Request Pads)). We request two source pads from the tee (for video branches) with `gst_element_get_request_pad()`.\
+We then obtain the sink pads from queue/vspmfilter elements to which these Request Pads need to be linked using `gst_element_get_static_pad()`. Finally, we link the pads with `gst_pad_link()`.
 
->Note that the sink pads need to be released with _gst_object_unref()_ if they are not used anymore.
+>Note that the sink pads need to be released with `gst_object_unref()` if they are not used anymore.
 
 #### Free tee element
 ```c
@@ -138,7 +139,7 @@ gst_element_release_request_pad (tee, req_pad_2);
 gst_object_unref (req_pad_1);
 gst_object_unref (req_pad_2);
 ```
-The _gst_element_release_request_pad()_ function releases the pads from tee, but it still needs to be un-referenced (freed) with _gst_object_unref()_.
+The `gst_element_release_request_pad()` function releases the pads from `tee`, but it still needs to be un-referenced (freed) with `gst_object_unref()`.
 
 ## How to Build and Run GStreamer Application
 

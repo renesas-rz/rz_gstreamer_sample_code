@@ -13,8 +13,9 @@ GStreamer: 1.16.3 (edited by Renesas).
 ## Application Content
 
 + [`main.c`](main.c)
++ [`Makefile`](Makefile)
 
-### Walkthrought
+### Walkthrough: [`main.c`](main.c)
 
 #### Include header file
 
@@ -29,13 +30,13 @@ You need to include `gst/gst.h` header file so that all functions and objects of
 gst_init (&argc, &argv);
 ```
 
-The first thing that always needs to do is initializing GStreamer library by calling gst_init(). This function will initialize all internal structures, check what plug-ins are available, and execute any command-line options intended for GStreamer. The GStreamer command-line options can be passed as application arguments.
+The first thing that always needs to do is initializing GStreamer library by calling `gst_init()`. This function will initialize all internal structures, check what plug-ins are available, and execute any command-line options intended for GStreamer. The GStreamer command-line options can be passed as application arguments.
 
 #### Create pipeline
 ```c
 pipeline = gst_parse_launch ("audiotestsrc num-buffers=100 ! autoaudiosink", NULL);
 ```
-In GStreamer, you usually build the pipeline by manually assembling the individual elements like the [sample applications](/README.md#application-samples). For this application, the pipeline is simple and you do not need any advanced features. Therefore, you can take the shortcut: gst_parse_launch(). This function takes a textual representation of a pipeline and turns it into an actual pipeline.
+In GStreamer, you usually build the pipeline by manually assembling the individual elements like the [sample applications](/README.md#application-samples). For this application, the pipeline is simple and you do not need any advanced features. Therefore, you can take the shortcut: `gst_parse_launch()`. This function takes a textual representation of a pipeline and turns it into an actual pipeline.
 The element audiotestsrc generates basic audio signals. It supports several different waveforms and allows to set the frequency and volume. The number of buffers to output before sending EOS (End-of-Stream) signal is set to 100. If not, the audio will not stop unless you press Ctrl-C to terminate the program.\
 The element autoaudiosink is an audio sink that automatically detects an appropriate audio sink to use. In RZ/G2L platform, the audio sink is alsasink.
 
@@ -50,8 +51,8 @@ Every pipeline has an associated [state](https://gstreamer.freedesktop.org/docum
 bus = gst_element_get_bus (pipeline);
 msg = gst_bus_timed_pop_filtered (bus, GST_CLOCK_TIME_NONE, GST_MESSAGE_ERROR | GST_MESSAGE_EOS);
 ```
-gst_element_get_bus() retrieves the pipeline's bus, then gst_bus_timed_pop_filtered() will block until you receive either an error or EOS through that bus.\
-Basically, the bus is an object responsible for delivering the generated messages (GstMessage) from the elements to the application. Note that the actual streaming of media is done in another thread. The application can always be stopped by pressing Ctrl-C in the console.
+`gst_element_get_bus()` retrieves the pipeline's bus, then `gst_bus_timed_pop_filtered()` will block until you receive either an error or EOS through that bus.\
+Basically, the `bus` is an object responsible for delivering the generated messages (GstMessage) from the elements to the application. Note that the actual streaming of media is done in another thread. The application can always be stopped by pressing Ctrl-C in the console.
 #### Clean up
 ```c
 if (msg != NULL) {
@@ -64,9 +65,9 @@ gst_element_set_state (pipeline, GST_STATE_NULL);
 gst_object_unref (GST_OBJECT (pipeline));
 ```
 At last, we need to do tidy up correctly after the pipeline ends:
--	 gst_bus_timed_pop_filtered() returns a message (GstMessage) which needs to be freed with gst_message_unref().
--	 Setting the pipeline to the NULL state will make sure it frees any resources it has allocated.
--	 gst_element_get_bus() adds a reference to the bus that must be freed with gst_object_unref().
+-	 `gst_bus_timed_pop_filtered()` returns a message (GstMessage) which needs to be freed with `gst_message_unref()`.
+-	 Setting the `pipeline` to the NULL state will make sure it frees any resources it has allocated.
+-	 `gst_element_get_bus()` adds a reference to the `bus` that must be freed with `gst_object_unref()`.
 
 #### Note
 

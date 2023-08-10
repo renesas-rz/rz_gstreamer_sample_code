@@ -11,8 +11,9 @@ GStreamer: 1.16.3 (edited by Renesas).
 ## Application Content
 
 + [`main.c`](main.c)
++ [`Makefile`](Makefile)
 
-### Walkthrought
+### Walkthrough: [`main.c`](main.c)
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](01_gst-audioplay/README.md).
 
 #### Input/output location
@@ -32,12 +33,12 @@ muxer = gst_element_factory_make ("oggmux", "OGG-muxer");
 sink = gst_element_factory_make ("filesink", "file-output");
 ```
 To encode an audio file to Vorbis format, the following elements are used:
--	 Element filesrc reads data from a local file.
--	 Element capsfilter specifies raw audio format, channel, and bitrate.
--	 Element vorbisenc encodes raw float audio into a Vorbis stream.
--	 Element vorbisparse parses the header packets of the Vorbis stream and put them as the stream header in the caps.
--	 Element oggmux merges streams (audio and/or video) into Ogg files. In this case, only audio stream is available.
--	 Element filesink writes incoming data to a local file.
+-	 Element `filesrc` reads data from a local file.
+-	 Element `capsfilter` specifies raw audio format, channel, and bitrate.
+-	 Element `vorbisenc` encodes raw float audio into a Vorbis stream.
+-	 Element `vorbisparse` parses the header packets of the Vorbis stream and put them as the stream header in the caps.
+-	 Element `oggmux` merges streams (audio and/or video) into Ogg files. In this case, only audio stream is available.
+-	 Element `filesink` writes incoming data to a local file.
 
 #### Set element’s properties
 ```c
@@ -45,7 +46,7 @@ g_object_set (G_OBJECT (source), "location", input_file, NULL);
 g_object_set (G_OBJECT (encoder), "bitrate", BITRATE, NULL);
 g_object_set (G_OBJECT (sink), "location", output_file, NULL);
 ```
-The _g_object_set()_ function is used to set some element’s properties, such as:
+The `g_object_set()` function is used to set some element’s properties, such as:
 -	 The location property of filesrc element which points to a raw audio file.
 -	 The bitrate property of vorbisenc element which is set to 128 Kbps. Note that this value is just for demonstration purpose only. Users can define other value which will affect output quality.
 -	 The location property of filesink element which points to an output file.
@@ -56,9 +57,9 @@ caps = gst_caps_new_simple ("audio/x-raw", "format", G_TYPE_STRING, FORMAT,
 g_object_set (G_OBJECT (capsfilter), "caps", caps, NULL);
 gst_caps_unref (caps);
 ```
-A capsfilter is needed between filesrc and vorbisenc because the vorbisenc element needs to know what raw audio format, sample rate, and channels of the incoming data stream are. In this application, audio file is formatted to F32LE, has sample rate 44.1 kHz and stereo audio.\
-The _gst_caps_new_simple()_ function creates a new cap which holds these values. This cap is then added to caps property of capsfilter element (g_object_set).
->Note that the caps should be freed with _gst_caps_unref()_ if it is not used anymore.
+A `capsfilter` is needed between filesrc and vorbisenc because the vorbisenc element needs to know what raw audio format, sample rate, and channels of the incoming data stream are. In this application, audio file is formatted to F32LE, has sample rate 44.1 kHz and stereo audio.\
+The `gst_caps_new_simple()` function creates a new cap which holds these values. This cap is then added to caps property of capsfilter element `(g_object_set)`.
+>Note that the caps should be freed with `gst_caps_unref()` if it is not used anymore.
 
 ## How to Build and Run GStreamer Application
 

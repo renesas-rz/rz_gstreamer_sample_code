@@ -11,8 +11,9 @@ GStreamer: 1.16.3 (edited by Renesas).
 ## Application Content
 
 + [`main.c`](main.c)
++ [`Makefile`](Makefile)
 
-### Walkthrought
+### Walkthrough: [`main.c`](main.c)
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](/01_gst-audioplay/README.md).
 #### Command-line argument
 ```c
@@ -42,12 +43,12 @@ payloader = gst_element_factory_make ("rtph264pay", "h264-payloader");
 sink = gst_element_factory_make ("udpsink", "stream-output");
 ```
 To stream H.264 video, the following elements are used:
--	 Element filesrc reads data from a local file.
--	 Element qtdemux de-multiplexes an MP4 file into audio and video stream.
--	 Element h264parse parses H.264 video from byte-stream format to AVC format.
--	 Element capsfilter specifies video format video/x-h264, AVC, and au alignment.
--	 Element rtph264pay payload-encodes H264 video into RTP packets.
--	 Element udpsink sends UDP packets to the network
+-	 Element `filesrc` reads data from a local file.
+-	 Element `qtdemux` de-multiplexes an MP4 file into audio and video stream.
+-	 Element `h264parse` parses H.264 video from byte-stream format to AVC format.
+-	 Element `capsfilter` specifies video format video/x-h264, AVC, and au alignment.
+-	 Element `rtph264pay` payload-encodes H264 video into RTP packets.
+-	 Element `udpsink` sends UDP packets to the network
 
 #### Set element’s properties
 ```c
@@ -55,10 +56,10 @@ g_object_set (G_OBJECT (source), "location", input_file, NULL);
 g_object_set (G_OBJECT (payloader), "pt", PAYLOAD_TYPE, "config-interval", TIME, NULL);
 g_object_set (G_OBJECT (sink), "host", argv[ARG_IP_ADDRESS], "port", PORT, NULL);
 ```
-The _g_object_set()_ function is used to set some element’s properties, such as:
--	 The location property of filesrc element which points to an MP4 file.
--	 The pt property of rtph264pay element which is the payload type of the packets. Because the input stream is H.264 AVC, this property must be in dynamic range from 96 to 127. For reference purpose, it is set to 96.
--	 The config-interval property of rtph264pay element which is the interval time to insert [SPS and PPS](https://www.quora.com/What-are-SPS-and-PPS-in-video-codecs). They contain data that are required by H.264 decoder. If lost, the receiver (such as: [Receive Streaming Video](/08_gst-receivestreamingvideo/README.md)) cannot reconstruct video frames. To avoid this issue, SPS and PPS will be sent for every 3 seconds.
+The `g_object_set()` function is used to set some element’s properties, such as:
+-	 The `location` property of filesrc element which points to an MP4 file.
+-	 The `pt` property of rtph264pay element which is the payload type of the packets. Because the input stream is H.264 AVC, this property must be in dynamic range from 96 to 127. For reference purpose, it is set to 96.
+-	 The `config-interval` property of rtph264pay element which is the interval time to insert [SPS and PPS](https://www.quora.com/What-are-SPS-and-PPS-in-video-codecs). They contain data that are required by H.264 decoder. If lost, the receiver (such as: [Receive Streaming Video](/08_gst-receivestreamingvideo/README.md)) cannot reconstruct video frames. To avoid this issue, SPS and PPS will be sent for every 3 seconds.
 -	 The host and port properties of udpsink element which are the IPv4 address and port to send the packets to. In this application, the port is hard-coded to 5000 while the address is provided by users.
 
 ```c
@@ -68,10 +69,10 @@ parser_caps = gst_caps_new_simple ("video/x-h264", "stream-format", G_TYPE_STRIN
 g_object_set (G_OBJECT (parser_capsfilter), "caps", parser_caps, NULL);
 gst_caps_unref (parser_caps);
 ```
-Capabilities (short: caps) describe the type of data which is streamed between two pads.\
-This application creates new cap (gst_caps_new_simple) which specifies data format video/x-h264, AVC, and au alignment. This cap is then added to caps property of capsfilter element (_g_object_set_).\
+Capabilities (short: `caps`) describe the type of data which is streamed between two pads.\
+This application creates new cap `(gst_caps_new_simple)` which specifies data format video/x-h264, AVC, and au alignment. This cap is then added to caps property of capsfilter element `(g_object_set)`.\
 Next, capsfilter is linked between h264parse and rtph264pay to negotiate the data format flowing through these 2 elements.
->Note that the cap should be freed with _gst_caps_unref()_ if it is not used anymore.
+>Note that the cap should be freed with `gst_caps_unref()` if it is not used anymore.
 
 ## How to Build and Run GStreamer Application
 

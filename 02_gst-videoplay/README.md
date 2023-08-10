@@ -11,8 +11,9 @@ GStreamer: 1.16.3 (edited by Renesas).
 ## Application Content
 
 + [`main.c`](main.c)
++ [`Makefile`](Makefile)
 
-### Walkthrought
+### Walkthrough: [`main.c`](main.c)
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](01_gst-audioplay/README.md).
 #### Command-line argument
 ```c
@@ -36,10 +37,10 @@ source = gst_element_factory_make ("filesrc", "file-source");
 sink = gst_element_factory_make ("waylandsink", "video-output");
 ```
 To play an H.264 video file, the following elements are used:
--    Element filesrc reads data from a local file.
--	 Element h264parse parses H.264 stream to AVC format which omxh264dec can recognize and process.
--	 Element omxh264dec decompresses H.264 stream to raw NV12-formatted video.
--	 Element waylandsink creates its own window and renders the decoded video frames to that.
+-  Element `filesrc` reads data from a local file.
+-	 Element `h264parse` parses H.264 stream to AVC format which `omxh264dec` can recognize and process.
+-	 Element `omxh264dec` decompresses H.264 stream to raw NV12-formatted video.
+-	 Element `waylandsink` creates its own window and renders the decoded video frames to that.
 
 
 #### Set element’s properties
@@ -59,7 +60,7 @@ gst_bin_add_many (GST_BIN (pipeline), source, parser, decoder, sink, NULL);
 /*Not display video in full-screen*/
 gst_element_link_many (source, parser, decoder, sink, NULL);
 ```
->Note that the order counts, because links must follow the data flow (this is, from source elements to sink elements).
+>Note that the order counts, because links must follow the data flow (this is, from `source` elements to `sink` elements).
 
 ## How to Build and Run GStreamer Application
 

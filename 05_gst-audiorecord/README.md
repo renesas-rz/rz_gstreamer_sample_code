@@ -11,8 +11,9 @@ GStreamer: 1.16.3 (edited by Renesas).
 ## Application Content
 
 + [`main.c`](main.c)
++ [`Makefile`](Makefile)
 
-### Walkthrought
+### Walkthrough: [`main.c`](main.c)
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](/01_gst-audioplay/README.md).
 #### Output location
 ```c
@@ -42,11 +43,11 @@ muxer = gst_element_factory_make ("oggmux", "ogg-muxer");
 sink = gst_element_factory_make ("filesink", "file-output");
 ```
 To record raw data from microphone then store it in Ogg container, the following elements are used:
--	 Element alsasrc reads data from an audio card using the ALSA API.
--	 Element audioconvert converts raw audio buffers to a format (such as: F32LE) which is understood by vorbisenc.
--	 Element vorbisenc encodes raw audio into a Vorbis stream.
--	 Element oggmux merges audio stream to Ogg container.
--	 Element filesink writes incoming data to a local file.
+-	 Element `alsasrc` reads data from an audio card using the ALSA API.
+-	 Element `audioconvert` converts raw audio buffers to a format (such as: F32LE) which is understood by vorbisenc.
+-	 Element `vorbisenc` encodes raw audio into a Vorbis stream.
+-	 Element `oggmux` merges audio stream to Ogg container.
+-	 Element `filesink` writes incoming data to a local file.
 
 #### Set element’s properties
 ```c
@@ -54,10 +55,10 @@ g_object_set (G_OBJECT (source), "device", argv[ARG_DEVICE], NULL);
 g_object_set (G_OBJECT (encoder), "bitrate", BITRATE, NULL);
 g_object_set (G_OBJECT (sink), "location", output_file, NULL);
 ```
-The _g_object_set()_ function is used to set some element’s properties, such as:
--	 The device property of alsasrc element which points to a microphone device. Users will pass the device card as a command line argument to this application. Please refer to section [Special Instruction](#special-instruction) to find the value.
--	 The location property of filesink element which points to the output file.
--	 The bitrate property of vorbisenc element is used to specify encoding bit rate. The higher bitrate, the better quality.
+The `g_object_set()` function is used to set some element’s properties, such as:
+-	 The `device` property of alsasrc element which points to a microphone device. Users will pass the device card as a command line argument to this application. Please refer to section [Special Instruction](#special-instruction) to find the value.
+-	 The `location` property of filesink element which points to the output file.
+-	 The `bitrate` property of vorbisenc element is used to specify encoding bit rate. The higher bitrate, the better quality.
 
 ```c
 caps = gst_caps_new_simple ("audio/x-raw", "format", G_TYPE_STRING, FORMAT,
@@ -65,9 +66,9 @@ caps = gst_caps_new_simple ("audio/x-raw", "format", G_TYPE_STRING, FORMAT,
 g_object_set (G_OBJECT (convert_capsfilter), "caps", caps, NULL);
 gst_caps_unref (caps);
 ```
-Capabilities (short: caps) describe the type of data which is streamed between two pads. This data includes raw audio format, channel, and sample rate.\
-The _gst_caps_new_simple()_ function creates new caps which holds these values. These caps are then added to caps property of capsfilter elements (g_object_set).
->Note that both caps should be freed with _gst_caps_unref()_ if they are not used anymore.
+Capabilities (short: `caps`) describe the type of data which is streamed between two pads. This data includes raw audio format, channel, and sample rate.\
+The `gst_caps_new_simple()` function creates new caps which holds these values. These caps are then added to `caps` property of capsfilter elements `(g_object_set)`.
+>Note that both caps should be freed with `gst_caps_unref()` if they are not used anymore.
 
 #### Build pipeline
 ```c
@@ -76,7 +77,7 @@ gst_bin_add_many (GST_BIN (pipeline), source, converter, convert_capsfilter,
 gst_element_link_many (source, converter, convert_capsfilter, encoder, NULL);
 gst_element_link (muxer, sink);
 ```
-The reason for the separation is that the sink pad of oggmux (muxer) cannot be created automatically but is only created on demand. This application uses self-defined function _link_to_multiplexer()_ to link the sink pad to source pad of vorbisenc (encoder). That’s why its sink pad is called Request Pad.
+The reason for the separation is that the sink pad of oggmux `(muxer)` cannot be created automatically but is only created on demand. This application uses self-defined function `link_to_multiplexer()` to link the sink pad to source pad of vorbisenc `(encoder)`. That’s why its sink pad is called Request Pad.
 >Note that the order counts, because links must follow the data flow (this is, from source elements to sink elements).
 
 #### Link request pads
@@ -86,8 +87,8 @@ srcpad = gst_element_get_static_pad (encoder, "src");
 link_to_multiplexer (srcpad, muxer);
 gst_object_unref (srcpad);
 ```
-This block gets the source pad (srcpad) of vorbisenc (encoder), then calls _link_to_multiplexer()_ to link it to (the sink pad of) oggmux (muxer).
->Note that the srcpad should be freed with _gst_object_unref()_ if it is not used anymore.
+This block gets the source pad `(srcpad)` of 1, then calls `link_to_multiplexer()` to link it to (the sink pad of) oggmux `(muxer)`.
+>Note that the srcpad should be freed with `gst_object_unref()` if it is not used anymore.
 
 ```c
 static void link_to_multiplexer (GstPad * tolink_pad, GstElement * mux)
@@ -98,20 +99,20 @@ static void link_to_multiplexer (GstPad * tolink_pad, GstElement * mux)
   gst_object_unref (GST_OBJECT (pad));
 }
 ```
-This function uses _gst_element_get_compatible_pad()_ to request a sink pad (pad) which is compatible with the source pad (tolink_pad) of oggmux (mux), then calls _gst_pad_link()_ to link them together.
->Note that the pad should be freed with _gst_object_unref()_ if it is not used anymore.
+This function uses `gst_element_get_compatible_pad()` to request a sink pad `(pad)` which is compatible with the source pad `(tolink_pad)` of oggmux `(mux)`, then calls `gst_pad_link()` to link them together.
+>Note that the pad should be freed with `gst_object_unref()` if it is not used anymore.
 
 ### Play pipeline
 ```c
 gst_element_set_state (pipeline, GST_STATE_PLAYING);
 ```
 
-Every pipeline has an associated [state](https://gstreamer.freedesktop.org/documentation/plugin-development/basics/states.html). To start audio recording, the pipeline needs to be set to PLAYING state.
+Every pipeline has an associated [state](https://gstreamer.freedesktop.org/documentation/plugin-development/basics/states.html). To start audio recording, the `pipeline` needs to be set to PLAYING state.
 
 ```c
 signal (SIGINT, signalHandler);
 ```
-This application will stop recording if user presses Ctrl-C. To do so, it uses _signal()_ to bind SIGINT (interrupt from keyboard) to _signalHandler()_.
+This application will stop recording if user presses Ctrl-C. To do so, it uses `signal()` to bind `SIGINT` (interrupt from keyboard) to `signalHandler()`.
 To know how this function is implemented, please refer to the following lines of code:
 
 ```c
@@ -122,7 +123,7 @@ void signalHandler (int signal)
   }
 }
 ```
-It calls _gst_element_send_event()_ to send EOS (End-of-Stream) signal (gst_event_new_eos) to the pipeline. This makes _gst_bus_timed_pop_filtered()_ return. Finally, the program cleans up GStreamer objects and exits.
+It calls `gst_element_send_event()` to send EOS (End-of-Stream) signal `(gst_event_new_eos)` to the `pipeline`. This makes `gst_bus_timed_pop_filtered()` return. Finally, the program cleans up GStreamer objects and exits.
 
 ## How to Build and Run GStreamer Application
 
@@ -157,7 +158,7 @@ For more details about _detect_microphone.sh_ script at [Special instruction](#s
 ```sh
 $ ./detect_microphone.sh
 ```
-Basically, this script analyzes the /proc/asound/cards file to get sound cards.
+Basically, this script analyzes the `/proc/asound/cards` file to get sound cards.
 >Note: This script can be used in combination with gst-audiorecord application.
 
 For further information on how this script is implemented, please refer to the following lines of code:

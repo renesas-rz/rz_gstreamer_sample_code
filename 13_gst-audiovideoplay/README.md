@@ -11,8 +11,9 @@ GStreamer: 1.16.3 (edited by Renesas).
 ## Application Content
 
 + [`main.c`](main.c)
++ [`Makefile`](Makefile)
 
-### Walkthrought
+### Walkthrough: [`main.c`](main.c)
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](/01_gst-audioplay/README.md) and [Video Play](/02_gst-videoplay/README.md).
 
 #### Command-line argument
@@ -38,25 +39,25 @@ typedef struct _CustomData
 } CustomData;
 ```
 This structure contains:
--	 Variable loop (GMainLoop): An opaque data type to represent the main [event loop](https://en.wikipedia.org/wiki/Event_loop) of a Glib application.
--	 Variable loop_reference (int): An integer variable to represent the number of PLAYING pipelines available. It is managed by mutex structure which controls GStreamer object release and program termination.
--	 Variable mutex (GMutex): An opaque data type to represent [mutex](https://en.wikipedia.org/wiki/Lock_(computer_science)) (mutual exclusion). It can be used to protect data from critical section.
--	 Variable video_ext (char): A string variable to represent video extension.
--	 Variable wayland_handler (wayland_t): A pointer to wayland_t structure to contain list of monitors.
--	 Variable main_screen (screen_t): A pointer to screen_t structure to contain monitor information, such as: (x, y), width, and height.
--	 Variable fullscreen (qint64): A boolean variable to enable full-screen mode.
+-	 Variable `loop (GMainLoop)`: An opaque data type to represent the main [event loop](https://en.wikipedia.org/wiki/Event_loop) of a Glib application.
+-	 Variable `loop_reference (int)`: An integer variable to represent the number of PLAYING pipelines available. It is managed by mutex structure which controls GStreamer object release and program termination.
+-	 Variable `mutex (GMutex)`: An opaque data type to represent [mutex](https://en.wikipedia.org/wiki/Lock_(computer_science)) (mutual exclusion). It can be used to protect data from critical section.
+-	 Variable `video_ext (char)`: A string variable to represent video extension.
+-	 Variable `wayland_handler (wayland_t)`: A pointer to wayland_t structure to contain list of monitors.
+-	 Variable `main_screen (screen_t)`: A pointer to screen_t structure to contain monitor information, such as: (x, y), width, and height.
+-	 Variable `fullscreen (qint64)`: A boolean variable to enable full-screen mode.
 
 #### Initialize CustomData structure
 ```c
 shared_data.loop = g_main_loop_new (NULL, FALSE);
 ```
-This function creates a new [GMainLoop](https://docs.gtk.org/glib/main-loop.html) structure with default (NULL) context (GMainContext).\
-Basically, the main event loop manages all the available sources of events. To allow multiple independent sets of sources to be handled in different threads, each source is associated with a GMainContext. A GMainContext can only be running in a single thread, but sources can be added to it and removed from it from other threads.\
+This function creates a new [GMainLoop](https://docs.gtk.org/glib/main-loop.html) structure with default (NULL) context `(GMainContext)`.\
+Basically, the main event loop manages all the available sources of events. To allow multiple independent sets of sources to be handled in different threads, each source is associated with a `GMainContext`. A `GMainContext` can only be running in a single thread, but sources can be added to it and removed from it from other threads.\
 The application will use GMainLoop to catch events and signals from 2 independent GStreamer pipelines. One plays a video and the other plays an Ogg/Vorbis audio file.
 ```c
 shared_data.loop_reference = 0;
 ```
-At this point, variable loop_reference is set to 0 to indicate that there are no running pipelines available.
+At this point, variable `loop_reference` is set to 0 to indicate that there are no running pipelines available.
 ```c
 g_mutex_init (&shared_data.mutex);
 ```
@@ -65,34 +66,34 @@ Please use [g_mutex_clear()](https://docs.gtk.org/glib/method.Mutex.clear.html) 
 ```c
 shared_data.video_ext = video_ext;
 ```
-Variable video_ext contains the extension of video input file to create suitable video_parser and video_decoder
+Variable `video_ext` contains the extension of video input file to create suitable `video_parser` and `video_decoder`
 ```c
 shared_data.main_screen = main_screen;
 ```
-Variable main_screen contains the resolution of sreen to scale video to full-sreen.
+Variable `main_screen` contains the resolution of screen to scale video to full-sreen.
 #### Audio pipeline
 ```c
 guint create_audio_pipeline (GstElement** p_audio_pipeline, const gchar* input_file, CustomData* data);
 ```
-Basically, the audio pipeline is just like [Audio Play](/01_gst-audioplay/README.md) except it uses _gst_bus_add_watch()_ instead of _gst_bus_timed_pop_filtered()_ to receive messages (such as: error or EOS (End-of-Stream)) from _bus_call()_ asynchronously.
+Basically, the audio pipeline is just like [Audio Play](/01_gst-audioplay/README.md) except it uses `gst_bus_add_watch()` instead of `gst_bus_timed_pop_filtered()` to receive messages (such as: error or EOS (End-of-Stream)) from `bus_call()` asynchronously.
 ```c
 bus = gst_pipeline_get_bus (GST_PIPELINE (*p_audio_pipeline));
 audio_bus_watch_id = gst_bus_add_watch (bus, bus_call, data);
 gst_object_unref (bus);
 ```
->Note that the bus should be freed with _gst_caps_unref()_ if it is not used anymore.
+>Note that the bus should be freed with `gst_caps_unref()` if it is not used anymore.
 
 #### Video pipeline
 ```c
 guint create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file, CustomData* data)
 ```
-Basically, the video pipeline is just like Video Play except it uses _gst_bus_add_watch()_ instead of _gst_bus_timed_pop_filtered()_ to receive messages (such as: error or EOS (End-of-Stream)) from _bus_call()_ asynchronously.
+Basically, the video pipeline is just like Video Play except it uses `gst_bus_add_watch()` instead of `gst_bus_timed_pop_filtered()` to receive messages (such as: error or EOS (End-of-Stream)) from `bus_call()` asynchronously.
 ```c
 bus = gst_pipeline_get_bus (GST_PIPELINE (*p_video_pipeline));
 video_bus_watch_id = gst_bus_add_watch (bus, bus_call, data);
 gst_object_unref (bus);
 ```
->Note that the bus should be freed with _gst_caps_unref()_ if it is not used anymore.
+>Note that the bus should be freed with `gst_caps_unref()` if it is not used anymore.
 #### Function bus_call()
 ```c
 static gboolean bus_call (GstBus * bus, GstMessage * msg, gpointer data)
@@ -101,7 +102,7 @@ This function will be called if either audio or video pipeline posts messages to
 ```c
 try_to_quit_loop ((CustomData *) data);
 ```
->Note that _bus_call()_ only processes error and EOS messages. Moreover, no matter what the messages are, it will eventally call _try_to_quit_loop()_ to try exiting main loop.
+>Note that `bus_call()` only processes error and EOS messages. Moreover, no matter what the messages are, it will eventally call `try_to_quit_loop()` to try exiting main loop.
 
 #### Create pipelines
 ```c
@@ -131,13 +132,13 @@ bool play_pipeline (GstElement * pipeline, CustomData * p_shared_data)
 }
 ```
 
-Basically, this function sets the state of pipeline to PLAYING. If successful, it will increases loop_reference to indicate that there is 1 more running pipeline. Note that the variable must be 2 for this application to play both audio and video.
+Basically, this function sets the state of `pipeline` to PLAYING. If successful, it will increases `loop_reference` to indicate that there is 1 more running pipeline. Note that the variable must be 2 for this application to play both audio and video.
 
 #### Run main loop
 ```c
 g_main_loop_run (shared_data.loop);
 ```
-This function runs main loop until _g_main_loop_quit()_ is called on the loop (context NULL). In other words, it will make the context check if anything it watches for has happened. For example, when a message has been posted on the bus (gst_element_get_bus), the default main context will automatically call _bus_call()_ to notify the message.
+This function runs main loop until `g_main_loop_quit()` is called on the `loop` (context NULL). In other words, it will make the context check if anything it watches for has happened. For example, when a message has been posted on the bus (`gst_element_get_bus`), the default main context will automatically call `bus_call()` to notify the message.
 
 #### Stop pipelines
 ```c
@@ -151,7 +152,7 @@ static void try_to_quit_loop (CustomData * p_shared_data)
   g_mutex_unlock (&p_shared_data->mutex);
 }
 ```
-The main event loop will stop only if variable _loop_reference_ reaches to 0. This means the application will exit when both audio and video pipeline stopped. Also note that mutex is used to prevent GStreamer threads from reading incorrect value of _loop_reference_.
+The main event loop will stop only if variable `loop_reference` reaches to 0. This means the application will exit when both audio and video pipeline stopped. Also note that mutex is used to prevent GStreamer threads from reading incorrect value of `loop_reference`.
 
 ## How to Build and Run GStreamer Application
 

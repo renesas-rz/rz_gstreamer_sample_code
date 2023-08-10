@@ -11,8 +11,9 @@ GStreamer: 1.16.3 (edited by Renesas).
 ## Application Content
 
 + [`main.c`](main.c)
++ [`Makefile`](Makefile)
 
-### Walkthrought
+### Walkthrough: [`main.c`](main.c)
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Video Record](/06_gst-videorecord/README.md) and [Audio Play](/01_gst-audioplay/README.md).
 #### Command-line argument
 ```c
@@ -41,15 +42,15 @@ muxer = gst_element_factory_make ("qtmux", "mp4-muxer");
 sink = gst_element_factory_make ("filesink", "file-output");
 ```
 To scale down an H.264 video and store it in MP4 container, the following elements are needed:
--	 Element filesrc reads data from a local file.
--	 Element qtdemux de-multiplexes an MP4 file into audio and video stream.
--	 Element omxh264dec decompresses H.264 stream to raw NV12-formatted video.
--	 Element vspmfilter handles video scaling.
--	 Element capsfilter contains resolution so that vspfilter will scale video frames based on this value.
--	 Element omxh264enc encodes raw video into H.264 compressed data.
--	 Element h264parse parses H.264 video from byte stream format to AVC format which omxh264dec can process.
--	 Element qtmux merges H.264 byte stream to MP4 container.
--	 Element filesink writes incoming data to a local file.
+-	 Element `filesrc` reads data from a local file.
+-	 Element `qtdemux` de-multiplexes an MP4 file into audio and video stream.
+-	 Element `omxh264dec` decompresses H.264 stream to raw NV12-formatted video.
+-	 Element `vspmfilter` handles video scaling.
+-	 Element `capsfilter` contains resolution so that vspfilter will scale video frames based on this value.
+-	 Element `omxh264enc` encodes raw video into H.264 compressed data.
+-	 Element `h264parse` parses H.264 video from byte stream format to AVC format which `omxh264dec` can process.
+-	 Element `qtmux` merges H.264 byte stream to MP4 container.
+-	 Element `filesink` writes incoming data to a local file.
 
 #### Set element’s properties
 ```c
@@ -58,12 +59,12 @@ g_object_set (G_OBJECT (filter), "dmabuf-use", TRUE, NULL);
 g_object_set (G_OBJECT (encoder), "target-bitrate", BITRATE_OMXH264ENC, "control-rate", 1, NULL;
 g_object_set (G_OBJECT (sink), "location", output_file, NULL);
 ```
-The _g_object_set()_ function is used to set some element’s properties, such as:
--	 The location property of filesrc element which points to an MP4 input file.
--	 The dmabuf-use property of vspmfilter element, This disallows dmabuf to be output buffer. If it is not set, waylandsink will display broken video frames.
--	 The target-bitrate property of omxh264enc element which is set to 40 Mbps. The higher bitrate, the better quality.
--	 The control-rate property of omxh264enc element is used to specify birate control method which is variable bitrate method in this case.
--	 The location property of filesink element which points to MP4 output file.
+The `g_object_set()` function is used to set some element’s properties, such as:
+-	 The `location` property of filesrc element which points to an MP4 input file.
+-	 The `dmabuf-use` property of vspmfilter element, This disallows dmabuf to be output buffer. If it is not set, waylandsink will display broken video frames.
+-	 The `target-bitrate` property of omxh264enc element which is set to 40 Mbps. The higher bitrate, the better quality.
+-	 The `control-rate` property of omxh264enc element is used to specify birate control method which is variable bitrate method in this case.
+-	 The `location` property of filesink element which points to MP4 output file.
 ```c
 scale_caps =
     gst_caps_new_simple ("video/x-raw", "width", G_TYPE_INT, scaled_width, "height",
@@ -72,10 +73,10 @@ scale_caps =
 g_object_set (G_OBJECT (puser_data->capsfilter), "caps", scale_caps, NULL);
 gst_caps_unref (scale_caps);
 ```
-Capabilities (short: caps) describe the type of data which is streamed between two pads. This data includes raw video format, resolution, and framerate.\
-The _gst_caps_new_simple()_ function creates a new cap (conv_caps) which holds output’s resolution. This cap is then added to caps property of capsfilter (g_object_set) so that vspfilter will use these values to resize video frames.
+Capabilities (short: `caps`) describe the type of data which is streamed between two pads. This data includes raw video format, resolution, and framerate.\
+The `gst_caps_new_simple()` function creates a new cap (scale_caps) which holds output’s resolution. This cap is then added to caps property of capsfilter `(g_object_set)` so that vspfilter will use these values to resize video frames.
 
->Note that the scale_caps should be freed with _gst_caps_unref()_ if it is not used anymore.
+>Note that the `scale_caps` should be freed with `gst_caps_unref()` if it is not used anymore.
 #### Get input file’s information
 ```c
 new_pad_caps = gst_pad_query_caps (pad, NULL);
@@ -84,7 +85,7 @@ new_pad_struct = gst_caps_get_structure (new_pad_caps, 0);
 gst_structure_get_int (new_pad_struct, "width", &width);
 gst_structure_get_int (new_pad_struct, "height", &height);
 ```
-Above lines of code get the capabilities of pad, finds the structure in new_pad_caps then gets resolution of video.
+Above lines of code get the capabilities of pad, finds the structure in `new_pad_caps` then gets resolution of video.
 
 ## How to Build and Run GStreamer Application
 
