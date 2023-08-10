@@ -83,7 +83,8 @@ This section shows how to cross-compile and deploy GStreamer _hello world_ appli
 $   sudo sh ./poky-glibc-x86_64-core-image-weston-aarch64-smarc-rzg2l-toolchain-3.1.17.sh
 ```
 Note:
-> sudo is optional in case user wants to extract SDK into a restricted directory (such as: /opt/)
+> This step installs the RZG2L toolchain. If you want to install the RZV2L toolchain, please use `poky-glibc-x86_64-core-image-weston-aarch64-smarc-rzv2l-toolchain-3.1.17.sh` instead.\
+> Sudo is optional in case user wants to extract SDK into a restricted directory (such as: _/opt/_)
 
 If the installation is successful, the following messages will appear:
 ```sh

@@ -66,7 +66,27 @@ The `gst_caps_new_simple()` function creates a new cap which holds these values.
 This section shows how to cross-compile and deploy GStreamer _audio encode_ application.
 
 ### How to Extract Renesas SDK
-Please refer to _hello word_ [How to Extract Renesas SDK section](/00_gst-helloworld/README.md#how-to-extract-renesas-sdk) for more details.
+***Step 1***.	Install toolchain on a Host PC:
+```sh
+$   sudo sh ./poky-glibc-x86_64-core-image-weston-aarch64-smarc-rzg2l-toolchain-3.1.17.sh
+```
+Note:
+> This step installs the RZG2L toolchain. If you want to install the RZV2L toolchain, please use `poky-glibc-x86_64-core-image-weston-aarch64-smarc-rzv2l-toolchain-3.1.17.sh` instead.\
+> Sudo is optional in case user wants to extract SDK into a restricted directory (such as: _/opt/_)
+
+If the installation is successful, the following messages will appear:
+```sh
+SDK has been successfully set up and is ready to be used.
+Each time you wish to use the SDK in a new shell session, you need to source the environment setup script e.g.
+$ . /opt/poky/3.1.17/environment-setup-aarch64-poky-linux
+$ . /opt/poky/3.1.17/environment-setup-armv7vet2hf-neon-vfpv4-pokymllib32-linux-gnueabi
+```
+***Step 2***.	Set up cross-compile environment:
+```sh
+$   source /<Location in which SDK is extracted>/environment-setup-aarch64-poky-linux
+```
+Note:
+>User needs to run the above command once for each login session.
 
 ### How to Build and Run GStreamer Application
 
