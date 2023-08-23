@@ -12,6 +12,9 @@ GStreamer: 1.16.3 (edited by Renesas).
 
 + [`main.c`](main.c)
 + [`Makefile`](Makefile)
++ [`setup_MIPI_camera.sh`](setup_MIPI_camera.sh)
++ [`detect_camera.sh`](detect_camera.sh)
++ [`detect_microphone.sh`](detect_microphone.sh)
 
 ### Walkthrough: [`main.c`](main.c)
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](/01_gst-audioplay/README.md), [Audio Record](/05_gst-audiorecord/README.md) and [Video Record](/06_gst-videorecord/README.md).
@@ -217,7 +220,6 @@ Note:
 ```sh
 $   cd $WORK/07_gst-audiovideorecord
 ```
-
 ***Step 2***.	Cross-compile:
 ```sh
 $   make
@@ -226,12 +228,57 @@ $   make
 ```sh
 $   scp -r $WORK/07_gst-audiovideorecord/ <username>@<board IP>:/usr/share/
 ```
-***Step 4***.	Run the application:
+***Step 4***.  Setup MIPI camera (With USB camera you can skip this step):
 ```sh
-$   /usr/share/07_gst-audiovideorecord/gst-audiovideorecord $(/usr/share/05_gst-audiorecord/detect_microphone.sh) $(/usr/share/06_gst-videorecord/detect_camera.sh) <width> <height>
+$   /usr/share/07_gst-audiovideorecord/setup_MIPI_camera.sh <width>x<height>
 ```
->For more details about _detect_microphone.sh_ and detect_camera.sh script. Please refer to [Audio record special instruction](/05_gst-audiorecord/README.md#special-instruction) and [Video record special instruction](/06_gst-videorecord/README.md#special-instruction)
+For more detail about `setup_MIPI_camera.sh` script at [Initialize MIPI camera](#run-the-following-script-to-initialize-mipi-camera).
+>Note: Only 2 resolutions are supported by MIPI camera (OV5645 camera): 1920x1080, 1280x960
+
+***Step 5***.	Run the application:
+```sh
+$   /usr/share/07_gst-audiovideorecord/gst-audiovideorecord $(/usr/share/07_gst-audiovideorecord/detect_microphone.sh) $(/usr/share/07_gst-audiovideorecord/detect_camera.sh) <width> <height>
+```
+For more details about `detect_microphone.sh` and `detect_camera.sh` script. Please refer to [Find microphone device card](#run-the-following-script-to-find-microphone-device-card) and [Find camera device file](#run-the-following-script-to-find-camera-device-file).
 ### Special instruction:
+#### Run the following script to find microphone device card:
+```sh
+$ ./detect_microphone.sh
+```
+Basically, this script analyzes the `/proc/asound/cards` file to get sound cards.
+>Note: This script can be used in combination with gst-audiovideorecord application.
+
+For further information on how this script is implemented, please refer to the following lines of code:
+```sh
+ALSA_DEV_FILE="/proc/asound/cards"
+
+CMD_GET_SND="cat $ALSA_DEV_FILE | awk '{ print \$0 }'"
+
+CMD_GET_SND_INDICES="$CMD_GET_SND | awk '{ print \$1 }'"
+
+SND_INDICES="$( eval $CMD_GET_SND_INDICES )"
+if [ ! -z "$SND_INDICES" ]
+then
+    for TEMP_INDEX in $SND_INDICES
+    do
+        HAS_MIC="$( amixer -D hw:$TEMP_INDEX scontrols | grep "Mic" )"
+
+        if [ "$HAS_MIC" != "" ]
+        then
+            SND_INDEX=$TEMP_INDEX
+            DEVICE_NUMBER=${HAS_MIC: -1}
+            echo "hw:$SND_INDEX,$DEVICE_NUMBER"
+
+	    amixer cset name='Left Input Mixer L2 Switch' on > /dev/null
+	    amixer cset name='Right Input Mixer R2 Switch' on > /dev/null
+	    amixer cset name='Headphone Playback Volume' 100 > /dev/null
+	    amixer cset name='PCM Volume' 100% > /dev/null
+	    amixer cset name='Input PGA Volume' 25 > /dev/null
+            break
+        fi
+    done
+fi
+```
 #### Recommended USB cameras:
 Option 1: Logitech USB HD Webcam C270 (model: V-U0018).
 
@@ -241,6 +288,66 @@ Option 3: Logitech USB UHD Webcam BRIO.
 
 #### Recommended MIPI camera:
 MIPI Mezzanine Adapter and OV5645 camera.
+
+#### Run the following script to find camera device file:
+```sh
+$   ./detect_camera.sh
+```
+Basically, this script uses `v4l2-ctl` tool to read all information of device files (/dev/video8, for example) and find out if the device file has “Crop Capability Video Capture”. If the string is exist, the device file is available to use.
+>This script can be used in combination with gst-audiovideorecord application.
+
+For further information on how this script is implemented, please refer to the following lines of code:
+```sh
+#!/bin/bash
+
+ERR_NO_CAMERA=1
+PROG_SUCCESS_CODE=0
+
+PROG_STAT=$PROG_SUCCESS_CODE
+
+for DEV_NAME in $( ls -v /dev/video* )
+
+do
+  CHECK_CAMERA=$( v4l2-ctl -d $DEV_NAME --all | grep "Video Capture:" )
+
+  if [ ! -z "$CHECK_CAMERA" ]
+  then
+    CAMERA_DEV=$DEV_NAME
+    echo $CAMERA_DEV
+    break
+  fi
+done
+
+if [ -z $CAMERA_DEV ]
+then
+  PROG_STAT=$ERR_NO_CAMERA
+fi
+
+exit $PROG_STAT
+```
+#### Run the following script to initialize MIPI camera:
+
+```sh
+./setup_MIPI_camera.sh <width>x<height>
+```
+Basically, this script uses `media-ctl` tool to set up format of OV5645 camera. This camera only support 2 resolutions are 1280x960, 1920x1080.
+
+For further information on how this script is implemented, please refer to the following lines of code:
+
+```sh
+#!/bin/bash
+
+if [[ $1 != "1280x960" ]] && [[ $1 != "1920x1080" ]]; then
+	echo "RZG2L and RZV2L only support 2 camera resolutions"
+	echo -e "1. 1920x1080\n2. 1280x960"
+else
+  media-ctl -d /dev/media0 -r
+  media-ctl -d /dev/media0 -V "'ov5645 0-003c':0 [fmt:UYVY8_2X8/$1 field:none]"
+  media-ctl -d /dev/media0 -l "'rzg2l_csi2 10830400.csi2':1 -> 'CRU output':0 [1]"
+  media-ctl -d /dev/media0 -V "'rzg2l_csi2 10830400.csi2':1 [fmt:UYVY8_2X8/$1 field:none]"
+	echo "/dev/video0 is configured successfully with resolution "$1""
+fi
+```
 ### To check the output file:
 Option 1: VLC media player (https://www.videolan.org/vlc/index.html).
 
