@@ -12,6 +12,8 @@ GStreamer: 1.16.3 (edited by Renesas).
 
 + [`main.c`](main.c)
 + [`Makefile`](Makefile)
++ [`setup_MIPI_camera.sh`](setup_MIPI_camera.sh)
++ [`detect_camera.sh`](detect_camera.sh)
 
 ### Walkthrough: [`main.c`](main.c)
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Video Play](/02_gst-videoplay/README.md).
@@ -232,13 +234,14 @@ $   scp -r $WORK/06_gst-videorecord/ <username>@<board IP>:/usr/share/
 ```sh
 $   /usr/share/06_gst-videorecord/setup_MIPI_camera.sh <width>x<height>
 ```
-For more detail about _setup_MIPI_camera.sh_ script at [Special instruction](#special-instruction)
+For more detail about `setup_MIPI_camera.sh` script at [Initialize MIPI camera](#run-the-following-script-to-initialize-mipi-camera)
 >Note: Only 2 resolutions are supported by MIPI camera (OV5645 camera): 1920x1080, 1280x960
 
 ***Step 5***.	Run the application:
 ```sh
 $   /usr/share/06_gst-videorecord/gst-videorecord $(/usr/share/06_gst-videorecord/detect_camera.sh) <width> <height>
 ```
+For more details about `detect_camera.sh` script at [Find camera device file](#run-the-following-script-to-find-camera-device-file)
 >Note: Please enter the output width and height same as the resolution when initializing MIPI camera.
 ### Special instruction:
 #### Reference USB Camera:
@@ -312,5 +315,5 @@ Option 1: VLC media player (https://www.videolan.org/vlc/index.html).
 
 Option 2: Tool gst-launch-1.0 (on board):
 ```sh
-$ gst-launch-1.0 filesrc location=/home/media/videos/RECORD_USB-camera.mp4 ! qtdemux ! h264parse ! omxh264dec ! waylandsink
+$ gst-launch-1.0 filesrc location=RECORD_USB-camera.mp4 ! qtdemux ! h264parse ! omxh264dec ! waylandsink
 ```

@@ -12,6 +12,7 @@ GStreamer: 1.16.3 (edited by Renesas).
 
 + [`main.c`](main.c)
 + [`Makefile`](Makefile)
++ [`detect_microphone.sh`](detect_microphone.sh)
 
 ### Walkthrough: [`main.c`](main.c)
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](/01_gst-audioplay/README.md).
@@ -172,7 +173,7 @@ $   scp -r $WORK/05_gst-audiorecord/ <username>@<board IP>:/usr/share/
 ```sh
 $   /usr/share/05_gst-audiorecord/gst-audiorecord $(/usr/share/05_gst-audiorecord/detect_microphone.sh)
 ```
-For more details about _detect_microphone.sh_ script at [Special instruction](#special-instruction)
+For more details about `detect_microphone.sh` script at [Find microphone device card](#run-the-following-script-to-find-microphone-device-card).
 ### Special instruction:
 #### Run the following script to find microphone device card:
 ```sh
