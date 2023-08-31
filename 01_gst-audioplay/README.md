@@ -212,7 +212,7 @@ $   scp -r $WORK/01_gst-audioplay/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
 
-Download the input file [Rondo_Alla_Turka.ogg](https://upload.wikimedia.org/wikipedia/commons/b/bd/Rondo_Alla_Turka.ogg) and place it in _/home/media/audios_.
+Download the input file `Rondo_Alla_Turka.ogg` from [commons.wikimedia.org/wiki/File:Rondo_Alla_Turka.ogg](https://commons.wikimedia.org/wiki/File:Rondo_Alla_Turka.ogg) and place it in _/home/media/audios_.
 ```sh
 $   /usr/share/01_gst-audioplay/gst-audioplay /home/media/audios/Rondo_Alla_Turka.ogg
 ```

@@ -301,8 +301,10 @@ $   scp -r $WORK/12_gst-videoplayer/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
 
-Download the input files [sintel_trailer-720p.mp4](https://download.blender.org/durian/trailer/sintel_trailer-720p.mp4)
- and [renesas-bigideasforeveryspace.mp4](https://www.renesas.com/jp/ja/img/products/media/auto-j/microcontrollers-microprocessors/rz/rzg/qt-videos/renesas-bigideasforeveryspace.mp4) then place all it in _/home/media/videos_.
+- Please access [durian.blender.org/download](https://durian.blender.org/download/) to download inputs file.
+    > Download the input file `sintel_trailer-720p.mp4` from [download.blender.org/durian/trailer](https://download.blender.org/durian/trailer/) and then place it in _/home/media/videos_.\
+    > This input file has its own copyright (please refer to [durian.blender.org/sharing](https://durian.blender.org/sharing/) for more details)
+- And download input file [renesas-bigideasforeveryspace.mp4](https://www.renesas.com/jp/ja/img/products/media/auto-j/microcontrollers-microprocessors/rz/rzg/qt-videos/renesas-bigideasforeveryspace.mp4) then place it in _/home/media/videos_.
 ```sh
 $   /usr/share/12_gst-videoplayer/gst-videoplayer /home/media/videos
 ```

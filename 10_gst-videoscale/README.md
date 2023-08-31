@@ -136,7 +136,9 @@ $   /usr/share/10_gst-videoscale/gst-videoscale <MP4 file> <width> <height>
 ```
 - In this case, a 640x360 MP4 file will be generated after running this application.
 
-  Download the input file [sintel_trailer-720p.mp4](https://download.blender.org/durian/trailer/sintel_trailer-720p.mp4) and place it in _/home/media/videos_.
+  Please access [durian.blender.org/download](https://durian.blender.org/download/) to download inputs file.
+    > Download the input file `sintel_trailer-720p.mp4` from [download.blender.org/durian/trailer](https://download.blender.org/durian/trailer/) and then place it in _/home/media/videos_.\
+    > This input file has its own copyright (please refer to [durian.blender.org/sharing](https://durian.blender.org/sharing/) for more details)
   ```sh
   $   /usr/share/10_gst-videoscale/gst-videoscale /home/media/videos/sintel_trailer-720p.mp4 640 360
   ```

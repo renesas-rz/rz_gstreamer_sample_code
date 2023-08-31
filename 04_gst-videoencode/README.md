@@ -109,7 +109,9 @@ $   /usr/share/04_gst-videoencode/gst-videoencode
 ```
 ### Special instruction:
 #### Prepare raw video file:
-   1. Download file [sintel_trailer-720p.mp4](https://download.blender.org/durian/trailer/sintel_trailer-720p.mp4) and place it in _/home/media/videos_.
+   1. Please access [durian.blender.org/download](https://durian.blender.org/download/) to download the inputs file.
+      > Download the input file `sintel_trailer-720p.mp4` from [download.blender.org/durian/trailer](https://download.blender.org/durian/trailer/) and then place it in _/home/media/videos_.\
+      > This input file has its own copyright (please refer to [durian.blender.org/sharing](https://durian.blender.org/sharing/) for more details)
    2. Run this command (on board) to convert this file to raw video format (NV12):
    ```sh
    $ gst-launch-1.0 -e filesrc num-buffers=120 location=/home/media/videos/sintel_trailer-720p.mp4 ! qtdemux ! h264parse ! omxh264dec no-copy=false ! filesink location=/home/media/videos/sintel_trailer-720p.yuv
