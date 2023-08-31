@@ -17,7 +17,6 @@ GStreamer: 1.16.3 (edited by Renesas).
 + [`detect_microphone.sh`](detect_microphone.sh)
 
 ### Walkthrough: [`main.c`](main.c)
->Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](/01_gst-audioplay/README.md), [Audio Record](/05_gst-audiorecord/README.md) and [Video Record](/06_gst-videorecord/README.md).
 
 #### Output location
 ```c
