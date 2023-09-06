@@ -1,6 +1,6 @@
 # Audio Video Record
 
-Record raw data from USB microphone and USB webcam or MIPI camera at the same time, then store them in MKV container.
+Record raw data from USB microphone and USB webcam at the same time, then store them in MKV container.
 
 ![Figure audio video record pipeline](figure.png)
 
@@ -12,7 +12,6 @@ GStreamer: 1.16.3 (edited by Renesas).
 
 + [`main.c`](main.c)
 + [`Makefile`](Makefile)
-+ [`setup_MIPI_camera.sh`](setup_MIPI_camera.sh)
 + [`detect_camera.sh`](detect_camera.sh)
 + [`detect_microphone.sh`](detect_microphone.sh)
 
@@ -33,7 +32,7 @@ if (argc != ARG_COUNT) {
 ```
 This application accepts 2 command-line argument:
 - The first points to USB microphone device card (hw:1,0, for example). Note: You can find this value by following section [Special Instruction](/05_gst-audiorecord/README.md#special-instruction).
-- The second points to USB camera/MIPI camera device file (/dev/video9, for example). Note: You can find this value by following section [Special Instruction](/06_gst-videorecord/README.md#special-instruction).
+- The second points to USB camera device file (/dev/video0, for example). Note: You can find this value by following section [Special Instruction](/06_gst-videorecord/README.md#special-instruction).
 
 #### Create elements
 ```c
@@ -44,12 +43,7 @@ video_conv_capsfilter =
     gst_element_factory_make ("capsfilter", "video-conv-caps");
 video_encoder = gst_element_factory_make ("omxh264enc", "video-encoder");
 video_parser = gst_element_factory_make ("h264parse", "h264-parser");
-
-if (camera == MIPI_CAMERA) {
-  video_converter = gst_element_factory_make ("vspmfilter", "video-converter");
-} else {
-  video_converter = gst_element_factory_make ("videoconvert", "video-converter");
-}
+video_converter = gst_element_factory_make ("videoconvert", "video-converter");
 
 audio_src = gst_element_factory_make ("alsasrc", "audio-src");
 audio_queue = gst_element_factory_make ("queue", "audio-queue");
@@ -62,11 +56,10 @@ muxer = gst_element_factory_make ("matroskamux", "mkv-muxer");
 sink = gst_element_factory_make ("filesink", "file-output");
 
 ```
-To record raw data from USB microphone and USB webcam or MIPI camera at the same time, then store them in MKV container, the following elements are used:
+To record raw data from USB microphone and USB webcam at the same time, then store them in MKV container, the following elements are used:
 -	 Element `v4l2src` captures video from V4L2 devices.
 -	 Element `queue` (`cam_queue` and `audio_queue`) queues data until one of the limits specified by the max-size-buffers, max-size-bytes, and/or max-size-time properties has been reached. Any attempt to push more buffers into the queue will block the pushing thread until more space becomes available.
 -	 Element `capsfilter` specifies raw video format, framerate, and resolution.
--	 Element `videoconvert` (used for USB camera) and element `vspmfilter` (used for MIPI camera) converts video frames to a format (such as: NV12) understood by omxh264enc.
 -	 Element `omxh264enc` encodes raw video into H.264 compressed data.
 -	 Element `h264parse` connects `omxh264enc` to qtmux.
 -	 Element `alsasrc` reads data from an audio card using the ALSA API.
@@ -77,11 +70,8 @@ To record raw data from USB microphone and USB webcam or MIPI camera at the same
 
 #### Set element’s properties
 ```c
-g_object_set (G_OBJECT (video_converter), "dmabuf-use", true, NULL);
-g_object_set (G_OBJECT (video_encoder), "target-bitrate", MIPI_BITRATE_OMXH264ENC,
-    "control-rate", VARIABLE_RATE, "interval_intraframes", 14, "periodicty-idr", 2, NULL);
 g_object_set (G_OBJECT (video_encoder), "target-bitrate", USB_BITRATE_OMXH264ENC,
-    "control-rate", VARIABLE_RATE, NULL);
+      "control-rate", VARIABLE_RATE, NULL);
 g_object_set (G_OBJECT (cam_src), "device", argv[ARG_CAMERA], NULL);
 
 g_object_set (G_OBJECT (audio_src), "device", argv[ARG_MICROPHONE], NULL);
@@ -92,17 +82,11 @@ g_object_set (G_OBJECT (sink), "location", output_file, NULL);
 The `g_object_set()` function is used to set some element’s properties, such as:
 -	 The `device` property of v4l2src element which points to `camera’s device` file. Users will pass the device file as a command line argument to this application. Please refer to section [Video Record Special Instruction](/06_gst-videorecord/README.md#special-instruction) to find the value.
 -	 The `location` property of filesink element which points to MKV output file.
--	 The `dmabuf-use` property of vspmfilter element which is set to true. This disallows dmabuf to be output buffer. If it is not set, the output file will be broken.
 -	 The `target-bitrate` property of omxh264enc element is used to specify encoding bit rate. The higher bitrate, the better quality.
 -	 The `control-rate` property of omxh264enc element is used to specify birate control method which is variable bitrate method in this case.
--	 The `interval_intraframes` property of omxh264enc element is used to specify interval of coding intra frames.
--	 The `periodicty-idr` property of omxh264enc is used to specify periodicity of IDR frames.
 -	 The `device` property of alsasrc element which points to a `microphone device`. Users will pass the device card as a command line argument to this application. Please refer to section [Audio record Special Instruction](/05_gst-audiorecord/README.md#special-instruction) to find the value.
 -  The `bitrate` property of vorbisenc element is used to specify encoding bit rate. The higher bitrate, the better quality.
 ```c
-/* MIPI camera*/
-cam_caps = gst_caps_new_simple ("video/x-raw", "format", G_TYPE_STRING, "UYVY",
-            "width", G_TYPE_INT, width, "height", G_TYPE_INT, height, NULL);
 /* USB camera */
 cam_caps = gst_caps_new_simple ("video/x-raw", "width", G_TYPE_INT, width,
           "height", G_TYPE_INT, height, NULL);
@@ -227,14 +211,7 @@ $   make
 ```sh
 $   scp -r $WORK/07_gst-audiovideorecord/ <username>@<board IP>:/usr/share/
 ```
-***Step 4***.  Setup MIPI camera (With USB camera you can skip this step):
-```sh
-$   /usr/share/07_gst-audiovideorecord/setup_MIPI_camera.sh <width>x<height>
-```
-For more detail about `setup_MIPI_camera.sh` script at [Initialize MIPI camera](#run-the-following-script-to-initialize-mipi-camera).
->Note: Only 2 resolutions are supported by MIPI camera (OV5645 camera): 1920x1080, 1280x960
-
-***Step 5***.	Run the application:
+***Step 4***.	Run the application:
 ```sh
 $   /usr/share/07_gst-audiovideorecord/gst-audiovideorecord $(/usr/share/07_gst-audiovideorecord/detect_microphone.sh) $(/usr/share/07_gst-audiovideorecord/detect_camera.sh) <width> <height>
 ```
@@ -285,9 +262,6 @@ Option 2: Logitech USB HD 1080p Webcam C930E.
 
 Option 3: Logitech USB UHD Webcam BRIO.
 
-#### Recommended MIPI camera:
-MIPI Mezzanine Adapter and OV5645 camera.
-
 #### Run the following script to find camera device file:
 ```sh
 $   ./detect_camera.sh
@@ -324,29 +298,7 @@ fi
 
 exit $PROG_STAT
 ```
-#### Run the following script to initialize MIPI camera:
 
-```sh
-./setup_MIPI_camera.sh <width>x<height>
-```
-Basically, this script uses `media-ctl` tool to set up format of OV5645 camera. This camera only support 2 resolutions are 1280x960, 1920x1080.
-
-For further information on how this script is implemented, please refer to the following lines of code:
-
-```sh
-#!/bin/bash
-
-if [[ $1 != "1280x960" ]] && [[ $1 != "1920x1080" ]]; then
-	echo "RZG2L and RZV2L only support 2 camera resolutions"
-	echo -e "1. 1920x1080\n2. 1280x960"
-else
-  media-ctl -d /dev/media0 -r
-  media-ctl -d /dev/media0 -V "'ov5645 0-003c':0 [fmt:UYVY8_2X8/$1 field:none]"
-  media-ctl -d /dev/media0 -l "'rzg2l_csi2 10830400.csi2':1 -> 'CRU output':0 [1]"
-  media-ctl -d /dev/media0 -V "'rzg2l_csi2 10830400.csi2':1 [fmt:UYVY8_2X8/$1 field:none]"
-	echo "/dev/video0 is configured successfully with resolution "$1""
-fi
-```
 ### To check the output file:
 Option 1: VLC media player (https://www.videolan.org/vlc/index.html).
 
