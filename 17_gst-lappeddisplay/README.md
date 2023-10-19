@@ -119,7 +119,7 @@ $   make
 $   scp -r $WORK/17_gst-lappeddisplay/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
--	 Download the input files [vga1.h264](https://www.renesas.com/jp/ja/img/products/media/auto-j/microcontrollers-microprocessors/rz/rzg/doorphone-videos/vga1.h264), [vga2.h264](https://www.renesas.com/jp/ja/img/products/media/auto-j/microcontrollers-microprocessors/rz/rzg/doorphone-videos/vga2.h264) and [vga3.h264](https://www.renesas.com/jp/ja/img/products/media/auto-j/microcontrollers-microprocessors/rz/rzg/doorphone-videos/vga3.h264). Please place all in _/home/media/videos_.
+-	 Download the input files `vga1.h264`, `vga2.h264` and `vga3.h264` from _Renesas/videos_ in media repository. Please place all of them in _/home/media/videos_.
 ```sh
 $   /usr/share/17_gst-lappeddisplay/gst-lappeddisplay
 ```

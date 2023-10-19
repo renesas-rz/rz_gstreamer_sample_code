@@ -89,7 +89,7 @@ $   scp -r $WORK/16_gst-multipledisplays2/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
 
-Download the input file [vga1.h264](https://www.renesas.com/jp/ja/img/products/media/auto-j/microcontrollers-microprocessors/rz/rzg/doorphone-videos/vga1.h264) and [vga2.h264](https://www.renesas.com/jp/ja/img/products/media/auto-j/microcontrollers-microprocessors/rz/rzg/doorphone-videos/vga2.h264) then place it in _/home/media/videos_.
+Download the input files `vga1.h264` and `vga2.h264` from _Renesas/videos_ in media repository then place all of them in _/home/media/videos_.
 
 ```sh
 $   /usr/share/16_gst-multipledisplays2/gst-multipledisplays2 /home/media/videos/vga1.h264 /home/media/videos/vga2.h264

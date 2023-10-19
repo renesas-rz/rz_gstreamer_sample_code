@@ -198,8 +198,7 @@ $   scp -r $WORK/13_gst-audiovideoplay/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
 
--  Download the input file `Rondo_Alla_Turka.ogg` from [commons.wikimedia.org/wiki/File:Rondo_Alla_Turka.ogg](https://commons.wikimedia.org/wiki/File:Rondo_Alla_Turka.ogg) and place it in _/home/media/audios_.
--	 Download the input file [vga1.h264](https://www.renesas.com/jp/ja/img/products/media/auto-j/microcontrollers-microprocessors/rz/rzg/doorphone-videos/vga1.h264) and place it in _/home/media/videos_.
+-  Download the input files `Rondo_Alla_Turka.ogg` from _Renesas/audios_ and `vga1.h264` from _Renesas/videos_ in media repository then place all of them in _/home/media/audios_.
 ```sh
 $   /usr/share/13_gst-audiovideoplay/gst-audiovideoplay /home/media/audios/Rondo_Alla_Turka.ogg /home/media/videos/vga1.h264
 ```

@@ -108,7 +108,7 @@ $   /usr/share/03_gst-audioencode/gst-audioencode
 ```
 ### Special instruction:
 #### Prepare raw audio file:
-1.	Download the input file `Rondo_Alla_Turka.ogg` from [commons.wikimedia.org/wiki/File:Rondo_Alla_Turka.ogg](https://commons.wikimedia.org/wiki/File:Rondo_Alla_Turka.ogg)(128 Kbps, 44.1 kHz, stereo audio, and Vorbis audio format) and place it in _/home/media/audios_.
+1.	Download the input file `Rondo_Alla_Turka.ogg` from _Renesas/audios_ in media repository and then place it in _/home/media/audios_.
 2. Run this command (on board) to convert this file to raw audio format (F32LE, 44.1 kHz, and stereo audio).
 ```sh
 $ gst-launch-1.0 -e filesrc location=/home/media/audios/Rondo_Alla_Turka.ogg ! oggdemux ! vorbisdec ! audio/x-raw, format=F32LE, rate=44100, channels=2 ! filesink location=/home/media/audios/Rondo_Alla_Turka_F32LE_44100_stereo.raw
