@@ -17,7 +17,7 @@
 #define LOGI(...)	g_print(__VA_ARGS__)
 #define LOGE(...)	g_printerr(__VA_ARGS__)
 
-#define FILE_SUFFIX		".ogg"
+#define FILE_SUFFIX		".mp3"
 
 typedef enum tag_user_command
 {

@@ -6,16 +6,16 @@
 #define NORMAL_PLAYING_RATE         (gdouble) 1.0
 
 #define GET_SECOND_FROM_NANOSEC(x)	(x / 1000000000)
-#define FORMAT                      "S16LE"
+#define AUDIO_SAMPLE_RATE           44100
 #define TIME                        60
 typedef struct tag_user_data
 {
   GMainLoop *loop;
   GstElement *pipeline;
   GstElement *source;
-  GstElement *demuxer;
+  GstElement *parser;
   GstElement *decoder;
-  GstElement *converter;
+  GstElement *audioresample;
   GstElement *capsfilter;
   GstElement *sink;
   gint64 audio_length;
@@ -31,54 +31,14 @@ void play_new_file (UserData * data, gboolean refresh_console_message);
 gboolean ui_thread_die = FALSE;
 pthread_t id_ui_thread = 0;
 pthread_t id_autoplay_thread = 0;
-pthread_cond_t cond_gst_data = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t mutex_gst_data = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_ui_data = PTHREAD_MUTEX_INITIALIZER;
-
-/* Call back functions */
-static void
-on_pad_added (GstElement * element, GstPad * pad, gpointer data)
-{
-  pthread_mutex_lock (&mutex_gst_data);
-  GstPad *sinkpad;
-  UserData *puser_data = (UserData *) data;
-
-  LOGD ("inside on_pad_added\n");
-  /* Add back audio_queue, audio_decoder and audio_sink */
-  gst_bin_add_many (GST_BIN (puser_data->pipeline),
-      puser_data->decoder, puser_data->converter, puser_data->capsfilter,
-      puser_data->sink, NULL);
-  /* Link decoder and converter */
-  if (gst_element_link_many (puser_data->decoder, puser_data->converter,
-          puser_data->capsfilter, puser_data->sink, NULL) != TRUE) {
-    g_print ("Elements could not be linked.\n");
-  }
-
-  /* Link demuxer and decoder */
-  sinkpad = gst_element_get_static_pad (puser_data->decoder, "sink");
-  if (GST_PAD_LINK_OK != gst_pad_link (pad, sinkpad)) {
-    g_print ("Link Failed");
-  }
-  gst_object_unref (sinkpad);
-
-  /* Change newly added element to ready state is required */
-  gst_element_set_state (puser_data->decoder, GST_STATE_PLAYING);
-  gst_element_set_state (puser_data->converter, GST_STATE_PLAYING);
-  gst_element_set_state (puser_data->capsfilter, GST_STATE_PLAYING);
-  gst_element_set_state (puser_data->sink, GST_STATE_PLAYING);
-
-  /* Signal the dynamic pad linked */
-  pthread_cond_signal (&cond_gst_data);
-  pthread_mutex_unlock (&mutex_gst_data);
-}
 
 void
 sync_to_play_new_file (UserData * data, gboolean refresh_console_message)
 {
   pthread_mutex_lock (&mutex_gst_data);
   play_new_file (data, refresh_console_message);
-  /* Wait on_pad_added completed in main thread */
-  pthread_cond_wait (&cond_gst_data, &mutex_gst_data);
   /* Wait the state become PLAYING to get the audio length */
   gst_element_get_state (data->pipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
   gst_element_query_duration (data->pipeline, GST_FORMAT_TIME,
@@ -116,7 +76,7 @@ bus_call (GstBus * bus, GstMessage * msg, gpointer data)
       gboolean ret = request_update_file_path (1);
       pthread_mutex_unlock (&mutex_ui_data);
       if (ret) {
-        /* Need to call play_new_file() from another thread to avoid DEADLOCK */
+        /* Need to call play_new_file from another thread to avoid DEADLOCK */
         if (pthread_create (&id_autoplay_thread, NULL, auto_play_thread_func,
                 (UserData *) data)) {
           LOGE ("pthread_create autoplay failed\n");
@@ -303,39 +263,61 @@ wait_for_state_change_completed (GstElement * pipeline)
 void
 play_new_file (UserData * data, gboolean refresh_console_message)
 {
+  GstElement *source = data->source;
+  GstElement *parser = data->parser;
   GstElement *decoder = data->decoder;
-  GstElement *converter = data->converter;
+  GstElement *audioresample = data->audioresample;
   GstElement *capsfilter = data->capsfilter;
   GstElement *sink = data->sink;
   gboolean ret __attribute__((__unused__)) = FALSE;
 
   /* Seek to start and flush all old data */
-  gst_element_seek_simple (data->pipeline, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH,
-      0);
+  gst_element_seek_simple (data->pipeline, GST_FORMAT_TIME,
+      GST_SEEK_FLAG_FLUSH, 0);
   gst_element_set_state (data->pipeline, GST_STATE_READY);
 
   /* wait until the changing is complete */
   gst_element_get_state (data->pipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
 
-  decoder = gst_bin_get_by_name (GST_BIN (data->pipeline), "vorbis-decoder");   /* Keep the element to still exist after removing */
+  /* Keep the element to still exist after removing */
+  source = gst_bin_get_by_name (GST_BIN (data->pipeline), "file-source");
+  if (NULL != source) {
+    ret = gst_bin_remove (GST_BIN (data->pipeline), data->source);
+    LOGD ("gst_bin_remove parser from pipeline: %s\n",
+        (ret) ? ("SUCCEEDED") : ("FAILED"));
+  }
+  /* Keep the element to still exist after removing */
+  parser = gst_bin_get_by_name (GST_BIN (data->pipeline), "mp3-parser");
+  if (NULL != parser) {
+    ret = gst_bin_remove (GST_BIN (data->pipeline), data->parser);
+    LOGD ("gst_bin_remove parser from pipeline: %s\n",
+        (ret) ? ("SUCCEEDED") : ("FAILED"));
+  }
+  /* Keep the element to still exist after removing */
+  decoder = gst_bin_get_by_name (GST_BIN (data->pipeline), "mp3-decoder");
   if (NULL != decoder) {
     ret = gst_bin_remove (GST_BIN (data->pipeline), data->decoder);
     LOGD ("gst_bin_remove decoder from pipeline: %s\n",
         (ret) ? ("SUCCEEDED") : ("FAILED"));
   }
-  converter = gst_bin_get_by_name (GST_BIN (data->pipeline), "converter");      /* Keep the element to still exist after removing */
-  if (NULL != converter) {
-    ret = gst_bin_remove (GST_BIN (data->pipeline), data->converter);
-    LOGD ("gst_bin_remove converter from pipeline: %s\n",
+  /* Keep the element to still exist after removing */
+  audioresample = gst_bin_get_by_name (GST_BIN (data->pipeline),
+                      "audio-resample");
+  if (NULL != audioresample) {
+    ret = gst_bin_remove (GST_BIN (data->pipeline), data->audioresample);
+    LOGD ("gst_bin_remove audioresample from pipeline: %s\n",
         (ret) ? ("SUCCEEDED") : ("FAILED"));
   }
-  capsfilter = gst_bin_get_by_name (GST_BIN (data->pipeline), "conv_capsfilter");       /* Keep the element to still exist after removing */
+  /* Keep the element to still exist after removing */
+  capsfilter = gst_bin_get_by_name (GST_BIN (data->pipeline),
+                  "resample_capsfilter");
   if (NULL != capsfilter) {
     ret = gst_bin_remove (GST_BIN (data->pipeline), data->capsfilter);
     LOGD ("gst_bin_remove capsfilter from pipeline: %s\n",
         (ret) ? ("SUCCEEDED") : ("FAILED"));
   }
-  sink = gst_bin_get_by_name (GST_BIN (data->pipeline), "audio-output");        /* Keep the element to still exist after removing */
+  /* Keep the element to still exist after removing */
+  sink = gst_bin_get_by_name (GST_BIN (data->pipeline), "audio-output");
   if (NULL != sink) {
     ret = gst_bin_remove (GST_BIN (data->pipeline), data->sink);
     LOGD ("gst_bin_remove sink from pipeline: %s\n",
@@ -346,9 +328,24 @@ play_new_file (UserData * data, gboolean refresh_console_message)
   g_object_set (G_OBJECT (data->source), "location", get_current_file_path (),
       NULL);
 
-  /* Set the pipeline to "playing" state */
+  /* Add the elements into the pipeline and then link them together */
+  gst_bin_add_many (GST_BIN (data->pipeline),
+      data->source, data->parser, data->decoder, data->audioresample,
+      data->capsfilter, data->sink, NULL);
+  if (gst_element_link_many (data->source, data->parser, data->decoder,
+          data->audioresample, data->capsfilter, data->sink, NULL) != TRUE) {
+    g_print ("Elements could not be linked.\n");
+    gst_object_unref (data->pipeline);
+  }
+
   print_current_selected_file (refresh_console_message);
-  gst_element_set_state (data->pipeline, GST_STATE_PLAYING);
+
+  /* Set the pipeline to "playing" state */
+  if (gst_element_set_state (data->pipeline,
+          GST_STATE_PLAYING) == GST_STATE_CHANGE_FAILURE) {
+    g_printerr ("Unable to set the pipeline to the playing state.\n");
+    gst_object_unref (data->pipeline);
+  }
 }
 
 int
@@ -356,7 +353,7 @@ main (int argc, char *argv[])
 {
   /* Check input arguments */
   if (argc != 2) {
-    g_printerr ("Usage: %s <Ogg/Vorbis filename or directory>\n", argv[0]);
+    g_printerr ("Usage: %s <Mp3 filename or directory>\n", argv[0]);
     return -1;
   }
 
@@ -365,72 +362,45 @@ main (int argc, char *argv[])
     return -1;
   }
 
-  GMainLoop *loop;
   UserData user_data;
-
-  GstElement *pipeline, *source, *demuxer, *decoder, *conv, *capsfilter, *sink;
   GstCaps *caps;
   GstBus *bus;
   guint bus_watch_id;
 
   /* Initialization */
   gst_init (NULL, NULL);
-  loop = g_main_loop_new (NULL, FALSE);
+  user_data.loop = g_main_loop_new (NULL, FALSE);
 
-  /* Create GStreamer elements instead of demuxer */
-  pipeline = gst_pipeline_new ("audio-player");
-  source = gst_element_factory_make ("filesrc", "file-source");
-  demuxer = gst_element_factory_make ("oggdemux", "ogg-demuxer");
-  decoder = gst_element_factory_make ("vorbisdec", "vorbis-decoder");
-  conv = gst_element_factory_make ("audioconvert", "converter");
-  capsfilter = gst_element_factory_make ("capsfilter", "conv_capsfilter");
-  sink = gst_element_factory_make ("alsasink", "audio-output");
+  /* Create GStreamer elements */
+  user_data.pipeline = gst_pipeline_new ("audio-player");
+  user_data.source = gst_element_factory_make ("filesrc", "file-source");
+  user_data.parser = gst_element_factory_make ("mpegaudioparse", "mp3-parser");
+  user_data.decoder = gst_element_factory_make ("mpg123audiodec",
+                          "mp3-decoder");
+  user_data.audioresample = gst_element_factory_make ("audioresample",
+                                "audio-resample");
+  user_data.capsfilter = gst_element_factory_make ("capsfilter",
+                             "resample_capsfilter");
+  user_data.sink = gst_element_factory_make ("alsasink", "audio-output");
+  user_data.audio_length = 0;
 
-  if (!pipeline || !source || !demuxer || !decoder || !conv || !capsfilter
-      || !sink) {
+  if (!user_data.pipeline || !user_data.source || !user_data.parser ||
+          !user_data.decoder || !user_data.audioresample ||
+          !user_data.capsfilter || !user_data.sink) {
     g_printerr ("One element could not be created. Exiting.\n");
     return -1;
   }
 
   /* Set the caps option to the caps-filter element */
   caps =
-      gst_caps_new_simple ("audio/x-raw", "format", G_TYPE_STRING, FORMAT,
-      NULL);
-  g_object_set (G_OBJECT (capsfilter), "caps", caps, NULL);
+      gst_caps_new_simple ("audio/x-raw", "rate", G_TYPE_INT,
+          AUDIO_SAMPLE_RATE, NULL);
+  g_object_set (G_OBJECT (user_data.capsfilter), "caps", caps, NULL);
   gst_caps_unref (caps);
-
-
-  /* we add all elements into the pipeline and link them instead of demuxer */
-  gst_bin_add_many (GST_BIN (pipeline), source, demuxer, decoder, conv,
-      capsfilter, sink, NULL);
-  if (gst_element_link (source, demuxer) != TRUE) {
-    g_printerr ("Elements could not be linked.\n");
-    gst_object_unref (pipeline);
-    return -1;
-  }
-  if (gst_element_link_many (decoder, conv, capsfilter, sink, NULL) != TRUE) {
-    g_printerr ("Elements could not be linked.\n");
-    gst_object_unref (pipeline);
-    return -1;
-  }
-
-  /* Construct user data */
-  user_data.loop = loop;
-  user_data.pipeline = pipeline;
-  user_data.source = source;
-  user_data.demuxer = demuxer;
-  user_data.decoder = decoder;
-  user_data.converter = conv;
-  user_data.capsfilter = capsfilter;
-  user_data.sink = sink;
-  user_data.audio_length = 0;
-
-  g_signal_connect (demuxer, "pad-added", G_CALLBACK (on_pad_added),
-      &user_data);
 
   /* Set up the pipeline */
   /* we add a message handler */
-  bus = gst_pipeline_get_bus (GST_PIPELINE (pipeline));
+  bus = gst_pipeline_get_bus (GST_PIPELINE (user_data.pipeline));
   bus_watch_id = gst_bus_add_watch (bus, bus_call, &user_data);
   gst_object_unref (bus);
 
@@ -442,17 +412,18 @@ main (int argc, char *argv[])
   }
 
   /* Handle user input thread */
-  if (pthread_create (&id_ui_thread, NULL, check_user_command_loop, &user_data)) {
+  if (pthread_create (&id_ui_thread, NULL, check_user_command_loop,
+          &user_data)) {
     LOGE ("pthread_create failed\n");
     goto exit;
   }
 
   /* Iterate */
-  g_main_loop_run (loop);
+  g_main_loop_run (user_data.loop);
 
   /* Out of the main loop, clean up nicely */
   g_print ("Returned, stopping playback...\n");
-  gst_element_set_state (pipeline, GST_STATE_NULL);
+  gst_element_set_state (user_data.pipeline, GST_STATE_NULL);
 
   g_print ("Wait for UI thread terminated.\n");
   ui_thread_die = TRUE;
@@ -464,9 +435,9 @@ main (int argc, char *argv[])
 
 exit:
   g_print ("Deleting pipeline...\n");
-  gst_object_unref (GST_OBJECT (pipeline));
+  gst_object_unref (GST_OBJECT (user_data.pipeline));
   g_source_remove (bus_watch_id);
-  g_main_loop_unref (loop);
+  g_main_loop_unref (user_data.loop);
 
   g_print ("Program end!\n");
   return 0;

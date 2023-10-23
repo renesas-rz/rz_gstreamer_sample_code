@@ -1,6 +1,6 @@
 # Audio Play
 
-Play an Ogg/Vorbis audio file.
+Play an MP3 audio file.
 
 ![Figure audio play pipeline](figure.png)
 
@@ -15,6 +15,24 @@ GStreamer: 1.16.3 (edited by Renesas).
 
 ### Walkthrough: [`main.c`](main.c)
 
+#### UserData structure
+```c
+typedef struct tag_user_data
+{
+  GstElement *pipeline;
+  GstElement *source;
+  GstElement *parser;
+  GstElement *decoder;
+  GstElement *audioresample;
+  GstElement *capsfilter;
+  GstElement *sink;
+  const gchar *input_file;
+} UserData;
+```
+This structure contains:
+- Gstreamer element variables: `pipeline`, `source`, `parser`, `decoder`, `audioresample`, `capsfilter`, `sink`. These variables will be used to create pipeline and elements as sections [Create new pipeline](#create-new-pipeline) and [Create elements](#create-elements).
+- Varaiable `input_file (const gchar)` to represent MP3 audio input file.
+
 #### Input location
 ```c
 if (argc != ARG_COUNT)
@@ -24,34 +42,42 @@ if (argc != ARG_COUNT)
   return -1;
 }
 ```
-This application accepts one command-line argument which points to an Ogg/Vorbis file.
+This application accepts one command-line argument which points to an MP3 file.
 
 #### Create new pipeline
 ```c
-pipeline = gst_pipeline_new ("audio-play");
+user_data->pipeline = gst_pipeline_new ("audio-play");
 ```
 The `gst_pipeline_new()` function creates a new empty pipeline which is the top-level container with clocking and bus management functionality.
 
 #### Create elements
 ```c
-source = gst_element_factory_make ("filesrc", "file-source");
-demuxer = gst_element_factory_make ("oggdemux", "ogg-demuxer");
-decoder = gst_element_factory_make ("vorbisdec", "vorbis-decoder");
-conv = gst_element_factory_make ("audioconvert", "converter");
-capsfilter = gst_element_factory_make ("capsfilter", "conv_capsfilter");
-sink = gst_element_factory_make ("autoaudiosink", "audio-output");
+user_data.pipeline = gst_pipeline_new ("audio-play");
+user_data.source = gst_element_factory_make ("filesrc", "file-source");
+user_data.parser = gst_element_factory_make ("mpegaudioparse",
+                        "mp3-parser");
+user_data.decoder = gst_element_factory_make ("mpg123audiodec",
+                        "mp3-decoder");
+user_data.audioresample = gst_element_factory_make ("audioresample",
+                              "audio-resample");
+user_data.capsfilter = gst_element_factory_make ("capsfilter",
+                            "resample_capsfilter");
+user_data.sink = gst_element_factory_make ("alsasink", "audio-output");
 ```
-To play an Ogg/Vorbis audio file, the following elements are used:
+To play an MP3 audio file, the following elements are used:
 -	 Element `filesrc` reads data from a local file.
--	 Element `oggdemux` de-multiplexes Ogg files into their encoded audio and video components. In this case, only audio stream is available.
--	 Element `vorbisdec` decompresses a Vorbis stream to raw audio.
--	 Element `audioconvert` converts raw audio buffers between various possible formats depending on the given source pad and sink pad it links to.
--	 Element `capsfilter` specifies raw audio format S16LE.
--	 Element `autoaudiosink` automatically detects an appropriate audio sink (such as: alsasink).
+-  Element `mpegaudioparse` parses and frames mpeg1 audio streams.
+-	 Element `mpg123audiodec` decode MPEG Layer 1, 2, and 3 (MP3) audio data.
+-	 Element `audioresample` resample raw audio buffers to different sample rates using a configurable windowing function to enhance quality.
+-	 Element `capsfilter` contains target sample rate 44100 Hz so that `audioresample` can resample audio based on this value.
+-	 Element `alsasink` renders audio samples using the ALSA audio API.
 
 #### Check elements
 ```c
-if (!pipeline || !source || !demuxer || !decoder || !capsfilter || !conv || !sink) {
+if (!user_data.pipeline || !user_data.source ||
+        !user_data.parser || !user_data.decoder ||
+        !user_data.audioresample || !user_data.capsfilter ||
+        !user_data.sink) {
   g_printerr ("One element could not be created. Exiting.\n");
   return -1;
 }
@@ -62,72 +88,47 @@ If either `gst_element_factory_make()` `or gst_pipeline_new()` is unable to crea
 
 #### Set element’s properties
 ```c
-g_object_set (G_OBJECT (source), "location", input_file, NULL);
-```
-The `g_object_set()` function is used to set the location property of filesrc (source) to an _Ogg/Vorbis_ file.
-```c
-caps = gst_caps_new_simple ("audio/x-raw", "format", G_TYPE_STRING, FORMAT, NULL);
-
-g_object_set (G_OBJECT (capsfilter), "caps", caps, NULL);
+caps = gst_caps_new_simple ("audio/x-raw", "rate", G_TYPE_INT,
+            AUDIO_SAMPLE_RATE, NULL);
+g_object_set (G_OBJECT (data->capsfilter), "caps", caps, NULL);
 gst_caps_unref (caps);
+
+g_object_set (G_OBJECT (data->source), "location", data->input_file, NULL);
 ```
-Target audio format S16LE is added to a new cap (`gst_caps_new_simple`) which is then added to caps property of `capsfilter (g_object_set)`. Then, audioconvert will use this element to convert audio format F32LE (of vorbisdec) to S16LE which is supported by sound driver.
+The `g_object_set()` function is used to set the location property of filesrc (source) to an MP3 file.\
+The `caps` property of `capsfilter` element which specifies output audio sample rate 44100 Hz.
 >Note that the caps should be freed with `gst_caps_unref()` if it is not used anymore.
 
 #### Build pipeline
 ```c
-gst_bin_add_many (GST_BIN (pipeline), source, demuxer, decoder, conv, capsfilter, sink, NULL);
+gst_bin_add_many (GST_BIN (data->pipeline), data->source, data->parser,
+    data->decoder, data->audioresample, data->capsfilter, data->sink, NULL);
 
-gst_element_link (source, demuxer);
-gst_element_link_many (decoder, conv, capsfilter, sink, NULL);
+if (gst_element_link_many (data->source, data->parser, data->decoder,
+        data->audioresample, data->capsfilter, data->sink, NULL) != TRUE) {
+  g_printerr ("Elements could not be linked.\n");
+  return FALSE;
+}
 ```
-Above lines of code add all elements to pipeline and then links them into separated groups as below:
--	 Group #1: `source and demuxer`.
--	 Group #2: `decoder, conv, capsfilter, and sink`.
-
-The reason for the separation is that `demuxer` (oggdemux) contains no source pads at this point, so it cannot link to `decoder` (vorbisdec) until pad-added signal is emitted (see below).
 >Note that the order counts, because links must follow the data flow (this is, from source elements to sink elements).
 
-#### Signal
-
+#### Play pipeline
 ```c
-g_signal_connect (demuxer, "pad-added", G_CALLBACK (on_pad_added), decoder);
-```
-Signals are a crucial point in GStreamer. They allow you to be notified (by means of a callback) when something interesting has happened. Signals are identified by a name, and each element has its own signals.\
-In this application, `g_signal_connect()` is used to bind pad-added signal of oggdemux `(demuxer)` to callback function `pad_added_handler()` and `decoder` (vorbisdec). GStreamer does nothing with this element, it just forwards it to the callback.
-
-### Link oggdemux to vorbisdec
-When oggdemux (demuxer) finally has enough information to start producing data, it will create source pads, and trigger the pad-added signal. At this point our callback will be called:
-```c
-static void on_pad_added (GstElement * element, GstPad * pad, gpointer data);
-```
-The `element` parameter is the GstElement which triggered the signal. In this application, it is oggdemux. The first parameter of a signal handler is always the object that has triggered it.\
-The `pad` parameter is the GstPad that has just been added to the oggdemux. This is usually the pad to which we want to link.\
-The `data` parameter is the decoder (vorbisdec) we provided earlier when attaching to the signal.
-```c
-GstPad *sinkpad;
-GstElement *decoder = (GstElement *) data;
-
-sinkpad = gst_element_get_static_pad (decoder, "sink");
-gst_pad_link (pad, sinkpad);
-gst_object_unref (sinkpad);
-```
-The application retrieves the sink pad of vorbisdec using `gst_element_get_static_pad()`, then uses `gst_pad_link()` to connect it to the source pad of oggdemux.
->Note that `sinkpad` should be freed with `gst_caps_unref()` if it is not used anymore.
-
-### Play pipeline
-```c
-gst_element_set_state (pipeline, GST_STATE_PLAYING);
+gst_element_set_state (user_data.pipeline, GST_STATE_PLAYING);
 ```
 
 Every `pipeline` has an associated state. To start audio playback, the `pipeline` needs to be set to PLAYING state.
 
-### Wait until error or EOS
+#### Wait until error or EOS
 ```c
-bus = gst_element_get_bus (pipeline);
-msg = gst_bus_timed_pop_filtered (bus, GST_CLOCK_TIME_NONE, GST_MESSAGE_ERROR | GST_MESSAGE_EOS);
+bus = gst_element_get_bus (user_data.pipeline);
+msg = gst_bus_timed_pop_filtered (bus, GST_CLOCK_TIME_NONE,
+          GST_MESSAGE_ERROR | GST_MESSAGE_EOS);
+```
 Now, the pipeline is running. gst_bus_timed_pop_filtered() waits for execution to end and returns a GstMessage which is either an error or an EOS (End-of-Stream) message.
-Handle messages
+
+#### Handle messages
+```c
 if (msg != NULL) {
   GError *err;
   gchar *debug_info;
@@ -157,12 +158,12 @@ If the message is `GST_MESSAGE_ERROR`, the application will print the error mess
 If the message is `GST_MESSAGE_EOS`, the application will inform to users that the audio is finished.\
 After the message is handled, it should be un-referred by `gst_message_unref()`.
 
-### Clean up
+#### Clean up
 ```c
 gst_object_unref (bus);
 
-gst_element_set_state (pipeline, GST_STATE_NULL);
-gst_object_unref (GST_OBJECT (pipeline));
+gst_element_set_state (user_data.pipeline, GST_STATE_NULL);
+gst_object_unref (GST_OBJECT (user_date.pipeline));
 ```
 The `gst_element_get_bus()` function added the bus that must be freed with `gst_object_unref()`.
 Next, setting the `pipeline` to the NULL state will make sure it frees any resources it has allocated.\
@@ -212,9 +213,9 @@ $   scp -r $WORK/01_gst-audioplay/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
 
-Download the input file `Rondo_Alla_Turka.ogg` from _Renesas/audios_ in media repository then place it in _/home/media/audios_.
+Download the input file `renesas-bigideasforeveryspace.mp3` from _Renesas/audios_ in media repository then place it in _/home/media/audios_.
 ```sh
-$   /usr/share/01_gst-audioplay/gst-audioplay /home/media/audios/Rondo_Alla_Turka.ogg
+$   /usr/share/01_gst-audioplay/gst-audioplay /home/media/audios/renesas-bigideasforeveryspace.mp3
 ```
 ### Special instruction:
 To set the playback volume: please use the alsamixer or amixer tool. Reference: https://en.wikipedia.org/wiki/Alsamixer

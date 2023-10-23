@@ -1,5 +1,5 @@
 # Audio Player
-A simple text-based audio player that can play Ogg/Vorbis files. Supported features: play, pause, stop, resume, seek, and display audio file(s). You can input a single file or a whole directory.
+A simple text-based audio player that can play MP3 files. Supported features: play, pause, stop, resume, seek, and display audio file(s). You can input a single file or a whole directory.
 
 ![Figure audio play pipeline](figure.png)
 
@@ -21,10 +21,9 @@ GStreamer: 1.16.3 (edited by Renesas).
 ```c
 #include "player.h"             /* player UI APIs */
 ```
-Header file `player.h` contains functions that allow us to retrieve Ogg/Vorbis file path(s) from program parameter argv[1].
+Header file `player.h` contains functions that allow us to retrieve MP3 file path(s) from program parameter argv[1].
 ```c
 #define SKIP_POSITION               (gint64) 5000000000       /* 5s */
-#define NORMAL_PLAYING_RATE         (gdouble) 1.0
 ```
 The `SKIP_POSITION` macro defines the time interval (in nanosecond) to seek audio backwards and forwards.
 ```c
@@ -38,9 +37,9 @@ typedef struct tag_user_data
   GMainLoop *loop;
   GstElement *pipeline;
   GstElement *source;
-  GstElement *demuxer;
+  GstElement *parser;
   GstElement *decoder;
-  GstElement *converter;
+  GstElement *audioresample;
   GstElement *capsfilter;
   GstElement *sink;
   gint64 audio_length;
@@ -50,10 +49,10 @@ This structure contains:
 -	 Variable `loop (GMainLoop)`: An opaque data type to represent the main event loop of a Glib application.
 -	 Variable `pipeline (GstElement)`: A pointer to GStreamer pipeline which contains connected audio elements.
 -	 Variable `source (GstElement)`: A GStreamer element to read data from a local file.
--	 Variable `demuxer (GstElement)`: A GStreamer element to de-multiplex Ogg/Vorbis files into their encoded audio and video components. In this case, only audio stream is available.
--	 Variable `decoder (GstElement)`: A GStreamer element to decompress a Vorbis stream to raw audio.
--	 Variable `converter (GstElement)`: A GStreamer element to convert raw audio buffers between various possible formats depending on the given source pad and sink pad it links to.
--	 Variable `capsfilter (GstElement)`: A GStreamer element to specify raw audio format S16LE.
+-	 Variable `parser (GstElement)`: A GStreamer element to parses and frames mpeg1 audio streams.
+-	 Variable `decoder (GstElement)`: A GStreamer element used for decoding MPEG Layer 1, 2, and 3 (MP3) audio data.
+-	 Variable `audioresample (GstElement)`: A GStreamer element to resample raw audio buffers to different sample rates using a configurable windowing function to enhance quality.
+-	 Variable `capsfilter (GstElement)`: A GStreamer element to specify target sample rate 44100 Hz.
 -	 Variable `sink (GstElement)`: A GStreamer element to automatically detect an appropriate audio sink, in this case alsasink.
 -	 Variable `audio_length (qint64)`: An 8-byte integer variable to represent audio duration.
 #### Thread IDs
@@ -66,45 +65,33 @@ Variable `id_autoplay_thread` contains ID of auto-play thread which automaticall
 #### Validate user input
 ```c
 if (argc != 2) {
-  g_printerr ("Usage: %s <Ogg/Vorbis filename or directory>\n", argv[0]);
+  g_printerr ("Usage: %s <Mp3 filename or directory>\n", argv[0]);
   return -1;
 }
 ```
-This application accepts one command-line argument which points to an Ogg/Vorbis file or a whole directory.
+This application accepts one command-line argument which points to an MP3 file or a whole directory.
 #### Process user input
 ```c
 if (!inject_dir_path_to_player (argv[1])) {
   return -1;
 }
 ```
-This function retrieves an absolute path of the Ogg/Vorbis file or directory.
+This function retrieves an absolute path of the MP3 file or directory.
 
 #### Audio pipeline
 ```c
-source = gst_element_factory_make ("filesrc", "file-source");
-demuxer = gst_element_factory_make ("oggdemux", "ogg-demuxer");
-decoder = gst_element_factory_make ("vorbisdec", "vorbis-decoder");
-conv = gst_element_factory_make ("audioconvert", "converter");
-capsfilter = gst_element_factory_make ("capsfilter", "conv_capsfilter");
-sink = gst_element_factory_make ("alsasink", "audio-output");
+user_data.pipeline = gst_pipeline_new ("audio-player");
+user_data.source = gst_element_factory_make ("filesrc", "file-source");
+user_data.parser = gst_element_factory_make ("mpegaudioparse", "mp3-parser");
+user_data.decoder = gst_element_factory_make ("mpg123audiodec",
+                        "mp3-decoder");
+user_data.audioresample = gst_element_factory_make ("audioresample",
+                              "audio-resample");
+user_data.capsfilter = gst_element_factory_make ("capsfilter",
+                            "resample_capsfilter");
+user_data.sink = gst_element_factory_make ("alsasink", "audio-output");
 
-gst_bin_add_many (GST_BIN (pipeline), source, demuxer, decoder, conv, capsfilter, sink, NULL);
-gst_element_link (source, demuxer);
-gst_element_link_many (decoder, conv, capsfilter, sink, NULL);
-
-user_data.loop = loop;
-user_data.pipeline = pipeline;
-user_data.source = source;
-user_data.demuxer = demuxer;
-user_data.decoder = decoder;
-user_data.converter = conv;
-user_data.capsfilter = capsfilter;
-user_data.sink = sink;
-user_data.audio_length = 0;
-
-g_signal_connect (demuxer, "pad-added", G_CALLBACK (on_pad_added), &user_data);
-
-bus = gst_pipeline_get_bus (GST_PIPELINE (pipeline));
+bus = gst_pipeline_get_bus (GST_PIPELINE (user_data.pipeline));
 bus_watch_id = gst_bus_add_watch (bus, bus_call, &user_data);
 gst_object_unref (bus);
 ```
@@ -121,7 +108,7 @@ At this point, the pipeline is not running (NULL), so it is not safe to query au
 update_file_list ();
 ```
 
-If the input is a path to a directory, these lines of code will get the number of files of which extension is .ogg inside the directory.
+If the input is a path to a directory, these lines of code will get the number of files of which extension is .mp3 inside the directory.
 ```c
 if (try_to_update_file_path ()) {
   sync_to_play_new_file (&user_data, FALSE);
@@ -151,7 +138,7 @@ pthread_join (id_ui_thread, NULL);
 pthread_join (id_autoplay_thread, NULL);
 ```
 The `pthread_join()` function waits for both `id_ui_thread` and `id_autoplay_thread` to terminate. If that thread has already terminated, it will return immediately.
-### Play audio pipeline
+#### Play audio pipeline
 ```c
 void
 play_new_file (UserData * data, gboolean refresh_console_message)
@@ -163,13 +150,21 @@ play_new_file (UserData * data, gboolean refresh_console_message)
   /* Wait until the changing is complete */
   gst_element_get_state (data->pipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
 
-  decoder = gst_bin_get_by_name (GST_BIN (data->pipeline), "vorbis-decoder");
+  source = gst_bin_get_by_name (GST_BIN (data->pipeline), "file-source");
+  gst_bin_remove (GST_BIN (data->pipeline), data->source);
+
+  parser = gst_bin_get_by_name (GST_BIN (data->pipeline), "mp3-parser");
+  gst_bin_remove (GST_BIN (data->pipeline), data->parser);
+
+  decoder = gst_bin_get_by_name (GST_BIN (data->pipeline), "mp3-decoder");
   gst_bin_remove (GST_BIN (data->pipeline), data->decoder);
 
-  converter = gst_bin_get_by_name (GST_BIN (data->pipeline), "converter");
-  gst_bin_remove (GST_BIN (data->pipeline), data->converter);
+  audioresample = gst_bin_get_by_name (GST_BIN (data->pipeline),
+                      "audio-resample");
+  gst_bin_remove (GST_BIN (data->pipeline), data->audioresample);
 
-  capsfilter = gst_bin_get_by_name (GST_BIN (data->pipeline), "conv_capsfilter");
+  capsfilter = gst_bin_get_by_name (GST_BIN (data->pipeline),
+                  "resample_capsfilter");
   gst_bin_remove (GST_BIN (data->pipeline), data->capsfilter);
 
   sink = gst_bin_get_by_name (GST_BIN (data->pipeline), "audio-output");
@@ -178,45 +173,33 @@ play_new_file (UserData * data, gboolean refresh_console_message)
   /* Update file location */
   g_object_set (G_OBJECT (data->source), "location", get_current_file_path (), NULL);
 
-  /* Set the pipeline to "playing" state */
+  /* Add the elements into the pipeline and then link them together */
+  gst_bin_add_many (GST_BIN (data->pipeline),
+      data->source, data->parser, data->decoder, data->audioresample,
+      data->capsfilter, data->sink, NULL);
+  if (gst_element_link_many (data->source, data->parser, data->decoder,
+          data->audioresample, data->capsfilter, data->sink, NULL) != TRUE) {
+    g_print ("Elements could not be linked.\n");
+    gst_object_unref (data->pipeline);
+  }
+
   print_current_selected_file (refresh_console_message);
 
-  gst_element_set_state (data->pipeline, GST_STATE_PLAYING);
+  /* Set the pipeline to "playing" state */
+  if (gst_element_set_state (data->pipeline,
+          GST_STATE_PLAYING) == GST_STATE_CHANGE_FAILURE) {
+    g_printerr ("Unable to set the pipeline to the playing state.\n");
+    gst_object_unref (data->pipeline);
+  }
 }
 ```
 
 This function seeks pipeline to the beginning of playback position and changes its state to READY to prepare for the next audio file (`get_current_file_path`).\
-Next, it removes audio elements from pipeline, such as: vorbisdec `(decoder)`, audioconvert `(converter)`, `capsfilter`, and autoaudiosink `(sink)` from pipeline everytime location property of filesrc `(source)` changes (`g_object_set`). After this step, the pipeline only contains upstream elements, such as: filesrc and oggdemux.\
-Finally, the pipeline is set to PLAYING state. This will later call `on_pad_added()` asynchronously.
+Next, it removes audio all elements from pipeline everytime location property of filesrc `(source)` changes (`g_object_set`). After this step, the pipeline adds and links (again) all audio elements to pipeline. \
+Finally, the pipeline is set to PLAYING state.
 
 Note:
 >We need to call `gst_bin_get_by_name()` to keep the elements existing after we call `get_bin_remove()`.
-
-#### Function on_pad_added()
-```c
-static void on_pad_added (GstElement * element, GstPad * pad, gpointer data)
-{
-  gst_bin_add_many (GST_BIN (puser_data->pipeline),
-      puser_data->decoder, puser_data->converter, puser_data->capsfilter, puser_data->sink, NULL);
-
-  gst_element_link_many (puser_data->decoder, puser_data->converter,
-          puser_data->capsfilter, puser_data->sink, NULL)
-
-  /* Link demuxer and decoder */
-  sinkpad = gst_element_get_static_pad (puser_data->decoder, "sink");
-  if (GST_PAD_LINK_OK != gst_pad_link (pad, sinkpad)) {
-    g_print ("Link Failed");
-  }
-  gst_object_unref (sinkpad);
-
-  /* Change newly added element to ready state is required */
-  gst_element_set_state (puser_data->decoder, GST_STATE_PLAYING);
-  gst_element_set_state (puser_data->converter, GST_STATE_PLAYING);
-  gst_element_set_state (puser_data->capsfilter, GST_STATE_PLAYING);
-  gst_element_set_state (puser_data->sink, GST_STATE_PLAYING);
-}
-```
-This function adds and links (again) these audio elements to pipeline. Note that their states should be in PLAYING state to synchronize with upstream elements.
 
 #### Function bus_call()
 ```c
@@ -376,7 +359,7 @@ case LIST:{
   break;
 }
 ```
-Command `LIST` calls `update_file_list()` to update the number of Ogg/Vorbis files.
+Command `LIST` calls `update_file_list()` to update the number of MP3 files.
 ```c
 case PREVIOUS:{
   gboolean ret = request_update_file_path (-1);
@@ -418,9 +401,9 @@ Command `HELP` displays a short option summary.
 ### Walkthrough: [`player.c`](player.c) and [`player.h`](player.h)
 #### Macros
 ```c
-#define FILE_SUFFIX 		".ogg"
+#define FILE_SUFFIX 		".mp3"
 ```
-The `FILE_SUFFIX` macro defines the file extension that is supported by the pipeline. In this application, it only accepts audio files whose extension are `.ogg`.
+The `FILE_SUFFIX` macro defines the file extension that is supported by the pipeline. In this application, it only accepts audio files whose extension are `.mp3`.
 ```c
 #define DEBUG_LOG
 ```
@@ -440,12 +423,12 @@ static guint32 current_file_no = 0;
 ```
 It is an index which points to the current audio file (in the playlist). The value will be updated by calling `request_update_file_path()`.
 
->Note that this index starts from 1 and will always be 1 if user inputs an Ogg/Vorbis audio file, not a whole directory.
+>Note that this index starts from 1 and will always be 1 if user inputs an MP3 audio file, not a whole directory.
 ```c
 static guint32 last_file_count = 0;
 ```
-It contains the number of Ogg/Vorbis files. The value is retrieved by `update_file_list()`.
->Note that this variable will always be 1 if user inputs an Ogg/Vorbis audio file, not a whole directory.
+It contains the number of MP3 files. The value is retrieved by `update_file_list()`.
+>Note that this variable will always be 1 if user inputs an MP3 audio file, not a whole directory.
 
 #### APIs
 ```c
@@ -460,12 +443,12 @@ If the input is a directory, this function will get and store its absolute path 
 ```c
 void update_file_list (void);
 ```
-This function gets the number of Ogg/Vorbis files and stores them in last_file_count variable.
+This function gets the number of MP3 files and stores them in last_file_count variable.
 ```c
 gboolean try_to_update_file_path (void);
 ```
 This function gets file path without scanning variable dir_path. It can help the program play
-audio immediately if user inputs an Ogg/Vorbis file.
+audio immediately if user inputs an MP3 file.
 ```c
 gboolean request_update_file_path (gint32 offset_file);
 ```
@@ -528,7 +511,7 @@ $   make
 $   scp -r $WORK/11_gst-audioplayer/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
->Download the input file `Rondo_Alla_Turka.ogg` from _Renesas/audios_ in media repository and then place it in _/home/media/audios_.
+>Download the input file `renesas-bigideasforeveryspace.mp3` from _Renesas/audios_ in media repository and then place it in _/home/media/audios_.
 ```sh
 $   /usr/share/11_gst-audioplayer/gst-audioplayer /home/media/audios
 ```

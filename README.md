@@ -34,7 +34,7 @@ The following table shows multimedia applications in RZ/G2 platform ranging from
 
 | Application Name | Description |
 | ---------------- | ----------- |
-| [Audio Play](01_gst-audioplay) | Play an Ogg/Vorbis audio file. |
+| [Audio Play](01_gst-audioplay) | Play an MP3 audio file. |
 | [Video Play](02_gst-videoplay) | Play an H.264 video file. |
 | [Audio Encode](03_gst-audioencode) | Encode audio data from F32LE raw format to Ogg/Vorbis format. |
 | [Video Encode](04_gst-videoencode) | Encode video data from NV12 raw format to H.264 format. |
@@ -44,7 +44,7 @@ The following table shows multimedia applications in RZ/G2 platform ranging from
 | [Receive Streaming Video](08_gst-receivestreamingvideo) | Receive and display streaming video. |
 | [Send Streaming Video](09_gst-sendstreamingvideo) | Send streaming video. |
 | [Video Scale](10_gst-videoscale) | Scale down an H.264 video, then store it in MP4 container. |
-| [Audio Player](11_gst-audioplayer) | A simple text-based Ogg/Vorbis audio player. |
+| [Audio Player](11_gst-audioplayer) | A simple text-based MP3 audio player. |
 | [Video Player](12_gst-videoplayer) | A simple text-based MP4 video player. |
 | [Audio Video Play](13_gst-audiovideoplay) | Play H.264 video and Ogg/Vorbis audio file independently. |
 | [File Play](14_gst-fileplay) | Play an MP4 file. |
