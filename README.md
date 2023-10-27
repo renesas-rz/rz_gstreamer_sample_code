@@ -40,7 +40,7 @@ The following table shows multimedia applications in RZ/G2 platform ranging from
 | [Video Encode](04_gst-videoencode) | Encode video data from NV12 raw format to H.264 format. |
 | [Audio Record](05_gst-audiorecord) | Record raw data from USB microphone, then store it in Ogg container. |
 | [Video Record](06_gst-videorecord) | Display and record raw video from USB/MIPI camera, then store it in MP4 container. |
-| [Audio Video Record](07_gst-audiovideorecord) | Record raw data from USB microphone and USB/MIPI camera at the same time, then store them in MKV container. |
+| [Audio Video Record](07_gst-audiovideorecord) | T.B.D |
 | [Receive Streaming Video](08_gst-receivestreamingvideo) | Receive and display streaming video. |
 | [Send Streaming Video](09_gst-sendstreamingvideo) | Send streaming video. |
 | [Video Scale](10_gst-videoscale) | Scale down an H.264 video, then store it in MP4 container. |
