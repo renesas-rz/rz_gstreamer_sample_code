@@ -1,4 +1,4 @@
-# 2.2.10	Video Scale
+# Video Scale
 
 Scale down an H.264 video, then store it in MP4 container.
 
@@ -15,6 +15,33 @@ GStreamer: 1.16.3 (edited by Renesas).
 
 ### Walkthrough: [`main.c`](main.c)
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Video Record](/06_gst-videorecord/README.md) and [Audio Play](/01_gst-audioplay/README.md).
+
+#### UserData structure
+```c
+typedef struct tag_user_data
+{
+  GstElement *pipeline;
+  GstElement *source;
+  GstElement *demuxer;
+  GstElement *parser1;
+  GstElement *decoder;
+  GstElement *filter;
+  GstElement *capsfilter;
+  GstElement *encoder;
+  GstElement *parser2;
+  GstElement *muxer;
+  GstElement *sink;
+
+  const gchar *input_file;
+  int scaled_width;
+  int scaled_height;
+} UserData;
+```
+This structure contains:
+- Gstreamer element variables: `pipeline`, `source`, `demuxer`, `parser1`, `decoder`, `filter`, `capsfilter`, `encoder`, `parser2`, `muxer`, `sink`. These variables will be used to create pipeline and elements as section [Create elements](#create-elements).
+- Variable `input_file (const gchar)` to represent MP4 video input file.
+- Variable `scaled_width (int)` and `scaled_height (int)` are width and height of video after scale down.
+
 #### Command-line argument
 ```c
 if (argc != ARG_COUNT)
@@ -30,16 +57,16 @@ This application accepts two command-line arguments as below:
 
 #### Create elements
 ```c
-source = gst_element_factory_make ("filesrc", "video-src");
-demuxer = gst_element_factory_make ("qtdemux", "mp4-demuxer");
-parser1 = gst_element_factory_make ("h264parse", "h264-parser-1");
-decoder = gst_element_factory_make ("omxh264dec", "video-decoder");
-filter = gst_element_factory_make ("vspmfilter", "video-filter");
-capsfilter = gst_element_factory_make ("capsfilter", "capsfilter");
-encoder = gst_element_factory_make ("omxh264enc", "video-encoder");
-parser2 = gst_element_factory_make ("h264parse", "h264-parser-2");
-muxer = gst_element_factory_make ("qtmux", "mp4-muxer");
-sink = gst_element_factory_make ("filesink", "file-output");
+user_data.source = gst_element_factory_make ("filesrc", "video-src");
+user_data.demuxer = gst_element_factory_make ("qtdemux", "mp4-demuxer");
+user_data.parser1 = gst_element_factory_make ("h264parse", "h264-parser-1");
+user_data.decoder = gst_element_factory_make ("omxh264dec", "video-decoder");
+user_data.filter = gst_element_factory_make ("vspmfilter", "video-filter");
+user_data.capsfilter = gst_element_factory_make ("capsfilter", "capsfilter");
+user_data.encoder = gst_element_factory_make ("omxh264enc", "video-encoder");
+user_data.parser2 = gst_element_factory_make ("h264parse", "h264-parser-2");
+user_data.muxer = gst_element_factory_make ("qtmux", "mp4-muxer");
+user_data.sink = gst_element_factory_make ("filesink", "file-output");
 ```
 To scale down an H.264 video and store it in MP4 container, the following elements are needed:
 -	 Element `filesrc` reads data from a local file.
@@ -54,10 +81,11 @@ To scale down an H.264 video and store it in MP4 container, the following elemen
 
 #### Set element’s properties
 ```c
-g_object_set (G_OBJECT (source), "location", input_file, NULL);
-g_object_set (G_OBJECT (filter), "dmabuf-use", TRUE, NULL);
-g_object_set (G_OBJECT (encoder), "target-bitrate", BITRATE_OMXH264ENC, "control-rate", 1, NULL;
-g_object_set (G_OBJECT (sink), "location", output_file, NULL);
+g_object_set (G_OBJECT (data->source), "location", data->input_file, NULL);
+g_object_set (G_OBJECT (data->filter), "dmabuf-use", TRUE, NULL);
+g_object_set (G_OBJECT (data->encoder), "target-bitrate", BITRATE_OMXH264ENC,
+    "control-rate", 1, NULL);
+g_object_set (G_OBJECT (data->sink), "location", OUTPUT_FILE, NULL);
 ```
 The `g_object_set()` function is used to set some element’s properties, such as:
 -	 The `location` property of filesrc element which points to an MP4 input file.
@@ -136,7 +164,7 @@ $   /usr/share/10_gst-videoscale/gst-videoscale <MP4 file> <width> <height>
 ```
 - In this case, a 640x360 MP4 file will be generated after running this application.
 
-  Download the input file `sintel_trailer-720p.mp4` as described in _Sintel_trailer/README.md_ file in media repository and then place it in _/home/media/videos_.\
+  Download the input file `sintel_trailer-720p.mp4` as described in _Sintel_trailer/README.md_ file in media repository [(github.com/renesas-rz/media)](https://github.com/renesas-rz/media) and then place it in _/home/media/videos_.\
   ```sh
   $   /usr/share/10_gst-videoscale/gst-videoscale /home/media/videos/sintel_trailer-720p.mp4 640 360
   ```

@@ -31,7 +31,7 @@ typedef struct tag_user_data
 ```
 This structure contains:
 - Gstreamer element variables: `pipeline`, `source`, `parser`, `decoder`, `audioresample`, `capsfilter`, `sink`. These variables will be used to create pipeline and elements as sections [Create new pipeline](#create-new-pipeline) and [Create elements](#create-elements).
-- Varaiable `input_file (const gchar)` to represent MP3 audio input file.
+- Variable `input_file (const gchar)` to represent MP3 audio input file.
 
 #### Input location
 ```c
@@ -52,7 +52,6 @@ The `gst_pipeline_new()` function creates a new empty pipeline which is the top-
 
 #### Create elements
 ```c
-user_data.pipeline = gst_pipeline_new ("audio-play");
 user_data.source = gst_element_factory_make ("filesrc", "file-source");
 user_data.parser = gst_element_factory_make ("mpegaudioparse",
                         "mp3-parser");
@@ -124,48 +123,48 @@ Every `pipeline` has an associated state. To start audio playback, the `pipeline
 bus = gst_element_get_bus (user_data.pipeline);
 msg = gst_bus_timed_pop_filtered (bus, GST_CLOCK_TIME_NONE,
           GST_MESSAGE_ERROR | GST_MESSAGE_EOS);
+gst_object_unref (bus);
 ```
-Now, the pipeline is running. gst_bus_timed_pop_filtered() waits for execution to end and returns a GstMessage which is either an error or an EOS (End-of-Stream) message.
+Now, the pipeline is running. gst_bus_timed_pop_filtered() waits for execution to end and returns a GstMessage which is either an error or an EOS (End-of-Stream) message.\
+The `gst_element_get_bus()` function added the bus that must be freed with `gst_object_unref()`.
 
 #### Handle messages
 ```c
-if (msg != NULL) {
-  GError *err;
-  gchar *debug_info;
+void
+parse_message (GstMessage *msg)
+{
+  GError *error;
+  gchar  *dbg_inf;
 
   switch (GST_MESSAGE_TYPE (msg)) {
-    case GST_MESSAGE_ERROR:
-      gst_message_parse_error (msg, &err, &debug_info);
-      g_printerr ("Error received from element %s: %s.\n",
-          GST_OBJECT_NAME (msg->src), err->message);
-      g_printerr ("Debugging information: %s.\n",
-          debug_info ? debug_info : "none");
-      g_clear_error (&err);
-      g_free (debug_info);
-      break;
     case GST_MESSAGE_EOS:
-      g_print ("End-Of-Stream reached.\n");
+      g_print ("End of stream !\n");
+      break;
+    case GST_MESSAGE_ERROR:
+      gst_message_parse_error (msg, &error, &dbg_inf);
+      g_printerr (" Element error %s: %s.\n",
+          GST_OBJECT_NAME (msg->src), error->message);
+      g_printerr ("Debugging information: %s.\n",
+          dbg_inf ? dbg_inf : "none");
+      g_clear_error (&error);
+      g_free (dbg_inf);
       break;
     default:
-      /* We should not reach here because we only asked for ERRORs and EOS */
-      g_printerr ("Unexpected message received.\n");
+      /* We don't care other message */
+      g_printerr ("Undefined message.\n");
       break;
   }
-  gst_message_unref (msg);
 }
 ```
-If the message is `GST_MESSAGE_ERROR`, the application will print the error message and debugging information.\
 If the message is `GST_MESSAGE_EOS`, the application will inform to users that the audio is finished.\
+If the message is `GST_MESSAGE_ERROR`, the application will print the error message and debugging information.\
 After the message is handled, it should be un-referred by `gst_message_unref()`.
 
 #### Clean up
 ```c
-gst_object_unref (bus);
-
 gst_element_set_state (user_data.pipeline, GST_STATE_NULL);
 gst_object_unref (GST_OBJECT (user_date.pipeline));
 ```
-The `gst_element_get_bus()` function added the bus that must be freed with `gst_object_unref()`.
 Next, setting the `pipeline` to the NULL state will make sure it frees any resources it has allocated.\
 Finally, un-referencing the `pipeline` will destroy it, and all its contents.
 
@@ -213,7 +212,7 @@ $   scp -r $WORK/01_gst-audioplay/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
 
-Download the input file `renesas-bigideasforeveryspace.mp3` from _Renesas/audios_ in media repository then place it in _/home/media/audios_.
+Download the input file `renesas-bigideasforeveryspace.mp3` from _Renesas/audios_ in media repository [(github.com/renesas-rz/media)](https://github.com/renesas-rz/media) then place it in _/home/media/audios_.
 ```sh
 $   /usr/share/01_gst-audioplay/gst-audioplay /home/media/audios/renesas-bigideasforeveryspace.mp3
 ```

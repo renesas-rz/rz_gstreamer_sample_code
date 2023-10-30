@@ -28,8 +28,9 @@ This application accepts 2 command-line arguments which points to 2 H.264 files.
 
 #### Video pipeline
 ```c
-guint create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
-                                   struct screen_t * screen, CustomData * data)
+guint
+create_video_pipeline (GstElement ** p_video_pipeline,
+    const gchar * input_file, struct screen_t * screen, CustomData * data)
 ```
 Basically, the pipeline is just like [Video Play](/02_gst-videoplay/README.md) except it uses `gst_bus_add_watch()` instead of `gst_bus_timed_pop_filtered()` to receive messages (such as: error or EOS (End-of-Stream)) from `bus_call()` asynchronously
 
@@ -50,7 +51,7 @@ Above lines of code create 2 pipelines:
 This section shows how to cross-compile and deploy GStreamer _multiple displays 2_ application.
 
 ### How to Extract Renesas SDK
-***Step 1***.	Install toolchain on a Host PC:
+***Step 1***. Install toolchain on a Host PC:
 ```sh
 $   sudo sh ./poky-glibc-x86_64-core-image-weston-aarch64-smarc-rzg2l-toolchain-3.1.17.sh
 ```
@@ -65,7 +66,7 @@ Each time you wish to use the SDK in a new shell session, you need to source the
 $ . /opt/poky/3.1.17/environment-setup-aarch64-poky-linux
 $ . /opt/poky/3.1.17/environment-setup-armv7vet2hf-neon-vfpv4-pokymllib32-linux-gnueabi
 ```
-***Step 2***.	Set up cross-compile environment:
+***Step 2***. Set up cross-compile environment:
 ```sh
 $   source /<Location in which SDK is extracted>/environment-setup-aarch64-poky-linux
 ```
@@ -74,22 +75,22 @@ Note:
 
 ### How to Build and Run GStreamer Application
 
-***Step 1***.	Go to gst-multipledisplays2 directory:
+***Step 1***. Go to gst-multipledisplays2 directory:
 ```sh
 $   cd $WORK/16_gst-multipledisplays2
 ```
 
-***Step 2***.	Cross-compile:
+***Step 2***. Cross-compile:
 ```sh
 $   make
 ```
-***Step 3***.	Copy all files inside this directory to _/usr/share_ directory on the target board:
+***Step 3***. Copy all files inside this directory to _/usr/share_ directory on the target board:
 ```sh
 $   scp -r $WORK/16_gst-multipledisplays2/ <username>@<board IP>:/usr/share/
 ```
-***Step 4***.	Run the application:
+***Step 4***. Run the application:
 
-Download the input files `vga1.h264` and `vga2.h264` from _Renesas/videos_ in media repository then place all of them in _/home/media/videos_.
+Download the input files `vga1.h264` and `vga2.h264` from _Renesas/videos_ in media repository [(github.com/renesas-rz/media)](https://github.com/renesas-rz/media) then place all of them in _/home/media/videos_.
 
 ```sh
 $   /usr/share/16_gst-multipledisplays2/gst-multipledisplays2 /home/media/videos/vga1.h264 /home/media/videos/vga2.h264

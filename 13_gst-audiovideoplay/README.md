@@ -45,7 +45,6 @@ This structure contains:
 -	 Variable `video_ext (char)`: A string variable to represent video extension.
 -	 Variable `wayland_handler (wayland_t)`: A pointer to wayland_t structure to contain list of monitors.
 -	 Variable `main_screen (screen_t)`: A pointer to screen_t structure to contain monitor information, such as: (x, y), width, and height.
--	 Variable `fullscreen (qint64)`: A boolean variable to enable full-screen mode.
 
 #### Initialize CustomData structure
 ```c
@@ -73,7 +72,9 @@ shared_data.main_screen = main_screen;
 Variable `main_screen` contains the resolution of screen to scale video to full-sreen.
 #### Audio pipeline
 ```c
-guint create_audio_pipeline (GstElement** p_audio_pipeline, const gchar* input_file, CustomData* data);
+guint
+create_audio_pipeline (GstElement ** p_audio_pipeline,
+    const gchar * input_file, CustomData * data)
 ```
 Basically, the audio pipeline is just like [Audio Play](/01_gst-audioplay/README.md) except it uses `gst_bus_add_watch()` instead of `gst_bus_timed_pop_filtered()` to receive messages (such as: error or EOS (End-of-Stream)) from `bus_call()` asynchronously.
 ```c
@@ -85,7 +86,9 @@ gst_object_unref (bus);
 
 #### Video pipeline
 ```c
-guint create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file, CustomData* data)
+guint
+create_video_pipeline (GstElement ** p_video_pipeline,
+    const gchar * input_file, CustomData * data)
 ```
 Basically, the video pipeline is just like Video Play except it uses `gst_bus_add_watch()` instead of `gst_bus_timed_pop_filtered()` to receive messages (such as: error or EOS (End-of-Stream)) from `bus_call()` asynchronously.
 ```c
@@ -198,7 +201,7 @@ $   scp -r $WORK/13_gst-audiovideoplay/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
 
--  Download the input files `Rondo_Alla_Turka.ogg` from _Renesas/audios_ and `vga1.h264` from _Renesas/videos_ in media repository then place all of them in _/home/media/audios_.
+-  Download the input files `Rondo_Alla_Turka.ogg` from _Renesas/audios_ and `vga1.h264` from _Renesas/videos_ in media repository [(github.com/renesas-rz/media)](https://github.com/renesas-rz/media) then place all of them in _/home/media/audios_.
 ```sh
 $   /usr/share/13_gst-audiovideoplay/gst-audiovideoplay /home/media/audios/Rondo_Alla_Turka.ogg /home/media/videos/vga1.h264
 ```

@@ -63,7 +63,7 @@ get_filename_ext (const char *filename)
 }
 
 void
-set_element_properties(UserData *data)
+set_element_properties (UserData *data)
 {
   GstCaps *caps;
 
@@ -78,10 +78,10 @@ set_element_properties(UserData *data)
 }
 
 int
-setup_pipeline(UserData *data)
+setup_pipeline (UserData *data)
 {
   /* set element properties */
-  set_element_properties(data);
+  set_element_properties (data);
 
   /* Add the elements into the pipeline and link them together */
   /* file-src -> mp3-parser -> mp3-decoder -> audioresample -> alsa-output */
@@ -94,6 +94,32 @@ setup_pipeline(UserData *data)
     return FALSE;
   }
   return TRUE;
+}
+
+void
+parse_message (GstMessage *msg)
+{
+  GError *error;
+  gchar  *dbg_inf;
+
+  switch (GST_MESSAGE_TYPE (msg)) {
+    case GST_MESSAGE_EOS:
+      g_print ("End of stream !\n");
+      break;
+    case GST_MESSAGE_ERROR:
+      gst_message_parse_error (msg, &error, &dbg_inf);
+      g_printerr (" Element error %s: %s.\n",
+          GST_OBJECT_NAME (msg->src), error->message);
+      g_printerr ("Debugging information: %s.\n",
+          dbg_inf ? dbg_inf : "none");
+      g_clear_error (&error);
+      g_free (dbg_inf);
+      break;
+    default:
+      /* We don't care other message */
+      g_printerr ("Undefined message.\n");
+      break;
+  }
 }
 
 int
@@ -152,7 +178,7 @@ main (int argc, char *argv[])
     return -1;
   }
 
-  if (setup_pipeline(&user_data) != TRUE) {
+  if (setup_pipeline (&user_data) != TRUE) {
     gst_object_unref (user_data.pipeline);
     return -1;
   }
@@ -171,43 +197,23 @@ main (int argc, char *argv[])
   bus = gst_element_get_bus (user_data.pipeline);
   msg = gst_bus_timed_pop_filtered (bus, GST_CLOCK_TIME_NONE,
             GST_MESSAGE_ERROR | GST_MESSAGE_EOS);
+  gst_object_unref (bus);
 
   /* Note that because input timeout is GST_CLOCK_TIME_NONE,
      the gst_bus_timed_pop_filtered() function will block forever untill a
      matching message was posted on the bus (GST_MESSAGE_ERROR or
      GST_MESSAGE_EOS). */
 
-  /* Playback end. Clean up nicely */
   if (msg != NULL) {
-    GError *err;
-    gchar *debug_info;
-
-    switch (GST_MESSAGE_TYPE (msg)) {
-      case GST_MESSAGE_ERROR:
-        gst_message_parse_error (msg, &err, &debug_info);
-        g_printerr ("Error received from element %s: %s.\n",
-            GST_OBJECT_NAME (msg->src), err->message);
-        g_printerr ("Debugging information: %s.\n",
-            debug_info ? debug_info : "none");
-        g_clear_error (&err);
-        g_free (debug_info);
-        break;
-      case GST_MESSAGE_EOS:
-        g_print ("End-Of-Stream reached.\n");
-        break;
-      default:
-        /* We should not reach here because we only asked for ERRORs and EOS */
-        g_printerr ("Unexpected message received.\n");
-        break;
-    }
+    parse_message (msg);
     gst_message_unref (msg);
   }
 
-  gst_object_unref (bus);
   g_print ("Returned, stopping playback...\n");
   gst_element_set_state (user_data.pipeline, GST_STATE_NULL);
   g_print ("Deleting pipeline...\n");
   gst_object_unref (GST_OBJECT (user_data.pipeline));
   g_print ("Program end!\n");
+
   return 0;
 }

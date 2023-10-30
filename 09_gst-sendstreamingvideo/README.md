@@ -15,6 +15,28 @@ GStreamer: 1.16.3 (edited by Renesas).
 
 ### Walkthrough: [`main.c`](main.c)
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](/01_gst-audioplay/README.md).
+
+#### UserData structure
+```c
+typedef struct tag_user_data
+{
+  GstElement *pipeline;
+  GstElement *source;
+  GstElement *demuxer;
+  GstElement *parser;
+  GstElement *parser_capsfilter;
+  GstElement *payloader;
+  GstElement *sink;
+
+  const gchar *input_file;
+  const gchar *ip_address;
+} UserData;
+```
+This structure contains:
+- Gstreamer element variables: `pipeline`, `source`, `demuxer`, `parser`, `parser_capsfilter`, `payloader`, `sink`. These variables will be used to create pipeline and elements as section [Create elements](#create-elements).
+- Variable `input_file (const gchar)` to represent MP4 input file.
+- Variable `ip_address (const gchar)` to represent IPv4 input address.
+
 #### Command-line argument
 ```c
 if (argc != ARG_COUNT) {
@@ -35,12 +57,14 @@ This application accepts two command-line arguments as below:
 
 #### Create elements
 ```c
-source = gst_element_factory_make ("filesrc", "file-src");
-demuxer = gst_element_factory_make ("qtdemux", "mp4-demuxer");
-parser = gst_element_factory_make ("h264parse", "h264-parser");
-parser_capsfilter = gst_element_factory_make ("capsfilter", "parser-capsfilter");
-payloader = gst_element_factory_make ("rtph264pay", "h264-payloader");
-sink = gst_element_factory_make ("udpsink", "stream-output");
+user_data.source = gst_element_factory_make ("filesrc", "file-src");
+user_data.demuxer = gst_element_factory_make ("qtdemux", "mp4-demuxer");
+user_data.parser = gst_element_factory_make ("h264parse", "h264-parser");
+user_data.parser_capsfilter =
+    gst_element_factory_make ("capsfilter", "parser-capsfilter");
+user_data.payloader = gst_element_factory_make ("rtph264pay",
+                          "h264-payloader");
+user_data.sink = gst_element_factory_make ("udpsink", "stream-output");
 ```
 To stream H.264 video, the following elements are used:
 -	 Element `filesrc` reads data from a local file.
@@ -52,9 +76,11 @@ To stream H.264 video, the following elements are used:
 
 #### Set element’s properties
 ```c
-g_object_set (G_OBJECT (source), "location", input_file, NULL);
-g_object_set (G_OBJECT (payloader), "pt", PAYLOAD_TYPE, "config-interval", TIME, NULL);
-g_object_set (G_OBJECT (sink), "host", argv[ARG_IP_ADDRESS], "port", PORT, NULL);
+g_object_set (G_OBJECT (data->source), "location", data->input_file, NULL);
+g_object_set (G_OBJECT (data->payloader),
+    "pt", PAYLOAD_TYPE, "config-interval", TIME, NULL);
+g_object_set (G_OBJECT (data->sink),
+    "host", data->ip_address, "port", PORT, NULL);
 ```
 The `g_object_set()` function is used to set some element’s properties, such as:
 -	 The `location` property of filesrc element which points to an MP4 file.
@@ -63,11 +89,12 @@ The `g_object_set()` function is used to set some element’s properties, such a
 -	 The host and port properties of udpsink element which are the IPv4 address and port to send the packets to. In this application, the port is hard-coded to 5000 while the address is provided by users.
 
 ```c
-parser_caps = gst_caps_new_simple ("video/x-h264", "stream-format", G_TYPE_STRING,
-                                          "avc", "alignment", G_TYPE_STRING, "au", NULL);
+caps =
+    gst_caps_new_simple ("video/x-h264", "stream-format", G_TYPE_STRING,
+    "avc", "alignment", G_TYPE_STRING, "au", NULL);
 
-g_object_set (G_OBJECT (parser_capsfilter), "caps", parser_caps, NULL);
-gst_caps_unref (parser_caps);
+g_object_set (G_OBJECT (data->parser_capsfilter), "caps", caps, NULL);
+gst_caps_unref (caps);
 ```
 Capabilities (short: `caps`) describe the type of data which is streamed between two pads.\
 This application creates new cap `(gst_caps_new_simple)` which specifies data format video/x-h264, AVC, and au alignment. This cap is then added to caps property of capsfilter element `(g_object_set)`.\
@@ -129,4 +156,4 @@ $   /usr/share/09_gst-sendstreamingvideo/gst-sendstreamingvideo <IP address> <pa
    ```sh
    $   /usr/share/09_gst-sendstreamingvideo/gst-sendstreamingvideo 192.168.5.237 /home/media/videos/sintel_trailer-720p.mp4
    ```
-  Download the input file `sintel_trailer-720p.mp4` as described in _Sintel_trailer/README.md_ file in media repository and then place it in _/home/media/videos_.\
+  Download the input file `sintel_trailer-720p.mp4` as described in _Sintel_trailer/README.md_ file in media repository [(github.com/renesas-rz/media)](https://github.com/renesas-rz/media) and then place it in _/home/media/videos_.\

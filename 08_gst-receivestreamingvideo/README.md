@@ -15,6 +15,25 @@ GStreamer: 1.16.3 (edited by Renesas).
 
 ### Walkthrough: [`main.c`](main.c)
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](/01_gst-audioplay/README.md) and section [Video Play](/02_gst-videoplay/README.md)
+
+#### UserData structure
+```c
+typedef struct tag_user_data
+{
+  GstElement *pipeline;
+  GstElement *source;
+  GstElement *depayloader;
+  GstElement *parser;
+  GstElement *decoder;
+  GstElement *sink;
+
+  struct screen_t *main_screen;
+} UserData;
+```
+This structure contains:
+- Gstreamer element variables: `pipeline`, `source`, `depayloader`, `parser`, `decoder`, `sink`. These variables will be used to create pipeline and elements as section [Create elements](#create-elements).
+- Variable `main_screen (screen_t)` is a pointer to screen_t structure to contain monitor information, such as: (x, y), width, and height.
+
 #### Create event loop
 ```c
 main_loop = g_main_loop_new (NULL, FALSE);
@@ -24,11 +43,12 @@ Basically, the main event loop manages all the available sources of events. To a
 
 #### Create elements
 ```c
-source = gst_element_factory_make ("udpsrc", "udp-src");
-depayloader = gst_element_factory_make ("rtph264depay", "h264-depay");
-parser = gst_element_factory_make ("h264parse", "h264-parser");
-decoder = gst_element_factory_make ("omxh264dec", "h264-decoder");
-sink = gst_element_factory_make ("waylandsink", "video-sink");
+user_data.source = gst_element_factory_make ("udpsrc", "udp-src");
+user_data.depayloader = gst_element_factory_make ("rtph264depay",
+                            "h264-depay");
+user_data.parser = gst_element_factory_make ("h264parse", "h264-parser");
+user_data.decoder = gst_element_factory_make ("omxh264dec", "h264-decoder");
+user_data.sink = gst_element_factory_make ("waylandsink", "video-sink");
 ```
 To receive and display streaming video, the following elements are used:
 -	 Element `udpsrc` reads UDP packets from the network.
@@ -41,12 +61,10 @@ To receive and display streaming video, the following elements are used:
 ```c
 caps = gst_caps_new_empty_simple ("application/x-rtp");
 
-g_object_set (G_OBJECT (source), "port", PORT, "caps", caps, NULL);
-gst_caps_unref (caps);
-
-g_object_set (G_OBJECT (sink), "max-lateness", -1, "qos", FALSE, NULL);
-g_object_set (G_OBJECT (sink), "position-x", main_screen->x, "position-y",
-      main_screen->y, NULL);
+g_object_set (G_OBJECT (data->source), "port", PORT, "caps", caps, NULL);
+g_object_set (G_OBJECT (data->sink), "max-lateness", -1, "qos", FALSE, NULL);
+g_object_set (G_OBJECT (data->sink), "position-x", data->main_screen->x,
+    "position-y", data->main_screen->y, NULL);
 ```
 The `g_object_set()` function is used to set some element’s properties, such as:
 -	 The `port` property of udpsrc element which is set to port 5000.
@@ -57,7 +75,7 @@ The `g_object_set()` function is used to set some element’s properties, such a
 
 #### Add bus watch and handle messages (GstMessage)
 ```c
-bus = gst_element_get_bus (pipeline)
+bus = gst_element_get_bus (user_data.pipeline);
 bus_watch_id = gst_bus_add_watch (bus, bus_call, main_loop);
 gst_object_unref (bus);
 ```
@@ -96,7 +114,7 @@ This function will be called when a message is received. If an error occurs, it 
 
 ### Play pipeline
 ```c
-gst_element_set_state (pipeline, GST_STATE_PLAYING);
+gst_element_set_state (user_data.pipeline, GST_STATE_PLAYING);
 ```
 
 Every pipeline has an associated [state](https://gstreamer.freedesktop.org/documentation/plugin-development/basics/states.html). To start audio playback, the `pipeline` needs to be set to PLAYING state.

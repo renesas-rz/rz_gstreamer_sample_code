@@ -17,42 +17,83 @@ GStreamer: 1.16.3 (edited by Renesas).
 
 ### Walkthrough: [`main.c`](main.c)
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Video Play](/02_gst-videoplay/README.md).
+
+#### UserData structure
+```c
+typedef struct tag_user_data
+{
+  GstElement *pipeline;
+  GstElement *source;
+  GstElement *camera_capsfilter;
+  GstElement *converter;
+  GstElement *convert_capsfilter;
+  GstElement *queue1;
+  GstElement *encoder;
+  GstElement *parser;
+  GstElement *muxer;
+  GstElement *decoder;
+  GstElement *filesink;
+  GstElement *tee;
+  GstElement *queue2;
+  GstElement *waylandsink;
+
+  const gchar *device;
+  enum  camera_type camera;
+  int width;
+  int height;
+  bool display_video;
+} UserData;
+```
+This structure contains:
+- Gstreamer element variables: `pipeline`, `source`, `camera_capsfilter`, `converter`, `convert_capsfilter`, `queue1`, `encoder`, `parser`, `muxer`, `decoder`, `filesink`, `tee`, `queue2`, `waylandsink`. These variables will be used to create pipeline and elements as section [Create elements](#create-elements).
+- Variable `device (const gchar)`: A pointer to a camera device file.
+- Variable `camera (camera_type)`: A enum variable to specify camera types.
+- Variables `width (int)` and `height (int)`: These variables to specify width and height of video.
+- Variable `display_video (bool)` to represent screen that available or not.
+
 #### Output location
 ```c
-const gchar *output_file = "RECORD-camera.mp4";
+#define OUTPUT_FILE        "RECORD-camera.mp4"
 ```
 #### Command-line argument
 ```c
 if (argc != ARG_COUNT) {
   g_print ("Error: Invalid arugments.\n");
-  g_print ("Usage: %s <camera device> [width] [height]\n", argv[ARG_PROGRAM_NAME]);
+  g_print ("Usage: %s <camera device> [width] [height]\n",
+      argv[ARG_PROGRAM_NAME]);
   return -1;
 }
-camera = check_camera_type (argv[ARG_DEVICE]);
+user_data.camera = check_camera_type (argv[ARG_DEVICE]);
 ```
 This application accepts a command-line argument which points to camera’s device file (/dev/video9, for example). The type of camera is determined by function check_camera_type. Note: You can find this value by following section [Special Instruction](#special-instruction)\
 User can enter width and height options to set camera’s resolution.
 
 #### Create elements
 ```c
-source = gst_element_factory_make ("v4l2src", "camera-source");
-camera_capsfilter = gst_element_factory_make ("capsfilter", "camera_caps");
-convert_capsfilter = gst_element_factory_make ("capsfilter", "convert_caps");
-queue1 = gst_element_factory_make ("queue", "queue1");
-encoder = gst_element_factory_make ("omxh264enc", "video-encoder");
-parser = gst_element_factory_make ("h264parse", "h264-parser");
-muxer = gst_element_factory_make ("qtmux", "mp4-muxer");
-filesink = gst_element_factory_make ("filesink", "file-output");
+user_data.source = gst_element_factory_make ("v4l2src", "camera-source");
+user_data.camera_capsfilter = gst_element_factory_make ("capsfilter",
+                                  "camera_caps");
+user_data.convert_capsfilter = gst_element_factory_make ("capsfilter",
+                                   "convert_caps");
+user_data.queue1 = gst_element_factory_make ("queue", "queue1");
+user_data.encoder = gst_element_factory_make ("omxh264enc", "video-encoder");
+user_data.parser = gst_element_factory_make ("h264parse", "h264-parser");
+user_data.muxer = gst_element_factory_make ("qtmux", "mp4-muxer");
+user_data.filesink = gst_element_factory_make ("filesink", "file-output");
 
-if (camera == MIPI_CAMERA) {
-  converter = gst_element_factory_make ("vspmfilter", "video-converter");
+if (user_data.camera == MIPI_CAMERA) {
+  user_data.converter = gst_element_factory_make ("vspmfilter",
+                            "video-converter");
 } else {
-  converter = gst_element_factory_make ("videoconvert", "video-converter");
+  user_data.converter = gst_element_factory_make ("videoconvert",
+                            "video-converter");
 }
-
-tee = gst_element_factory_make ("tee", "tee");
-queue2 = gst_element_factory_make ("queue", "queue2");
-waylandsink = gst_element_factory_make ("waylandsink", "video-output");
+```
+```c
+data->tee = gst_element_factory_make ("tee", "tee");
+data->queue2 = gst_element_factory_make ("queue", "queue2");
+data->waylandsink = gst_element_factory_make ("waylandsink",
+                        "video-output");
 ```
 To display and record camera then store it in MP4 container, the following elements are used:
 -	 Element `v4l2src` captures video from V4L2 devices.
@@ -68,19 +109,21 @@ To display and record camera then store it in MP4 container, the following eleme
 
 #### Set element’s properties
 ```c
-g_object_set (G_OBJECT (source), "device", argv[ARG_DEVICE], NULL);
-g_object_set (G_OBJECT (filesink), "location", output_file, NULL);
+g_object_set (G_OBJECT (data->source), "device", data->device, NULL);
+g_object_set (G_OBJECT (data->filesink), "location", OUTPUT_FILE, NULL);
 
 /*MIPI camera*/
-g_object_set (G_OBJECT (converter), "dmabuf-use", true, NULL);
+g_object_set (G_OBJECT (data->converter), "dmabuf-use", true, NULL);
 /* Set properties of the encoder element - omxh264enc */
-g_object_set (G_OBJECT (encoder), "target-bitrate", MIPI_BITRATE_OMXH264ENC,
+g_object_set (G_OBJECT (data->encoder),
+    "target-bitrate", MIPI_BITRATE_OMXH264ENC,
     "control-rate", VARIABLE_RATE, "interval_intraframes", 14,
     "periodicty-idr", 2, "use-dmabuf", true, NULL);
 
 /*USB camera*/
-g_object_set (G_OBJECT (encoder), "target-bitrate", USB_BITRATE_OMXH264ENC,
-    "control-rate", VARIABLE_RATE, NULL);
+g_object_set (G_OBJECT (data->encoder),
+    "target-bitrate", USB_BITRATE_OMXH264ENC, "control-rate",
+    VARIABLE_RATE, NULL);
 ```
 The `g_object_set()` function is used to set some element’s properties, such as:
 -	 The `device` property of v4l2src element which points to a camera device file. Users will pass the device file as a command line argument to this application. Please refer to section [Special Instruction](#special-instruction) to find the value.
@@ -91,18 +134,24 @@ The `g_object_set()` function is used to set some element’s properties, such a
 -	 The `interval_intraframes` property of omxh264enc element is used to specify interval of coding intra frames.
 -	 The `periodicty-idr` property of omxh264enc is used to specify periodicity of IDR frames.
 ```c
-/*MIPI camera*/
-camera_caps = gst_caps_new_simple ("video/x-raw", "format", G_TYPE_STRING, "UYVY",
-        "width", G_TYPE_INT, width, "height", G_TYPE_INT, height, NULL);
+  /*MIPI camera*/
+  camera_caps =
+      gst_caps_new_simple ("video/x-raw", "format", G_TYPE_STRING, "UYVY",
+          "width", G_TYPE_INT, data->width, "height", G_TYPE_INT,
+          data->height, NULL);
 
-/*USB camera*/
-camera_caps = gst_caps_new_simple ("video/x-raw", "width", G_TYPE_INT, width,
-        "height", G_TYPE_INT, height, NULL);
+  /*USB camera*/
+    camera_caps =
+        gst_caps_new_simple ("video/x-raw", "width", G_TYPE_INT, data->width,
+            "height", G_TYPE_INT, data->height, NULL);
 
-convert_caps = gst_caps_new_simple ("video/x-raw", "format", G_TYPE_STRING, "NV12", NULL);
+convert_caps =
+    gst_caps_new_simple ("video/x-raw", "format", G_TYPE_STRING, "NV12",
+    NULL);
 
-g_object_set (G_OBJECT (camera_capsfilter), "caps", camera_caps, NULL);
-g_object_set (G_OBJECT (convert_capsfilter), "caps", convert_caps, NULL);
+g_object_set (G_OBJECT (data->camera_capsfilter), "caps", camera_caps, NULL);
+g_object_set (G_OBJECT (data->convert_capsfilter), "caps", convert_caps,
+    NULL);
 
 gst_caps_unref (camera_caps);
 gst_caps_unref (convert_caps);
@@ -114,21 +163,28 @@ The `gst_caps_new_simple()` function creates new caps which holds these values. 
 
 #### Build pipeline
 ```c
-gst_bin_add_many (GST_BIN (pipeline), source, camera_capsfilter, converter,
-    convert_capsfilter, queue1, encoder, parser, muxer, filesink, NULL);
+gst_bin_add_many (GST_BIN (data->pipeline),
+    data->source, data->camera_capsfilter, data->converter,
+    data->convert_capsfilter, data->queue1, data->encoder, data->parser,
+    data->muxer, data->filesink, NULL);
 
 /*Not display video on monitor*/
-gst_element_link_many (source, camera_capsfilter, converter,
-          convert_capsfilter, queue1, encoder, parser, NULL);
+gst_element_link_many (data->source, data->camera_capsfilter,
+    data->converter, data->convert_capsfilter, data->queue1,
+    data->encoder, data->parser, NULL)
 
 /*Display video on monitor*/
-gst_bin_add_many (GST_BIN (pipeline), tee, queue2, waylandsink, NULL);
-gst_element_link_many (source, camera_capsfilter, converter,
-          convert_capsfilter, tee, NULL);
-gst_element_link_many (tee, queue1, encoder, parser, NULL);
-gst_element_link_many (tee, queue2, waylandsink, NULL);
+gst_bin_add_many (GST_BIN (data->pipeline),
+    data->tee, data->queue2, data->waylandsink, NULL);
+gst_element_link_many (data->source, data->camera_capsfilter,
+    data->converter, data->convert_capsfilter, data->tee,
+    NULL)
+gst_element_link_many (data->tee, data->queue1, data->encoder,
+    data->parser, NULL)
+gst_element_link_many (data->tee, data->queue2, data->waylandsink,
+    NULL)
 
-gst_element_link (muxer, filesink);
+gst_element_link (data->muxer, data->filesink);
 ```
 In case of not displaying video on monitor, these lines of code adds elements to pipeline and then links them into separated groups as below:
 -	 Group #1: `source, camera_capsfilter, converter, convert_capsfilter, queue1, encoder and parser`.
@@ -146,8 +202,8 @@ In case of displaying video on monitor, this lines of code adds elements to pipe
 
 ### Link request pads
 ```c
-srcpad = gst_element_get_static_pad (parser, "src");
-link_to_multiplexer (srcpad, muxer);
+srcpad = gst_element_get_static_pad (data->parser, "src");
+link_to_multiplexer (srcpad, data->muxer);
 gst_object_unref (srcpad);
 ```
 This block gets the source pad (srcpad) of h264parse `(parser)`, then calls `link_to_multiplexer()` to link it to the sink pad of qtmux `(muxer)`.
@@ -168,7 +224,7 @@ This function uses `gst_element_get_compatible_pad()` to request a sink pad `(pa
 
 ### Play pipeline
 ```c
-gst_element_set_state (pipeline, GST_STATE_PLAYING);
+gst_element_set_state (user_data.pipeline, GST_STATE_PLAYING);
 ```
 Every pipeline has an associated [state](https://gstreamer.freedesktop.org/documentation/plugin-development/basics/states.html). To start webcam recording, the `pipeline` needs to be set to PLAYING state.
 

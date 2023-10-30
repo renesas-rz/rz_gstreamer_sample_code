@@ -22,7 +22,8 @@ typedef struct _CustomData
   struct screen_t *main_screen;
 } CustomData;
 
-/* These structs contain information needed to get a list of available screens */
+/* These structs contain information needed to get a list of available
+ * screens */
 struct screen_t
 {
   uint16_t x;
@@ -199,7 +200,8 @@ global_handler(void *data, struct wl_registry *registry, uint32_t id,
 
     if (screen != NULL)
     {
-      handler->output = wl_registry_bind(handler->registry, id, &wl_output_interface, MIN(version, 2));
+      handler->output = wl_registry_bind(handler->registry, id,
+                            &wl_output_interface, MIN(version, 2));
       wl_output_add_listener(handler->output, &output_listener, screen);
 
       /* Wait until all screen's data members are filled */
@@ -266,7 +268,8 @@ get_available_screens()
     return NULL;
   }
 
-  /* Obtain wl_registry from Wayland compositor to access public object "wl_output" */
+  /* Obtain wl_registry from Wayland compositor to access public object
+   * "wl_output" */
   handler->registry = wl_display_get_registry(handler->display);
   wl_registry_add_listener(handler->registry, &registry_listener, handler);
 
@@ -372,8 +375,8 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
 }
 
 guint
-create_audio_pipeline (GstElement ** p_audio_pipeline, const gchar * input_file,
-    CustomData * data)
+create_audio_pipeline (GstElement ** p_audio_pipeline,
+    const gchar * input_file, CustomData * data)
 {
   GstBus *bus;
   guint audio_bus_watch_id;
@@ -402,7 +405,8 @@ create_audio_pipeline (GstElement ** p_audio_pipeline, const gchar * input_file,
   gst_object_unref (bus);
 
   /* Add all elements into the audio pipeline */
-  /* file-source | ogg-demuxer | vorbis-decoder | converter | capsfilter | alsa-output */
+  /* file-source | ogg-demuxer | vorbis-decoder | converter | capsfilter |
+   * alsa-output */
   gst_bin_add_many (GST_BIN (*p_audio_pipeline),
       audio_source, audio_demuxer, audio_decoder, audio_converter,
       audio_capsfilter, audio_sink, NULL);
@@ -419,7 +423,8 @@ create_audio_pipeline (GstElement ** p_audio_pipeline, const gchar * input_file,
   gst_caps_unref (capsfilter);
 
   /* we link the elements together */
-  /* file-source -> ogg-demuxer ~> vorbis-decoder -> converter -> capsfilter -> alsa-output */
+  /* file-source -> ogg-demuxer ~> vorbis-decoder -> converter -> capsfilter ->
+   *  alsa-output */
   if (!gst_element_link (audio_source, audio_demuxer)) {
     g_printerr ("Audio elements could not be linked.\n");
     gst_object_unref (*p_audio_pipeline);
@@ -440,8 +445,8 @@ create_audio_pipeline (GstElement ** p_audio_pipeline, const gchar * input_file,
 }
 
 guint
-create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
-    CustomData * data)
+create_video_pipeline (GstElement ** p_video_pipeline,
+    const gchar * input_file, CustomData * data)
 {
   GstBus *bus;
   guint video_bus_watch_id;
@@ -574,10 +579,10 @@ main (int argc, char *argv[])
   {
     g_printerr("Cannot find any available screens. Exiting.\n");
 
-    destroy_wayland(wayland_handler);
+    destroy_wayland (wayland_handler);
     return -1;
   }
- 
+
   const gchar *input_audio_file = argv[ARG_INPUT_AUDIO];
   const gchar *input_video_file = argv[ARG_INPUT_VIDEO];
 
@@ -631,13 +636,13 @@ main (int argc, char *argv[])
       g_source_remove (audio_bus_watch_id);
       g_source_remove (video_bus_watch_id);
       return -1;
-    }       
+    }
   } else {
     g_printerr ("Unable to create audio pipeline\n");
     destroy_wayland (wayland_handler);
     g_source_remove (audio_bus_watch_id);
     g_source_remove (video_bus_watch_id);
-    return -1;  
+    return -1;
   }
 
   /* Set the video pipeline to "playing" state */
@@ -646,14 +651,14 @@ main (int argc, char *argv[])
       g_print ("Now playing video file: %s\n", input_video_file);
     } else {
       g_printerr ("Unable to play video file: %s\n", input_video_file);
-      destroy_wayland (wayland_handler); 
+      destroy_wayland (wayland_handler);
       g_source_remove (audio_bus_watch_id);
-      g_source_remove (video_bus_watch_id);   
-      return -1; 
+      g_source_remove (video_bus_watch_id);
+      return -1;
     }
   } else {
     g_printerr ("Unable to create video pipeline\n");
-    destroy_wayland(wayland_handler);
+    destroy_wayland (wayland_handler);
     g_source_remove (audio_bus_watch_id);
     g_source_remove (video_bus_watch_id);
     return -1;
@@ -664,7 +669,7 @@ main (int argc, char *argv[])
   g_main_loop_run (shared_data.loop);
 
   /* Clean up "wayland_t" structure */
-  destroy_wayland(wayland_handler);
+  destroy_wayland (wayland_handler);
 
   /* Out of loop. Clean up nicely */
   g_source_remove (audio_bus_watch_id);

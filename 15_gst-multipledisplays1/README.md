@@ -16,6 +16,33 @@ GStreamer: 1.16.3 (edited by Renesas).
 ### Walkthrough: [`main.c`](main.c)
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Video Play](/02_gst-videoplay/README.md).
 
+#### UserData structure
+```c
+typedef struct tag_user_data
+{
+  GstElement *pipeline;
+  GstElement *source;
+  GstElement *parser;
+  GstElement *decoder;
+  GstElement *tee;
+  GstElement *queue_1;
+  GstElement *video_sink_1;
+  GstElement *queue_2;
+  GstElement *video_sink_2;
+
+  GstPad *req_pad_1;
+  GstPad *req_pad_2;
+
+  const char *input_video_file;
+  struct screen_t *screens[REQUIRED_SCREEN_NUMBERS];
+} UserData;
+```
+This structure contains:
+- Gstreamer element variables: `pipeline`, `source`, `parser`, `decoder`, `tee`, `queue_1`, `video_sink_1`, `queue_2`, `video_sink_2`. These variables will be used to create pipeline and elements as section [Create elements](#create-elements).
+- Variable `input_video_file (const gchar)` to represent H.264 video input file.
+- Variable `screens (screen_t)` is a pointer to screen_t structure to contain monitors information, such as: (x, y), width, and height.
+- Variables `req_pad_1 (GstPad)` and `req_pad_1 (GstPad)` are request source pads from tee. That are used in section [Link source pad (request pads of tee)](#link-source-pad-request-pads-of-tee)
+
 #### Command-line argument
 ```c
 if (argc != ARG_COUNT) {
@@ -28,19 +55,20 @@ This application accepts a command-line argument which points to a H.264 file.
 
 #### Create elements
 ```c
-source = gst_element_factory_make ("filesrc", "file-source");
-tee = gst_element_factory_make ("tee", "tee-element");
-
-queue_1 = gst_element_factory_make ("queue", "queue-1");
-video_sink_1 = gst_element_factory_make ("waylandsink", "video-output-1");
-
-queue_2 = gst_element_factory_make ("queue", "queue-2");
-video_sink_2 = gst_element_factory_make ("waylandsink", "video-output-2");
-
-if (strcasecmp ("h264", ext) == 0) {
-  parser = gst_element_factory_make ("h264parse", "h264-parser");
-  decoder = gst_element_factory_make ("omxh264dec", "h264-decoder");
+if ((strcasecmp ("h264", ext) == 0) || (strcasecmp ("264", ext) == 0)) {
+  user_data.parser = gst_element_factory_make ("h264parse", "h264-parser");
+  user_data.decoder = gst_element_factory_make ("omxh264dec",
+                          "h264-decoder");
 }
+
+user_data.source = gst_element_factory_make ("filesrc", "file-source");
+user_data.tee = gst_element_factory_make ("tee", "tee-element");
+user_data.queue_1 = gst_element_factory_make ("queue", "queue-1");
+user_data.video_sink_1 = gst_element_factory_make ("waylandsink",
+                             "video-output-1");
+user_data.queue_2 = gst_element_factory_make ("queue", "queue-2");
+user_data.video_sink_2 = gst_element_factory_make ("waylandsink",
+                             "video-output-2");
 ```
 To play an H.264 video on 2 displays, the following elements are used:
 -	 Element `filesrc` reads data from a local file.
@@ -52,11 +80,18 @@ To play an H.264 video on 2 displays, the following elements are used:
 
 #### Set element’s properties
 ```c
-g_object_set (G_OBJECT (source), "location", input_video_file, NULL);
-g_object_set (G_OBJECT (sink), "position-x", screens[PRIMARY_SCREEN_INDEX]->x + PRIMARY_POS_OFFSET,
-       "position-y", screens[PRIMARY_SCREEN_INDEX]->y + PRIMARY_POS_OFFSET, NULL);
-  g_object_set (G_OBJECT (sink), "position-x", screens[SECONDARY_SCREEN_INDEX]->x + SECONDARY_ POS_OFFSET,
-       "position-y", screens[SECONDARY_SCREEN_INDEX]->y + SECONDARY_POS_OFFSET, NULL);
+g_object_set (G_OBJECT (data->source),
+      "location", data->input_video_file, NULL);
+g_object_set (G_OBJECT (data->video_sink_1),
+       "position-x",
+       data->screens[PRIMARY_SCREEN_INDEX]->x + PRIMARY_POS_OFFSET,
+       "position-y",
+       data->screens[PRIMARY_SCREEN_INDEX]->y + PRIMARY_POS_OFFSET, NULL);
+g_object_set (G_OBJECT (data->video_sink_2),
+       "position-x",
+       data->screens[SECONDARY_SCREEN_INDEX]->x + SECONDARY_POS_OFFSET,
+       "position-y",
+       data->screens[SECONDARY_SCREEN_INDEX]->y + SECONDARY_POS_OFFSET, NULL);
 ```
 
 The `g_object_set()` function is used to set some element’s properties, such as:
@@ -65,14 +100,25 @@ The `g_object_set()` function is used to set some element’s properties, such a
 
 #### Build pipeline
 ```c
-gst_bin_add_many (GST_BIN (pipeline), source, parser, decoder, tee,
-      queue_1, video_sink_1, queue_2, video_sink_2, NULL);
+gst_bin_add_many (GST_BIN (data->pipeline),
+    data->source, data->parser, data->decoder, data->tee, data->queue_1,
+    data->video_sink_1, data->queue_2, data->video_sink_2, NULL);
 
-gst_element_link_many (source, parser, decoder, tee, NULL)
-
-/*Not display video in full-screen*/
-gst_element_link_many (queue_1, video_sink_1, NULL);
-gst_element_link_many (queue_2, video_sink_2, NULL);
+if (gst_element_link_many (data->source, data->parser, data->decoder,
+        data->tee, NULL) != TRUE) {
+  g_printerr ("Source elements could not be linked.\n");
+  return FALSE;
+}
+if (gst_element_link_many (data->queue_1, data->video_sink_1,
+        NULL) != TRUE) {
+  g_printerr ("Elements of Video Display-1 could not be linked.\n");
+  return FALSE;
+}
+if (gst_element_link_many (data->queue_2, data->video_sink_2,
+        NULL) != TRUE) {
+  g_printerr ("Elements of Video Display-2 could not be linked.\n");
+  return FALSE;
+}
 ```
 Above lines of code add all elements to pipeline and then links them into separated groups as below:
 -	 Group #1: `source, parser, decoder, and tee`.
@@ -84,44 +130,24 @@ Also, to request (or release) pads in the PLAYING or PAUSED states, you need to 
 
 #### Link source pad (request pads of tee)
 ```c
-tee_src_pad_template = gst_element_class_get_pad_template (GST_ELEMENT_GET_CLASS (tee), "src_%u");
+tee_src_pad_template =
+    gst_element_class_get_pad_template (GST_ELEMENT_GET_CLASS (data->tee),
+    "src_%u");
 
 /* Get request pad and manually link for Video Display 1 */
-req_pad_1 = gst_element_request_pad (tee, tee_src_pad_template, NULL, NULL);
-
-sink_pad = gst_element_get_static_pad (queue_1, "sink");
-
-if (gst_pad_link (req_pad_1, sink_pad) != GST_PAD_LINK_OK) {
+data->req_pad_1 = gst_element_request_pad (data->tee, tee_src_pad_template,
+                      NULL, NULL);
+sink_pad = gst_element_get_static_pad (data->queue_1, "sink");
+if (gst_pad_link (data->req_pad_1, sink_pad) != GST_PAD_LINK_OK) {
   g_print ("tee link failed!\n");
 }
 gst_object_unref (sink_pad);
 
 /* Get request pad and manually link for Video Display 2 */
-req_pad_2 = gst_element_request_pad (tee, tee_src_pad_template, NULL, NULL);
-
-sink_pad = gst_element_get_static_pad (queue_2, "sink");
-
-if (gst_pad_link (req_pad_2, sink_pad) != GST_PAD_LINK_OK) {
-  g_print ("tee link failed!\n");
-}
-gst_object_unref (sink_pad);
-
-/* Get request pad and manually link for Video Display 1 */
-req_pad_1 = gst_element_request_pad (tee, tee_src_pad_template, NULL, NULL);
-
-sink_pad = gst_element_get_static_pad (filter_1, "sink");
-
-if (gst_pad_link (req_pad_1, sink_pad) != GST_PAD_LINK_OK) {
-  g_print ("tee link failed!\n");
-}
-gst_object_unref (sink_pad);
-
-/* Get request pad and manually link for Video Display 2 */
-req_pad_2 = gst_element_request_pad (tee, tee_src_pad_template, NULL, NULL);
-
-sink_pad = gst_element_get_static_pad (filter_2, "sink");
-
-if (gst_pad_link (req_pad_2, sink_pad) != GST_PAD_LINK_OK) {
+data->req_pad_2 = gst_element_request_pad (data->tee, tee_src_pad_template,
+                  NULL, NULL);
+sink_pad = gst_element_get_static_pad (data->queue_2, "sink");
+if (gst_pad_link (data->req_pad_2, sink_pad) != GST_PAD_LINK_OK) {
   g_print ("tee link failed!\n");
 }
 gst_object_unref (sink_pad);
@@ -134,10 +160,10 @@ We then obtain the sink pads from queue/vspmfilter elements to which these Reque
 
 #### Free tee element
 ```c
-gst_element_release_request_pad (tee, req_pad_1);
-gst_element_release_request_pad (tee, req_pad_2);
-gst_object_unref (req_pad_1);
-gst_object_unref (req_pad_2);
+gst_element_release_request_pad (data->tee, data->req_pad_1);
+gst_element_release_request_pad (data->tee, data->req_pad_2);
+gst_object_unref (data->req_pad_1);
+gst_object_unref (data->req_pad_2);
 ```
 The `gst_element_release_request_pad()` function releases the pads from `tee`, but it still needs to be un-referenced (freed) with `gst_object_unref()`.
 
@@ -185,7 +211,7 @@ $   scp -r $WORK/15_gst-multipledisplays1/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
 
-Download the input file `vga1.h264` from _Renesas/videos_ in media repository and then place it in _/home/media/videos_.
+Download the input file `vga1.h264` from _Renesas/videos_ in media repository [(github.com/renesas-rz/media)](https://github.com/renesas-rz/media) and then place it in _/home/media/videos_.
 
 ```sh
 $   /usr/share/15_gst-multipledisplays1/gst-multipledisplays1 /home/media/videos/vga1.h264

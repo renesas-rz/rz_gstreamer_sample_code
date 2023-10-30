@@ -6,13 +6,16 @@
 #include <stdbool.h>
 #include <wayland-client.h>
 
-#define SKIP_POSITION (gint64)        5000000000       /* 5s */
+/* 5s */
+#define SKIP_POSITION (gint64)        5000000000
 #define NORMAL_PLAYING_RATE (gdouble) 1.0
 #define GET_SECOND_FROM_NANOSEC(x)	 (x / 1000000000)
-#define ONE_MINUTE                    60               /* 1 minute = 60 seconds */
+/* 1 minute = 60 seconds */
+#define ONE_MINUTE                    60
 #define AUDIO_SAMPLE_RATE             44100
 
-/* These structs contain information needed to get a list of available screens */
+/* These structs contain information needed to get a list of available
+ * screens */
 struct screen_t
 {
   uint16_t x;
@@ -224,7 +227,8 @@ global_handler(void *data, struct wl_registry *registry, uint32_t id,
 
     if (screen != NULL)
     {
-      handler->output = wl_registry_bind(handler->registry, id, &wl_output_interface, MIN(version, 2));
+      handler->output = wl_registry_bind(handler->registry, id,
+                            &wl_output_interface, MIN(version, 2));
       wl_output_add_listener(handler->output, &output_listener, screen);
 
       /* Wait until all screen's data members are filled */
@@ -264,10 +268,10 @@ static const struct wl_registry_listener registry_listener =
 };
 
 /*
- * 
+ *
  * name: get_available_screens
  * Get a list of available screens
- * 
+ *
  */
 struct wayland_t*
 get_available_screens()
@@ -291,7 +295,8 @@ get_available_screens()
     return NULL;
   }
 
-  /* Obtain wl_registry from Wayland compositor to access public object "wl_output" */
+  /* Obtain wl_registry from Wayland compositor to access public object
+   * "wl_output" */
   handler->registry = wl_display_get_registry(handler->display);
   wl_registry_add_listener(handler->registry, &registry_listener, handler);
 
@@ -350,40 +355,50 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
   pthread_mutex_lock (&mutex_gst_data);
 
   if (g_str_has_prefix (new_pad_type, "audio")) {
-    /* Need to set Gst State to PAUSED before change state from NULL to PLAYING */
-    gst_element_get_state(puser_data->audio_queue, &currentState, &pending, GST_CLOCK_TIME_NONE);
+    /* Need to set Gst State to PAUSED before change state from NULL to
+     * PLAYING */
+    gst_element_get_state(puser_data->audio_queue, &currentState, &pending,
+        GST_CLOCK_TIME_NONE);
     if(currentState == GST_STATE_NULL){
       gst_element_set_state (puser_data->audio_queue, GST_STATE_PAUSED);
     }
-    gst_element_get_state(puser_data->audio_decoder, &currentState, &pending, GST_CLOCK_TIME_NONE);
+    gst_element_get_state(puser_data->audio_decoder, &currentState, &pending,
+        GST_CLOCK_TIME_NONE);
     if(currentState == GST_STATE_NULL){
       gst_element_set_state (puser_data->audio_decoder, GST_STATE_PAUSED);
     }
-    gst_element_get_state(puser_data->audio_resample, &currentState, &pending, GST_CLOCK_TIME_NONE);
+    gst_element_get_state(puser_data->audio_resample, &currentState, &pending,
+        GST_CLOCK_TIME_NONE);
     if(currentState == GST_STATE_NULL){
       gst_element_set_state (puser_data->audio_resample, GST_STATE_PAUSED);
     }
-    gst_element_get_state(puser_data->audio_capsfilter, &currentState, &pending, GST_CLOCK_TIME_NONE);
+    gst_element_get_state(puser_data->audio_capsfilter, &currentState,
+        &pending, GST_CLOCK_TIME_NONE);
     if(currentState == GST_STATE_NULL){
       gst_element_set_state (puser_data->audio_capsfilter, GST_STATE_PAUSED);
     }
-    gst_element_get_state(puser_data->audio_sink, &currentState, &pending, GST_CLOCK_TIME_NONE);
+    gst_element_get_state(puser_data->audio_sink, &currentState, &pending,
+        GST_CLOCK_TIME_NONE);
     if(currentState == GST_STATE_NULL){
       gst_element_set_state (puser_data->audio_sink, GST_STATE_PAUSED);
     }
 
-    /* Add back audio_queue, audio_decoder, audio_resample, audio_capsfilter, and audio_sink */
+    /* Add back audio_queue, audio_decoder, audio_resample, audio_capsfilter,
+     * and audio_sink */
     gst_bin_add_many (GST_BIN (puser_data->pipeline),
         puser_data->audio_queue, puser_data->audio_decoder,
         puser_data->audio_resample, puser_data->audio_capsfilter,
         puser_data->audio_sink, NULL);
 
-    /* Link audio_queue +++ audio_decoder +++ audio_resample +++ audio_capsfilter +++ audio_sink */
+    /* Link audio_queue -> audio_decoder -> audio_resample -> audio_capsfilter
+     * -> audio_sink */
     if (gst_element_link_many (puser_data->audio_queue,
             puser_data->audio_decoder, puser_data->audio_resample,
-            puser_data->audio_capsfilter, puser_data->audio_sink, NULL) != TRUE) {
+            puser_data->audio_capsfilter, puser_data->audio_sink,
+            NULL) != TRUE) {
       g_print
-          ("audio_queue, audio_decoder, audio_resample, audio_capsfilter, and audio_sink could not be linked.\n");
+          ("audio_queue, audio_decoder, audio_resample, audio_capsfilter, " \
+           "and audio_sink could not be linked.\n");
     }
 
     /* In case link this pad with the AAC-decoder sink pad */
@@ -398,7 +413,8 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
       gst_caps_unref (new_pad_caps);
 
     /* Change the pipeline to PLAYING state
-     * TODO: The below statement temporarily fixes issue "Unable to pause the video".
+     * TODO: The below statement temporarily fixes issue "Unable to pause the
+     * video".
      * The root cause is still unknown.
      */
     gst_element_set_state (puser_data->pipeline, GST_STATE_PLAYING);
@@ -411,7 +427,8 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
           (NULL == puser_data->video_sink) ? ("FAILED") : ("SUCCEEDED"));
 
       /* Set position for displaying (0, 0) */
-      g_object_set (G_OBJECT (puser_data->video_sink), "position-x", main_screen->x, "position-y", main_screen->y, NULL);
+      g_object_set (G_OBJECT (puser_data->video_sink),
+          "position-x", main_screen->x, "position-y", main_screen->y, NULL);
 
     }
 
@@ -436,32 +453,40 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
       g_main_loop_quit (puser_data->loop);
     }
 
-    /* Need to set Gst State to PAUSED before change state from NULL to PLAYING */
-    gst_element_get_state(puser_data->video_queue, &currentState, &pending, GST_CLOCK_TIME_NONE);
+    /* Need to set Gst State to PAUSED before change state from NULL to
+     * PLAYING */
+    gst_element_get_state(puser_data->video_queue, &currentState, &pending,
+        GST_CLOCK_TIME_NONE);
     if(currentState == GST_STATE_NULL){
       gst_element_set_state (puser_data->video_queue, GST_STATE_PAUSED);
     }
-    gst_element_get_state(puser_data->video_parser, &currentState, &pending, GST_CLOCK_TIME_NONE);
+    gst_element_get_state(puser_data->video_parser, &currentState, &pending,
+        GST_CLOCK_TIME_NONE);
     if (currentState == GST_STATE_NULL){
       gst_element_set_state (puser_data->video_parser, GST_STATE_PAUSED);
     }
-    gst_element_get_state(puser_data->video_decoder, &currentState, &pending, GST_CLOCK_TIME_NONE);
+    gst_element_get_state(puser_data->video_decoder, &currentState, &pending,
+        GST_CLOCK_TIME_NONE);
     if(currentState == GST_STATE_NULL){
       gst_element_set_state (puser_data->video_decoder, GST_STATE_PAUSED);
     }
-    gst_element_get_state(puser_data->video_sink, &currentState, &pending, GST_CLOCK_TIME_NONE);
+    gst_element_get_state(puser_data->video_sink, &currentState, &pending,
+        GST_CLOCK_TIME_NONE);
     if(currentState == GST_STATE_NULL){
       gst_element_set_state (puser_data->video_sink, GST_STATE_PAUSED);
     }
 
     /* Add back video_queue, video_parser, video_decoder, and video_sink */
-    gst_bin_add_many (GST_BIN (puser_data->pipeline), puser_data->video_queue,
-        puser_data->video_parser, puser_data->video_decoder, puser_data->video_sink, NULL);
+    gst_bin_add_many (GST_BIN (puser_data->pipeline),
+        puser_data->video_queue, puser_data->video_parser,
+        puser_data->video_decoder, puser_data->video_sink, NULL);
 
     /* Link video_queue -> video_parser -> video_decoder -> video_sink */
-    if (gst_element_link_many (puser_data->video_queue, puser_data->video_parser,
-            puser_data->video_decoder, puser_data->video_sink, NULL) != TRUE) {
-      g_print ("video_queue, video_parser, video_decoder and video_sink could not be linked.\n");
+    if (gst_element_link_many (puser_data->video_queue,
+            puser_data->video_parser, puser_data->video_decoder,
+            puser_data->video_sink, NULL) != TRUE) {
+      g_print ("video_queue, video_parser, video_decoder and video_sink " \
+          "could not be linked.\n");
     }
 
     /* In case link this pad with the omxh264-decoder sink pad */
@@ -476,7 +501,8 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
       gst_caps_unref (new_pad_caps);
 
     /* Change the pipeline to PLAYING state
-     * TODO: The below statement temporarily fixes issue "Unable to pause the video".
+     * TODO: The below statement temporarily fixes issue "Unable to pause the
+     * video".
      * The root cause is still unknown.
      */
     gst_element_set_state (puser_data->pipeline, GST_STATE_PLAYING);
@@ -494,7 +520,8 @@ no_more_pads (GstElement * element, gpointer data)
   pthread_mutex_unlock (&mutex_gst_data);
 }
 
-/* This function will be call from the UI thread to replay or play next/previous file */
+/* This function will be call from the UI thread to replay or play
+ * next/previous file */
 void
 sync_to_play_new_file (UserData * data, gboolean refresh_console_message)
 {
@@ -539,7 +566,8 @@ bus_call (GstBus * bus, GstMessage * msg, gpointer data)
       gboolean ret = request_update_file_path (1);
       pthread_mutex_unlock (&mutex_ui_data);
       if (ret) {
-        /* Need to call play_new_file() from another thread to avoid DEADLOCK */
+        /* Need to call play_new_file() from another thread to avoid
+         * DEADLOCK */
         if (pthread_create (&id_autoplay_thread, NULL, auto_play_thread_func,
                 (UserData *) data)) {
           LOGE ("pthread_create autoplay failed\n");
@@ -724,7 +752,8 @@ wait_for_state_change_completed (GstElement * pipeline)
   return current_state;
 }
 
-/* Seek to beginning and flush all the data in the current pipeline to prepare for the next file */
+/* Seek to beginning and flush all the data in the current pipeline to prepare
+ * for the next file */
 void
 play_new_file (UserData * data, gboolean refresh_console_message)
 {
@@ -741,11 +770,13 @@ play_new_file (UserData * data, gboolean refresh_console_message)
   GstState currentState;
   GstState pending;
 
-  gst_element_get_state(pipeline, &currentState, &pending, GST_CLOCK_TIME_NONE);
+  gst_element_get_state(pipeline, &currentState, &pending,
+      GST_CLOCK_TIME_NONE);
   if(currentState == GST_STATE_PLAYING){
     gst_element_set_state (pipeline, GST_STATE_PAUSED);
     /* Seek to start and flush all old data */
-    gst_element_seek_simple (pipeline, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH, 0);
+    gst_element_seek_simple (pipeline, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH,
+        0);
   }
 
   LOGD ("gst_element_set_state pipeline to NULL\n");
@@ -755,13 +786,15 @@ play_new_file (UserData * data, gboolean refresh_console_message)
   gst_element_get_state (pipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
 
   /* Unlink and remove audio elements */
-  audio_queue = gst_bin_get_by_name (GST_BIN (pipeline), "audio-queue");        /* Keep the element to still exist after removing */
+  /* Keep the element to still exist after removing */
+  audio_queue = gst_bin_get_by_name (GST_BIN (pipeline), "audio-queue");
   if (NULL != audio_queue) {
     ret = gst_bin_remove (GST_BIN (pipeline), data->audio_queue);
     LOGD ("gst_bin_remove audio_queue from pipeline: %s\n",
         (ret) ? ("SUCCEEDED") : ("FAILED"));
   }
-  audio_decoder = gst_bin_get_by_name (GST_BIN (pipeline), "aac-decoder");      /* Keep the element to still exist after removing */
+  /* Keep the element to still exist after removing */
+  audio_decoder = gst_bin_get_by_name (GST_BIN (pipeline), "aac-decoder");
   if (NULL != audio_decoder) {
     ret = gst_bin_remove (GST_BIN (pipeline), data->audio_decoder);
     LOGD ("gst_bin_remove audio_decoder from pipeline: %s\n",
@@ -774,14 +807,16 @@ play_new_file (UserData * data, gboolean refresh_console_message)
     LOGD ("gst_bin_remove audio_resample from pipeline: %s\n",
         (ret) ? ("SUCCEEDED") : ("FAILED"));
   }
-  audio_capsfilter = gst_bin_get_by_name (GST_BIN (pipeline), "audio-capsfilter");
+  audio_capsfilter = gst_bin_get_by_name (GST_BIN (pipeline),
+                         "audio-capsfilter");
   if (NULL != audio_capsfilter)
   {
     ret = gst_bin_remove (GST_BIN (pipeline), data->audio_capsfilter);
     LOGD ("gst_bin_remove audio_capsfilter from pipeline: %s\n",
         (ret) ? ("SUCCEEDED") : ("FAILED"));
   }
-  audio_sink = gst_bin_get_by_name (GST_BIN (pipeline), "audio-output");        /* Keep the element to still exist after removing */
+  /* Keep the element to still exist after removing */
+  audio_sink = gst_bin_get_by_name (GST_BIN (pipeline), "audio-output");
   if (NULL != audio_sink) {
     ret = gst_bin_remove (GST_BIN (pipeline), data->audio_sink);
     LOGD ("gst_bin_remove audio_sink from pipeline: %s\n",
@@ -789,7 +824,8 @@ play_new_file (UserData * data, gboolean refresh_console_message)
   }
 
   /* Unlink and remove video elements */
-  video_queue = gst_bin_get_by_name (GST_BIN (pipeline), "video-queue");        /* Keep the element to still exist after removing */
+  /* Keep the element to still exist after removing */
+  video_queue = gst_bin_get_by_name (GST_BIN (pipeline), "video-queue");
   if (NULL != video_queue) {
     ret = gst_bin_remove (GST_BIN (pipeline), data->video_queue);
     LOGD ("gst_bin_remove video_queue from pipeline: %s\n",
@@ -838,8 +874,11 @@ int
 main (int argc, char *argv[])
 {
   struct wayland_t *wayland_handler = NULL;
-  struct screen_t *temp = NULL;
-  struct screen_t main_screen;
+  UserData user_data;
+
+  GstCaps *caps;
+  GstBus *bus;
+  guint bus_watch_id;
 
   /* Check input arguments */
   if (argc != 2) {
@@ -851,18 +890,16 @@ main (int argc, char *argv[])
   wayland_handler = get_available_screens();
 
   /* Get main screen */
-  temp = get_main_screen(wayland_handler);
-  if (temp == NULL)
+  user_data.main_screen = get_main_screen(wayland_handler);
+  if (user_data.main_screen == NULL)
   {
     g_printerr("Cannot find any available screens. Exiting.\n");
 
-    destroy_wayland(wayland_handler);
+    destroy_wayland (wayland_handler);
     return -1;
   }
 
-  /* Prepare "main_screen" variable */
-  memcpy(&main_screen, temp, sizeof(struct screen_t));
-  destroy_wayland(wayland_handler);
+  destroy_wayland (wayland_handler);
 
   /* Get dir_path and file_path if possible */
   if (argc == 2) {
@@ -875,39 +912,30 @@ main (int argc, char *argv[])
     }
   }
 
-  GMainLoop *loop;
-  UserData user_data;
-
-  GstElement *pipeline, *source, *demuxer;
-  GstElement *video_queue, *video_sink;
-  GstElement *audio_queue, *audio_decoder, *audio_resample,
-             *audio_capsfilter, *audio_sink;
-
-  GstCaps *caps;
-  GstBus *bus;
-  guint bus_watch_id;
-
   /* Initialization */
   gst_init (NULL, NULL);
-  loop = g_main_loop_new (NULL, FALSE);
+  user_data.loop = g_main_loop_new (NULL, FALSE);
 
   /* Create GStreamer elements instead of waylandsink */
-  pipeline = gst_pipeline_new ("video-player");
-  source = gst_element_factory_make ("filesrc", "file-source");
-  demuxer = gst_element_factory_make ("qtdemux", "qt-demuxer");
+  user_data.pipeline = gst_pipeline_new ("video-player");
+  user_data.source = gst_element_factory_make ("filesrc", "file-source");
+  user_data.demuxer = gst_element_factory_make ("qtdemux", "qt-demuxer");
   /* elements for Video thread */
-  video_queue = gst_element_factory_make ("queue", "video-queue");
-  video_sink = NULL;
+  user_data.video_queue = gst_element_factory_make ("queue", "video-queue");
+  user_data.video_sink = NULL;
   /* elements for Audio thread */
-  audio_queue = gst_element_factory_make ("queue", "audio-queue");
-  audio_decoder = gst_element_factory_make ("faad", "aac-decoder");
-  audio_resample = gst_element_factory_make("audioresample", "audio-resample");
-  audio_capsfilter = gst_element_factory_make ("capsfilter", "audio-capsfilter");
-  audio_sink = gst_element_factory_make ("alsasink", "audio-output");
+  user_data.audio_queue = gst_element_factory_make ("queue", "audio-queue");
+  user_data.audio_decoder = gst_element_factory_make ("faad", "aac-decoder");
+  user_data.audio_resample = gst_element_factory_make("audioresample",
+                                 "audio-resample");
+  user_data.audio_capsfilter = gst_element_factory_make ("capsfilter",
+                                   "audio-capsfilter");
+  user_data.audio_sink = gst_element_factory_make ("alsasink", "audio-output");
 
-  if (!pipeline || !source || !demuxer || !video_queue
-      || !audio_queue || !audio_decoder || !audio_resample
-      || !audio_capsfilter || !audio_sink) {
+  if (!user_data.pipeline || !user_data.source || !user_data.demuxer ||
+          !user_data.video_queue || !user_data.audio_queue ||
+          !user_data.audio_decoder || !user_data.audio_resample ||
+          !user_data.audio_capsfilter || !user_data.audio_sink) {
     g_printerr ("One element could not be created. Exiting.\n");
     return -1;
   }
@@ -917,49 +945,38 @@ main (int argc, char *argv[])
       "rate", G_TYPE_INT, AUDIO_SAMPLE_RATE, NULL);
 
   /* Add cap to capsfilter element */
-  g_object_set (G_OBJECT (audio_capsfilter), "caps", caps, NULL);
+  g_object_set (G_OBJECT (user_data.audio_capsfilter), "caps", caps, NULL);
   gst_caps_unref (caps);
 
   /* Add all created elements into the pipeline */
-  gst_bin_add_many (GST_BIN (pipeline), source, demuxer,
-      video_queue, audio_queue, audio_decoder,
-      audio_resample, audio_capsfilter, audio_sink, NULL);
+  gst_bin_add_many (GST_BIN (user_data.pipeline),
+      user_data.source, user_data.demuxer, user_data.video_queue,
+      user_data.audio_queue, user_data.audio_decoder, user_data.audio_resample,
+      user_data.audio_capsfilter, user_data.audio_sink, NULL);
 
   /* Link the elements together:
      - file-source -> qt-demuxer
    */
-  if (gst_element_link (source, demuxer) != TRUE) {
+  if (gst_element_link (user_data.source, user_data.demuxer) != TRUE) {
     g_printerr ("File source could not be linked.\n");
-    gst_object_unref (pipeline);
+    gst_object_unref (user_data.pipeline);
     return -1;
   }
 
-  /* Construct user data */
-  user_data.loop = loop;
-  user_data.pipeline = pipeline;
-  user_data.source = source;
-  user_data.demuxer = demuxer;
-  user_data.audio_queue = audio_queue;
-  user_data.audio_decoder = audio_decoder;
-  user_data.audio_resample = audio_resample;
-  user_data.audio_capsfilter = audio_capsfilter;
-  user_data.audio_sink = audio_sink;
-  user_data.video_queue = video_queue;
   user_data.video_parser = NULL;
   user_data.video_decoder = NULL;
-  user_data.video_sink = video_sink;
   user_data.media_length = 0;
-  user_data.main_screen = &main_screen;
 
   /* Set up the pipeline */
   /* we add a message handler */
-  bus = gst_pipeline_get_bus (GST_PIPELINE (pipeline));
+  bus = gst_pipeline_get_bus (GST_PIPELINE (user_data.pipeline));
   bus_watch_id = gst_bus_add_watch (bus, bus_call, &user_data);
   gst_object_unref (bus);
 
-  g_signal_connect (demuxer, "pad-added", G_CALLBACK (on_pad_added),
+  g_signal_connect (user_data.demuxer, "pad-added", G_CALLBACK (on_pad_added),
       &user_data);
-  g_signal_connect (demuxer, "no-more-pads", G_CALLBACK (no_more_pads), NULL);
+  g_signal_connect (user_data.demuxer, "no-more-pads",
+      G_CALLBACK (no_more_pads), NULL);
 
   /* Show the media file list */
   update_file_list ();
@@ -969,17 +986,18 @@ main (int argc, char *argv[])
   }
 
   /* Handle user input thread */
-  if (pthread_create (&id_ui_thread, NULL, check_user_command_loop, &user_data)) {
+  if (pthread_create (&id_ui_thread, NULL, check_user_command_loop,
+          &user_data)) {
     LOGE ("pthread_create failed\n");
     goto exit;
   }
 
   /* Iterate */
-  g_main_loop_run (loop);
+  g_main_loop_run (user_data.loop);
 
   /* Out of the main loop, clean up nicely */
   g_print ("Returned, stopping playback...\n");
-  gst_element_set_state (pipeline, GST_STATE_NULL);
+  gst_element_set_state (user_data.pipeline, GST_STATE_NULL);
 
   g_print ("Wait for UI thread terminated.\n");
   ui_thread_die = TRUE;
@@ -991,9 +1009,9 @@ main (int argc, char *argv[])
 
 exit:
   g_print ("Deleting pipeline...\n");
-  gst_object_unref (GST_OBJECT (pipeline));
+  gst_object_unref (GST_OBJECT (user_data.pipeline));
   g_source_remove (bus_watch_id);
-  g_main_loop_unref (loop);
+  g_main_loop_unref (user_data.loop);
 
   g_print ("Program end!\n");
   return 0;

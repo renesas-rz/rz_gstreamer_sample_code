@@ -31,6 +31,18 @@ struct wayland_t
   struct wl_list screens;
 };
 
+typedef struct tag_user_data
+{
+  GstElement *pipeline;
+  GstElement *source;
+  GstElement *depayloader;
+  GstElement *parser;
+  GstElement *decoder;
+  GstElement *sink;
+
+  struct screen_t *main_screen;
+} UserData;
+
 /*
  *
  * name: init_wayland
@@ -325,34 +337,73 @@ bus_call (GstBus * bus, GstMessage * msg, gpointer data)
   return TRUE;
 }
 
+void
+set_element_properties (UserData *data)
+{
+  GstCaps *caps;
+ /* For valid RTP packets encapsulated in GstBuffers,
+  * we use the caps with mime type application/x-rtp.
+  *  Select listening port: 5000 */
+  caps = gst_caps_new_empty_simple ("application/x-rtp");
+  g_object_set (G_OBJECT (data->source), "port", PORT, "caps", caps, NULL);
+
+  /* Set max-lateness maximum number of nanoseconds that a buffer can be late
+   * before it is dropped (-1 unlimited).
+   * Generate Quality-of-Service events upstream to FALSE */
+  g_object_set (G_OBJECT (data->sink), "max-lateness", -1, "qos", FALSE, NULL);
+
+  /* Set position for displaying (0, 0) */
+  g_object_set (G_OBJECT (data->sink), "position-x", data->main_screen->x,
+      "position-y", data->main_screen->y, NULL);
+
+  /* unref cap after use */
+  gst_caps_unref (caps);
+
+}
+
+int
+setup_pipeline (UserData *data)
+{
+  /* set element properties */
+  set_element_properties (data);
+
+  /* Add the elements into the pipeline and link them together */
+  /* udp-src -> h264-depay -> h264-parser -> h264-decoder -> video-sink */
+  gst_bin_add_many (GST_BIN (data->pipeline), data->source, data->depayloader,
+      data->parser, data->decoder, data->sink, NULL);
+
+  if (gst_element_link_many (data->source, data->depayloader, data->parser,
+          data->decoder, data->sink, NULL) != TRUE) {
+    g_printerr ("Elements could not be linked.\n");
+    return FALSE;
+  }
+  return TRUE;
+}
+
 int
 main (int argc, char *argv[])
 {
+  struct wayland_t *wayland_handler = NULL;
+  UserData user_data;
+
+  GstBus *bus;
+  guint bus_watch_id;
+
   if ((argc != 1)) {
     g_print ("Error: Invalid arguments.\n");
     g_print ("Usage: %s \n", argv[0]);
     return -1;
   }
 
-  struct wayland_t *wayland_handler = NULL;
-  struct screen_t *main_screen = NULL;
-
-  GstElement *pipeline, *source, *depayloader, *parser,
-      *decoder, *sink;
-  GstCaps *caps;
-  GstBus *bus;
-  guint bus_watch_id;
-
-
   /* Get a list of available screen */
   wayland_handler = get_available_screens();
 
   /* Get main screen */
-  main_screen = get_main_screen(wayland_handler);
-  if (main_screen == NULL)
+  user_data.main_screen = get_main_screen(wayland_handler);
+  if (user_data.main_screen == NULL)
   {
     g_printerr("Cannot find any available screens. Exiting.\n");
-    destroy_wayland(wayland_handler);
+    destroy_wayland (wayland_handler);
     return -1;
   }
 
@@ -361,61 +412,38 @@ main (int argc, char *argv[])
   main_loop = g_main_loop_new (NULL, FALSE);
 
   /* Create GStreamer elements */
-  pipeline = gst_pipeline_new ("receive-streaming");
-  source = gst_element_factory_make ("udpsrc", "udp-src");
-  depayloader = gst_element_factory_make ("rtph264depay", "h264-depay");
-  parser = gst_element_factory_make ("h264parse", "h264-parser");
-  decoder = gst_element_factory_make ("omxh264dec", "h264-decoder");
-  sink = gst_element_factory_make ("waylandsink", "video-sink");
+  user_data.pipeline = gst_pipeline_new ("receive-streaming");
+  user_data.source = gst_element_factory_make ("udpsrc", "udp-src");
+  user_data.depayloader = gst_element_factory_make ("rtph264depay",
+                              "h264-depay");
+  user_data.parser = gst_element_factory_make ("h264parse", "h264-parser");
+  user_data.decoder = gst_element_factory_make ("omxh264dec", "h264-decoder");
+  user_data.sink = gst_element_factory_make ("waylandsink", "video-sink");
 
-  if (!pipeline || !source || !depayloader || !parser
-      || !decoder || !sink) {
+  if (!user_data.pipeline || !user_data.source || !user_data.depayloader ||
+          !user_data.parser || !user_data.decoder || !user_data.sink) {
     g_printerr ("One element could not be created. Exiting.\n");
-    destroy_wayland(wayland_handler);
+    destroy_wayland (wayland_handler);
     return -1;
   }
 
-  /* Add all elements into the pipeline */
-  gst_bin_add_many (GST_BIN (pipeline), source, depayloader,
-      parser, decoder, sink, NULL);
-
-  bus = gst_element_get_bus (pipeline);
+  bus = gst_element_get_bus (user_data.pipeline);
   bus_watch_id = gst_bus_add_watch (bus, bus_call, main_loop);
   gst_object_unref (bus);
 
-  /* For valid RTP packets encapsulated in GstBuffers,
-     we use the caps with mime type application/x-rtp.
-     Select listening port: 5000 */
-  caps = gst_caps_new_empty_simple ("application/x-rtp");
-  g_object_set (G_OBJECT (source), "port", PORT, "caps", caps, NULL);
-
-  /* Set max-lateness maximum number of nanoseconds that a buffer can be late
-     before it is dropped (-1 unlimited).
-     Generate Quality-of-Service events upstream to FALSE */
-  g_object_set (G_OBJECT (sink), "max-lateness", -1, "qos", FALSE, NULL);
-
-  /* Set position for displaying (0, 0) */
-  g_object_set (G_OBJECT (sink), "position-x", main_screen->x, "position-y", main_screen->y, NULL);
-
-  /* unref cap after use */
-  gst_caps_unref (caps);
-
-  /* Link the elements together */
-  if (gst_element_link_many (source, depayloader, parser,
-          decoder, sink, NULL) != TRUE) {
-    g_printerr ("Elements could not be linked.\n");
-    gst_object_unref (pipeline);
-    destroy_wayland(wayland_handler);
+  if (setup_pipeline (&user_data) != TRUE) {
+    gst_object_unref (user_data.pipeline);
+    destroy_wayland (wayland_handler);
     return -1;
   }
 
   /* Set the pipeline to "playing" state */
   g_print ("Now receiving...\n");
-  if (gst_element_set_state (pipeline,
+  if (gst_element_set_state (user_data.pipeline,
           GST_STATE_PLAYING) == GST_STATE_CHANGE_FAILURE) {
     g_printerr ("Unable to set the pipeline to the playing state.\n");
-    gst_object_unref (pipeline);
-    destroy_wayland(wayland_handler);
+    gst_object_unref (user_data.pipeline);
+    destroy_wayland (wayland_handler);
     return -1;
   }
 
@@ -427,16 +455,16 @@ main (int argc, char *argv[])
   g_main_loop_run (main_loop);
 
   /* Clean up "wayland_t" structure */
-  destroy_wayland(wayland_handler);
+  destroy_wayland (wayland_handler);
 
   /* Clean up nicely */
   g_print ("Returned, stopping receiving...\n");
   g_source_remove (bus_watch_id);
   g_main_loop_unref (main_loop);
 
-  gst_element_set_state (pipeline, GST_STATE_NULL);
+  gst_element_set_state (user_data.pipeline, GST_STATE_NULL);
 
   g_print ("Deleting pipeline...\n");
-  gst_object_unref (GST_OBJECT (pipeline));
+  gst_object_unref (GST_OBJECT (user_data.pipeline));
   return 0;
 }

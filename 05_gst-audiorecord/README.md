@@ -16,10 +16,29 @@ GStreamer: 1.16.3 (edited by Renesas).
 
 ### Walkthrough: [`main.c`](main.c)
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](/01_gst-audioplay/README.md).
+
+#### UserData structure
+```c
+typedef struct tag_user_data
+{
+  GstElement *pipeline;
+  GstElement *source;
+  GstElement *converter;
+  GstElement *convert_capsfilter;
+  GstElement *encoder;
+  GstElement *muxer;
+  GstElement *sink;
+
+  const gchar *device;
+} UserData;
+```
+This structure contains:
+- Gstreamer element variables: `pipeline`, `source`, `converter`, `convert_capsfilter`, `encoder`, `muxer`, `sink`. These variables will be used to create pipeline and elements as section [Create elements](#create-elements).
+- Variable `device (gchar)`: A pointer to a microphone device.
+
 #### Output location
 ```c
 #define OUTPUT_FILE  "RECORD_microphone-mono.ogg"
-const gchar *output_file = OUTPUT_FILE;
 ```
 #### Command-line argument
 ```c
@@ -35,13 +54,14 @@ This application accepts a command-line argument which points to a microphone (h
 
 #### Create elements
 ```c
-pipeline = gst_pipeline_new ("audio-record");
-source = gst_element_factory_make ("alsasrc", "alsa-source");
-converter = gst_element_factory_make ("audioconvert", "audio-converter");
-convert_capsfilter = gst_element_factory_make ("capsfilter", "convert_caps");
-encoder = gst_element_factory_make ("vorbisenc", "vorbis-encoder");
-muxer = gst_element_factory_make ("oggmux", "ogg-muxer");
-sink = gst_element_factory_make ("filesink", "file-output");
+user_data.source = gst_element_factory_make ("alsasrc", "alsa-source");
+user_data.converter = gst_element_factory_make ("audioconvert",
+                          "audio-converter");
+user_data.convert_capsfilter = gst_element_factory_make ("capsfilter",
+                                   "convert_caps");
+user_data.encoder = gst_element_factory_make ("vorbisenc", "vorbis-encoder");
+user_data.muxer = gst_element_factory_make ("oggmux", "ogg-muxer");
+user_data.sink = gst_element_factory_make ("filesink", "file-output");
 ```
 To record raw data from microphone then store it in Ogg container, the following elements are used:
 -	 Element `alsasrc` reads data from an audio card using the ALSA API.
@@ -52,19 +72,22 @@ To record raw data from microphone then store it in Ogg container, the following
 
 #### Set element’s properties
 ```c
-g_object_set (G_OBJECT (source), "device", argv[ARG_DEVICE], NULL);
-g_object_set (G_OBJECT (encoder), "bitrate", BITRATE, NULL);
-g_object_set (G_OBJECT (sink), "location", output_file, NULL);
+g_object_set (G_OBJECT (data->source), "device", data->device, NULL);
+g_object_set (G_OBJECT (data->encoder), "bitrate", BITRATE, NULL);
+g_object_set (G_OBJECT (data->sink), "location", OUTPUT_FILE, NULL);
 ```
 The `g_object_set()` function is used to set some element’s properties, such as:
 -	 The `device` property of alsasrc element which points to a microphone device. Users will pass the device card as a command line argument to this application. Please refer to section [Special Instruction](#special-instruction) to find the value.
--	 The `location` property of filesink element which points to the output file.
 -	 The `bitrate` property of vorbisenc element is used to specify encoding bit rate. The higher bitrate, the better quality.
+-	 The `location` property of filesink element which points to the output file.
 
 ```c
-caps = gst_caps_new_simple ("audio/x-raw", "format", G_TYPE_STRING, FORMAT,
-           "channels", G_TYPE_INT, CHANNEL, "rate", G_TYPE_INT, SAMPLE_RATE, NULL);
-g_object_set (G_OBJECT (convert_capsfilter), "caps", caps, NULL);
+caps =
+    gst_caps_new_simple ("audio/x-raw",
+    "format", G_TYPE_STRING, FORMAT,
+    "channels", G_TYPE_INT, CHANNEL, "rate", G_TYPE_INT, SAMPLE_RATE, NULL);
+
+g_object_set (G_OBJECT (data->convert_capsfilter), "caps", caps, NULL);
 gst_caps_unref (caps);
 ```
 Capabilities (short: `caps`) describe the type of data which is streamed between two pads. This data includes raw audio format, channel, and sample rate.\
@@ -73,10 +96,17 @@ The `gst_caps_new_simple()` function creates new caps which holds these values. 
 
 #### Build pipeline
 ```c
-gst_bin_add_many (GST_BIN (pipeline), source, converter, convert_capsfilter,
-    encoder, muxer, sink, NULL);
-gst_element_link_many (source, converter, convert_capsfilter, encoder, NULL);
-gst_element_link (muxer, sink);
+gst_bin_add_many (GST_BIN (data->pipeline), data->source, data->converter,
+    data->convert_capsfilter, data->encoder, data->muxer, data->sink, NULL);
+if (gst_element_link_many (data->source, data->converter,
+        data->convert_capsfilter, data->encoder, NULL) != TRUE) {
+  g_printerr ("Elements could not be linked.\n");
+  return FALSE;
+}
+if (gst_element_link (data->muxer, data->sink) != TRUE) {
+  g_printerr ("Elements could not be linked.\n");
+  return FALSE;
+}
 ```
 The reason for the separation is that the sink pad of oggmux `(muxer)` cannot be created automatically but is only created on demand. This application uses self-defined function `link_to_multiplexer()` to link the sink pad to source pad of vorbisenc `(encoder)`. That’s why its sink pad is called Request Pad.
 >Note that the order counts, because links must follow the data flow (this is, from source elements to sink elements).
@@ -84,8 +114,8 @@ The reason for the separation is that the sink pad of oggmux `(muxer)` cannot be
 #### Link request pads
 
 ```c
-srcpad = gst_element_get_static_pad (encoder, "src");
-link_to_multiplexer (srcpad, muxer);
+srcpad = gst_element_get_static_pad (data->encoder, "src");
+link_to_multiplexer (srcpad, data->muxer);
 gst_object_unref (srcpad);
 ```
 This block gets the source pad `(srcpad)` of 1, then calls `link_to_multiplexer()` to link it to (the sink pad of) oggmux `(muxer)`.
@@ -105,7 +135,7 @@ This function uses `gst_element_get_compatible_pad()` to request a sink pad `(pa
 
 ### Play pipeline
 ```c
-gst_element_set_state (pipeline, GST_STATE_PLAYING);
+gst_element_set_state (user_data.pipeline, GST_STATE_PLAYING);
 ```
 
 Every pipeline has an associated [state](https://gstreamer.freedesktop.org/documentation/plugin-development/basics/states.html). To start audio recording, the `pipeline` needs to be set to PLAYING state.
@@ -120,7 +150,7 @@ To know how this function is implemented, please refer to the following lines of
 void signalHandler (int signal)
 {
   if (signal == SIGINT) {
-    gst_element_send_event (pipeline, gst_event_new_eos ());
+    gst_element_send_event (user_data.pipeline, gst_event_new_eos ());
   }
 }
 ```

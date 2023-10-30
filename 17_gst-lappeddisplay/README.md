@@ -1,4 +1,4 @@
-# Audio Play
+# Overlapped Display
 
 Display 3 overlapping H.264 videos.
 
@@ -25,8 +25,9 @@ This application accepts one command-line argument which points to an Ogg/Vorbis
 
 #### Video pipeline
 ```c
-guint create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
-                                   struct screen_t * screen, CustomData * data)
+guint
+create_video_pipeline (GstElement ** p_video_pipeline,
+    const gchar * input_file, struct screen_t * screen, CustomData * data)
 ```
 Basically, the pipeline is just like [Video Play](/02_gst-videoplay/README.md) except it uses `gst_bus_add_watch()` instead of `gst_bus_timed_pop_filtered()` to receive messages (such as: error or EOS (End-of-Stream)) from `bus_call()` asynchronously.
 
@@ -119,7 +120,7 @@ $   make
 $   scp -r $WORK/17_gst-lappeddisplay/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
--	 Download the input files `vga1.h264`, `vga2.h264` and `vga3.h264` from _Renesas/videos_ in media repository. Please place all of them in _/home/media/videos_.
+-	 Download the input files `vga1.h264`, `vga2.h264` and `vga3.h264` from _Renesas/videos_ in media repository [(github.com/renesas-rz/media)](https://github.com/renesas-rz/media). Please place all of them in _/home/media/videos_.
 ```sh
 $   /usr/share/17_gst-lappeddisplay/gst-lappeddisplay
 ```

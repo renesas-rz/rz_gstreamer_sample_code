@@ -15,6 +15,26 @@ GStreamer: 1.16.3 (edited by Renesas).
 
 ### Walkthrough: [`main.c`](main.c)
 >Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](01_gst-audioplay/README.md).
+
+#### UserData structure
+```c
+typedef struct tag_user_data
+{
+  GstElement *pipeline;
+  GstElement *source;
+  GstElement *parser;
+  GstElement *decoder;
+  GstElement *sink;
+
+  const gchar *input_file;
+  struct screen_t *main_screen;
+} UserData;
+```
+This structure contains:
+- Gstreamer element variables: `pipeline`, `source`, `parser`, `decoder`, `sink`. These variables will be used to create pipeline and elements as section [Create elements](#create-elements).
+- Variable `input_file (const gchar)` to represent H.264 video input file.
+- Variable `main_screen (screen_t)` is a pointer to screen_t structure to contain monitor information, such as: (x, y), width, and height.
+
 #### Command-line argument
 ```c
 if ((argc > ARG_COUNT) || (argc == 1)) {
@@ -27,14 +47,14 @@ This application accepts a command-line argument which points to an H.264 file.
 
 #### Create elements
 ```c
-if ((strcasecmp ("264", ext) || (strcasecmp ("h264", ext) == 0)) {
-  parser = gst_element_factory_make ("h264parse", "h264-parser");
-  decoder = gst_element_factory_make ("omxh264dec", "h264-decoder");
+if ((strcasecmp ("264", ext) == 0) || (strcasecmp ("h264", ext) == 0)) {
+  user_data.parser = gst_element_factory_make ("h264parse", "h264-parser");
+  user_data.decoder = gst_element_factory_make ("omxh264dec",
+                          "h264-decoder");
 }
 
-pipeline = gst_pipeline_new ("video-play");
-source = gst_element_factory_make ("filesrc", "file-source");
-sink = gst_element_factory_make ("waylandsink", "video-output");
+user_data.source = gst_element_factory_make ("filesrc", "file-source");
+user_data.sink = gst_element_factory_make ("waylandsink", "video-output");
 ```
 To play an H.264 video file, the following elements are used:
 -  Element `filesrc` reads data from a local file.
@@ -45,20 +65,25 @@ To play an H.264 video file, the following elements are used:
 
 #### Set element’s properties
 ```c
-g_object_set (G_OBJECT (source), "location", input_file, NULL);
-  g_object_set (G_OBJECT (sink), "position-x", main_screen->x, "position-y",
-      main_screen->y, NULL);
-```
--	 The location property of filesrc element which points to an H.264 video file.
--	 The position-x and position-y are properties of waylandsink element which point to (x,y) coordinate of wayland desktop.
+g_object_set (G_OBJECT (data->sink), "position-x", data->main_screen->x,
+    "position-y", data->main_screen->y, NULL);
 
+g_object_set (G_OBJECT (data->source), "location", data->input_file,
+    NULL);
+```
+-	 The position-x and position-y are properties of waylandsink element which point to (x,y) coordinate of wayland desktop.
+-	 The location property of filesrc element which points to an H.264 video file.
 
 #### Build pipeline
 ```c
-gst_bin_add_many (GST_BIN (pipeline), source, parser, decoder, sink, NULL);
+gst_bin_add_many (GST_BIN (data->pipeline), data->source,
+    data->parser, data->decoder, data->sink, NULL);
 
-/*Not display video in full-screen*/
-gst_element_link_many (source, parser, decoder, sink, NULL);
+if (gst_element_link_many (data->source, data->parser,
+        data->decoder, data->sink, NULL) != TRUE) {
+  g_printerr ("Elements could not be linked.\n");
+  return FALSE;
+}
 ```
 >Note that the order counts, because links must follow the data flow (this is, from `source` elements to `sink` elements).
 
@@ -105,7 +130,7 @@ $   scp -r $WORK/02_gst-videoplay/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
 
-Download the input file `vga1.h264` from _Renesas/videos_ in media repository and then place it in _/home/media/videos_.
+Download the input file `vga1.h264` from _Renesas/videos_ in media repository [(github.com/renesas-rz/media)](https://github.com/renesas-rz/media) and then place it in _/home/media/videos_.
 ```sh
 $   /usr/share/02_gst-videoplay/gst-videoplay /home/media/videos/vga1.h264
 ```

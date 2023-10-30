@@ -25,7 +25,8 @@ typedef struct _CustomData
   const char *video_ext;
 } CustomData;
 
-/* These structs contain information needed to get a list of available screens */
+/* These structs contain information needed to get a list of available
+ * screens */
 struct screen_t
 {
   uint16_t x;
@@ -202,7 +203,8 @@ global_handler(void *data, struct wl_registry *registry, uint32_t id,
 
     if (screen != NULL)
     {
-      handler->output = wl_registry_bind(handler->registry, id, &wl_output_interface, MIN(version, 2));
+      handler->output = wl_registry_bind(handler->registry, id,
+                            &wl_output_interface, MIN(version, 2));
       wl_output_add_listener(handler->output, &output_listener, screen);
 
       /* Wait until all screen's data members are filled */
@@ -269,7 +271,8 @@ get_available_screens()
     return NULL;
   }
 
-  /* Obtain wl_registry from Wayland compositor to access public object "wl_output" */
+  /* Obtain wl_registry from Wayland compositor to access public object
+   * "wl_output" */
   handler->registry = wl_display_get_registry(handler->display);
   wl_registry_add_listener(handler->registry, &registry_listener, handler);
 
@@ -280,7 +283,8 @@ get_available_screens()
 }
 
 bool
-get_required_monitors(struct wayland_t *handler, struct screen_t *screens[], int count)
+get_required_monitors(struct wayland_t *handler, struct screen_t *screens[],
+    int count)
 {
   bool result = false;
   struct screen_t *screen = NULL;
@@ -360,8 +364,8 @@ bus_call (GstBus * bus, GstMessage * msg, gpointer data)
 }
 
 guint
-create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
-    struct screen_t * screen, CustomData * data)
+create_video_pipeline (GstElement ** p_video_pipeline,
+    const gchar * input_file, struct screen_t * screen, CustomData * data)
 {
   GstBus *bus;
   guint video_bus_watch_id;
@@ -372,12 +376,14 @@ create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
   video_source = gst_element_factory_make ("filesrc", NULL);
   video_sink = gst_element_factory_make ("waylandsink", NULL);
 
-  if ((strcasecmp ("h264", data->video_ext) == 0) || (strcasecmp ("264", data->video_ext) == 0)) {
+  if ((strcasecmp ("h264", data->video_ext) == 0) || (strcasecmp ("264",
+          data->video_ext) == 0)) {
     video_parser = gst_element_factory_make ("h264parse", "h264-parser");
     video_decoder = gst_element_factory_make ("omxh264dec", "h264-decoder");
   }
 
-  if (!*p_video_pipeline || !video_source || !video_parser || !video_decoder || !video_sink) {
+  if (!*p_video_pipeline || !video_source || !video_parser || !video_decoder ||
+          !video_sink) {
     g_printerr ("One video element could not be created. Exiting.\n");
     return 0;
   }
@@ -395,7 +401,8 @@ create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
   /* Set up for the video pipeline */
   /* Set the input file location of the file source element */
   g_object_set (G_OBJECT (video_source), "location", input_file, NULL);
-  g_object_set (G_OBJECT (video_sink), "position-x", screen->x, "position-y",  screen->y, NULL);
+  g_object_set (G_OBJECT (video_sink),
+      "position-x", screen->x, "position-y", screen->y, NULL);
 
   /* Link the elements together */
   /* file-source -> parser -> decoder -> video-output */
@@ -487,7 +494,8 @@ main (int argc, char *argv[])
 
   if (argc != ARG_COUNT) {
     g_print ("Error: Invalid arugments.\n");
-    g_print ("Usage: %s <path to the first H264 file> <path to the second H264 file> \n", argv[ARG_PROGRAM_NAME]);
+    g_print ("Usage: %s <path to the first H264 file> <path to the second" \
+        "H264 file> \n", argv[ARG_PROGRAM_NAME]);
     return -1;
   }
 
@@ -496,12 +504,14 @@ main (int argc, char *argv[])
   video1_ext = get_filename_ext (file_name_1);
   video2_ext = get_filename_ext (file_name_2);
 
-  if ((strcasecmp ("h264", video1_ext) != 0) && (strcasecmp ("264", video1_ext) != 0)) {
+  if ((strcasecmp ("h264", video1_ext) != 0) && (strcasecmp ("264",
+           video1_ext) != 0)) {
     g_print ("Unsupported video type. H264 format is required\n");
     return -1;
   }
 
-  if ((strcasecmp ("h264", video2_ext) != 0) && (strcasecmp ("264", video2_ext) != 0)) {
+  if ((strcasecmp ("h264", video2_ext) != 0) && (strcasecmp ("264",
+           video2_ext) != 0)) {
     g_print ("Unsupported video type. H264 format is required\n");
     return -1;
   }
@@ -518,9 +528,10 @@ main (int argc, char *argv[])
   if (screen_numbers < REQUIRED_SCREEN_NUMBERS)
   {
     g_printerr("Detected %d monitors.\n", screen_numbers);
-    g_printerr("Must have at least %d monitors to run the app. Exiting.\n", REQUIRED_SCREEN_NUMBERS);
+    g_printerr("Must have at least %d monitors to run the app. Exiting.\n",
+        REQUIRED_SCREEN_NUMBERS);
 
-    destroy_wayland(wayland_handler);
+    destroy_wayland (wayland_handler);
     return -1;
   }
 
@@ -531,7 +542,7 @@ main (int argc, char *argv[])
     g_printerr("  %s\n", input_video_file_1);
     g_printerr("  %s\n", input_video_file_2);
 
-    destroy_wayland(wayland_handler);
+    destroy_wayland (wayland_handler);
     return -1;
   }
 
@@ -544,7 +555,7 @@ main (int argc, char *argv[])
   shared_data.loop_reference = 0; 	/* counter */
   shared_data.video_ext = video1_ext;
   g_mutex_init (&shared_data.mutex);
-  
+
   screens[PRIMARY_SCREEN_INDEX]->x += PRIMARY_POS_OFFSET;
   screens[PRIMARY_SCREEN_INDEX]->y += PRIMARY_POS_OFFSET;
   video_bus_watch_id_1 =
@@ -553,7 +564,7 @@ main (int argc, char *argv[])
 
   if (video_bus_watch_id_1 == 0)
   {
-    destroy_wayland(wayland_handler);
+    destroy_wayland (wayland_handler);
     return -1;
   }
 
@@ -567,7 +578,7 @@ main (int argc, char *argv[])
 
   if (video_bus_watch_id_2 == 0)
   {
-    destroy_wayland(wayland_handler);
+    destroy_wayland (wayland_handler);
     return -1;
   }
 
@@ -580,7 +591,7 @@ main (int argc, char *argv[])
   {
     g_printerr("Unable to play video file: %s\n", input_video_file_1);
 
-    destroy_wayland(wayland_handler);
+    destroy_wayland (wayland_handler);
     return -1;
   }
 
@@ -593,7 +604,7 @@ main (int argc, char *argv[])
   {
     g_printerr("Unable to play video file: %s\n", input_video_file_2);
 
-    destroy_wayland(wayland_handler);
+    destroy_wayland (wayland_handler);
     return -1;
   }
 
@@ -602,7 +613,7 @@ main (int argc, char *argv[])
   g_main_loop_run (shared_data.loop);
 
   /* Clean up "wayland_t" structure */
-  destroy_wayland(wayland_handler);
+  destroy_wayland (wayland_handler);
 
   /* Out of loop. Clean up nicely */
   g_source_remove (video_bus_watch_id_1);

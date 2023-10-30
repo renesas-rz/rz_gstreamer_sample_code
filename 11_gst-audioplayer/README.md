@@ -511,7 +511,7 @@ $   make
 $   scp -r $WORK/11_gst-audioplayer/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
->Download the input file `renesas-bigideasforeveryspace.mp3` from _Renesas/audios_ in media repository and then place it in _/home/media/audios_.
+>Download the input file `renesas-bigideasforeveryspace.mp3` from _Renesas/audios_ in media repository [(github.com/renesas-rz/media)](https://github.com/renesas-rz/media) and then place it in _/home/media/audios_.
 ```sh
 $   /usr/share/11_gst-audioplayer/gst-audioplayer /home/media/audios
 ```

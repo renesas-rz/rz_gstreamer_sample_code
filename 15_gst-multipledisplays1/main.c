@@ -16,7 +16,8 @@
 #define PRIMARY_POS_OFFSET   0
 #define SECONDARY_POS_OFFSET   300
 
-/* These structs contain information needed to get a list of available screens */
+/* These structs contain information needed to get a list of available
+ * screens */
 struct screen_t
 {
   uint16_t x;
@@ -36,6 +37,25 @@ struct wayland_t
 
   struct wl_list screens;
 };
+
+typedef struct tag_user_data
+{
+  GstElement *pipeline;
+  GstElement *source;
+  GstElement *parser;
+  GstElement *decoder;
+  GstElement *tee;
+  GstElement *queue_1;
+  GstElement *video_sink_1;
+  GstElement *queue_2;
+  GstElement *video_sink_2;
+
+  GstPad *req_pad_1;
+  GstPad *req_pad_2;
+
+  const char *input_video_file;
+  struct screen_t *screens[REQUIRED_SCREEN_NUMBERS];
+} UserData;
 
 /*
  *
@@ -193,7 +213,8 @@ global_handler(void *data, struct wl_registry *registry, uint32_t id,
 
     if (screen != NULL)
     {
-      handler->output = wl_registry_bind(handler->registry, id, &wl_output_interface, MIN(version, 2));
+      handler->output = wl_registry_bind(handler->registry, id,
+                            &wl_output_interface, MIN(version, 2));
       wl_output_add_listener(handler->output, &output_listener, screen);
 
       /* Wait until all screen's data members are filled */
@@ -260,7 +281,8 @@ get_available_screens()
     return NULL;
   }
 
-  /* Obtain wl_registry from Wayland compositor to access public object "wl_output" */
+  /* Obtain wl_registry from Wayland compositor to access public object
+   * "wl_output" */
   handler->registry = wl_display_get_registry(handler->display);
   wl_registry_add_listener(handler->registry, &registry_listener, handler);
 
@@ -271,7 +293,8 @@ get_available_screens()
 }
 
 bool
-get_required_monitors(struct wayland_t *handler, struct screen_t *screens[], int count)
+get_required_monitors(struct wayland_t *handler, struct screen_t *screens[],
+    int count)
 {
   bool result = false;
   struct screen_t *screen = NULL;
@@ -332,25 +355,129 @@ const char* get_filename_ext (const char *filename) {
   }
 }
 
+void
+set_element_properties (UserData *data)
+{
+  /* Set the input file location to the source element */
+  g_object_set (G_OBJECT (data->source),
+      "location", data->input_video_file, NULL);
+
+  /* Set display position and size for Display 1  */
+  g_object_set (G_OBJECT (data->video_sink_1),
+       "position-x",
+       data->screens[PRIMARY_SCREEN_INDEX]->x + PRIMARY_POS_OFFSET,
+       "position-y",
+       data->screens[PRIMARY_SCREEN_INDEX]->y + PRIMARY_POS_OFFSET, NULL);
+
+  /* Set display position and size for Display 2 */
+  g_object_set (G_OBJECT (data->video_sink_2),
+       "position-x",
+       data->screens[SECONDARY_SCREEN_INDEX]->x + SECONDARY_POS_OFFSET,
+       "position-y",
+       data->screens[SECONDARY_SCREEN_INDEX]->y + SECONDARY_POS_OFFSET, NULL);
+}
+
+int
+setup_pipeline (UserData *data)
+{
+  GstPadTemplate *tee_src_pad_template;
+  GstPad *sink_pad;
+
+  /* set element properties */
+  set_element_properties (data);
+
+  /* Add the elements into the pipeline and link them together */
+  /* file-source -> h264-parser -> omxh264-decoder -> tee -> <1>, <2>
+   * <1> video-queue1 -> video-output1
+   * <2> video-queue2 -> video-output2 */
+  gst_bin_add_many (GST_BIN (data->pipeline),
+      data->source, data->parser, data->decoder, data->tee, data->queue_1,
+      data->video_sink_1, data->queue_2, data->video_sink_2, NULL);
+
+  /* source -> h264-parser -> omxh264-decoder -> tee */
+  if (gst_element_link_many (data->source, data->parser, data->decoder,
+          data->tee, NULL) != TRUE) {
+    g_printerr ("Source elements could not be linked.\n");
+    return FALSE;
+  }
+  /* <1> */
+  if (gst_element_link_many (data->queue_1, data->video_sink_1,
+          NULL) != TRUE) {
+    g_printerr ("Elements of Video Display-1 could not be linked.\n");
+    return FALSE;
+  }
+  /* <2> */
+  if (gst_element_link_many (data->queue_2, data->video_sink_2,
+          NULL) != TRUE) {
+    g_printerr ("Elements of Video Display-2 could not be linked.\n");
+    return FALSE;
+  }
+
+  /* Get a src pad template of Tee */
+  tee_src_pad_template =
+      gst_element_class_get_pad_template (GST_ELEMENT_GET_CLASS (data->tee),
+      "src_%u");
+
+  /* Get request pad and manually link for Video Display 1 */
+  data->req_pad_1 = gst_element_request_pad (data->tee, tee_src_pad_template,
+                        NULL, NULL);
+  sink_pad = gst_element_get_static_pad (data->queue_1, "sink");
+  if (gst_pad_link (data->req_pad_1, sink_pad) != GST_PAD_LINK_OK) {
+    g_print ("tee link failed!\n");
+  }
+  gst_object_unref (sink_pad);
+
+  /* Get request pad and manually link for Video Display 2 */
+  data->req_pad_2 = gst_element_request_pad (data->tee, tee_src_pad_template,
+                    NULL, NULL);
+  sink_pad = gst_element_get_static_pad (data->queue_2, "sink");
+  if (gst_pad_link (data->req_pad_2, sink_pad) != GST_PAD_LINK_OK) {
+    g_print ("tee link failed!\n");
+  }
+  gst_object_unref (sink_pad);
+
+  return TRUE;
+}
+
+void
+parse_message (GstMessage *msg)
+{
+  GError *error;
+  gchar  *dbg_inf;
+
+  switch (GST_MESSAGE_TYPE (msg)) {
+    case GST_MESSAGE_EOS:
+      g_print ("End of stream !\n");
+      break;
+    case GST_MESSAGE_ERROR:
+      gst_message_parse_error (msg, &error, &dbg_inf);
+      g_printerr (" Element error %s: %s.\n",
+          GST_OBJECT_NAME (msg->src), error->message);
+      g_printerr ("Debugging information: %s.\n",
+          dbg_inf ? dbg_inf : "none");
+      g_clear_error (&error);
+      g_free (dbg_inf);
+      break;
+    default:
+      /* We don't care other message */
+      g_printerr ("Undefined message.\n");
+      break;
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
   struct wayland_t *wayland_handler = NULL;
-  struct screen_t *screens[REQUIRED_SCREEN_NUMBERS];
+  UserData user_data;
   int screen_numbers = 0;
   const char* ext;
   char* file_name;
 
-  const char *input_video_file = argv[ARG_INPUT];
-
-  GstElement *pipeline, *source, *parser, *decoder, *tee;
-  GstElement *queue_1, *video_sink_1;
-  GstElement *queue_2, *video_sink_2;
-
-  GstPad *req_pad_1, *sink_pad, *req_pad_2;
   GstBus *bus;
   GstMessage *msg;
-  GstPadTemplate *tee_src_pad_template;
+
+  user_data.input_video_file = argv[ARG_INPUT];
 
   if (argc != ARG_COUNT) {
     g_print ("Error: Invalid arugments.\n");
@@ -358,7 +485,7 @@ main (int argc, char *argv[])
     return -1;
   }
 
-  file_name = basename ((char*) input_video_file);
+  file_name = basename ((char*) user_data.input_video_file);
   ext = get_filename_ext (file_name);
 
   /* Get a list of available screen */
@@ -373,191 +500,113 @@ main (int argc, char *argv[])
   if (screen_numbers < REQUIRED_SCREEN_NUMBERS)
   {
     g_printerr("Detected %d monitors.\n", screen_numbers);
-    g_printerr("Must have at least %d monitors to run the app. Exiting.\n", REQUIRED_SCREEN_NUMBERS);
+    g_printerr("Must have at least %d monitors to run the app. Exiting.\n",
+        REQUIRED_SCREEN_NUMBERS);
 
-    destroy_wayland(wayland_handler);
+    destroy_wayland (wayland_handler);
     return -1;
   }
 
   /* Check input file */
-  if (!is_file_exist(input_video_file))
+  if (!is_file_exist(user_data.input_video_file))
   {
-    g_printerr("Cannot find input file: %s. Exiting.\n", input_video_file);
+    g_printerr("Cannot find input file: %s. Exiting.\n",
+        user_data.input_video_file);
 
-    destroy_wayland(wayland_handler);
+    destroy_wayland (wayland_handler);
     return -1;
   }
 
   /* Extract required monitors */
-  get_required_monitors(wayland_handler, screens, REQUIRED_SCREEN_NUMBERS);
+  get_required_monitors(wayland_handler, user_data.screens,
+      REQUIRED_SCREEN_NUMBERS);
 
   /* Initialization */
   gst_init (&argc, &argv);
 
   /* Check the extension and create parser, decoder */
   if ((strcasecmp ("h264", ext) == 0) || (strcasecmp ("264", ext) == 0)) {
-    parser = gst_element_factory_make ("h264parse", "h264-parser");
-    decoder = gst_element_factory_make ("omxh264dec", "h264-decoder");
+    user_data.parser = gst_element_factory_make ("h264parse", "h264-parser");
+    user_data.decoder = gst_element_factory_make ("omxh264dec",
+                            "h264-decoder");
   } else {
     g_print ("Unsupported video type. H264 format is required.\n");
-    destroy_wayland(wayland_handler);
+    destroy_wayland (wayland_handler);
     return -1;
   }
 
   /* Create GStreamer elements */
-  pipeline = gst_pipeline_new ("multiple-display");
-  source = gst_element_factory_make ("filesrc", "file-source");
-  tee = gst_element_factory_make ("tee", "tee-element");
+  user_data.pipeline = gst_pipeline_new ("multiple-display");
+  user_data.source = gst_element_factory_make ("filesrc", "file-source");
+  user_data.tee = gst_element_factory_make ("tee", "tee-element");
 
   /* Elements for Video Display 1 */
-  queue_1 = gst_element_factory_make ("queue", "queue-1");
-  video_sink_1 = gst_element_factory_make ("waylandsink", "video-output-1");
+  user_data.queue_1 = gst_element_factory_make ("queue", "queue-1");
+  user_data.video_sink_1 = gst_element_factory_make ("waylandsink",
+                               "video-output-1");
 
   /* Elements for Video Display 2 */
-  queue_2 = gst_element_factory_make ("queue", "queue-2");
-  video_sink_2 = gst_element_factory_make ("waylandsink", "video-output-2");
+  user_data.queue_2 = gst_element_factory_make ("queue", "queue-2");
+  user_data.video_sink_2 = gst_element_factory_make ("waylandsink",
+                               "video-output-2");
 
-  if (!pipeline || !source || !parser || !decoder || !tee
-      || !queue_1 || !video_sink_1 || !queue_2 || !video_sink_2) {
+  if (!user_data.pipeline || !user_data.source || !user_data.parser ||
+          !user_data.decoder || !user_data.tee || !user_data.queue_1 ||
+          !user_data.video_sink_1 || !user_data.queue_2 ||
+          !user_data.video_sink_2) {
     g_printerr ("One element could not be created. Exiting.\n");
 
-    destroy_wayland(wayland_handler);
+    destroy_wayland (wayland_handler);
     return -1;
   }
 
-  /* Set up the pipeline */
+  if (setup_pipeline (&user_data) != TRUE) {
+    gst_object_unref (user_data.pipeline);
 
-  /* Set the input file location to the source element */
-  g_object_set (G_OBJECT (source), "location", input_video_file, NULL);
-
-  /* Set display position and size for Display 1  */
-  g_object_set (G_OBJECT (video_sink_1),
-       "position-x", screens[PRIMARY_SCREEN_INDEX]->x + PRIMARY_POS_OFFSET,
-       "position-y", screens[PRIMARY_SCREEN_INDEX]->y + PRIMARY_POS_OFFSET,
-       NULL);
-
-  /* Set display position and size for Display 2 */
-  g_object_set (G_OBJECT (video_sink_2),
-       "position-x", screens[SECONDARY_SCREEN_INDEX]->x + SECONDARY_POS_OFFSET,
-       "position-y", screens[SECONDARY_SCREEN_INDEX]->y + SECONDARY_POS_OFFSET,
-       NULL);
-
-  /* Add all elements into the pipeline */
-  gst_bin_add_many (GST_BIN (pipeline), source, parser, decoder, tee,
-      queue_1, video_sink_1, queue_2, video_sink_2, NULL);
-
-  /* Link elements together */
-  if (gst_element_link_many (source, parser, decoder, tee, NULL) != TRUE) {
-    g_printerr ("Source elements could not be linked.\n");
-    gst_object_unref (pipeline);
-
-    destroy_wayland(wayland_handler);
+    destroy_wayland (wayland_handler);
     return -1;
   }
-
-  if (gst_element_link_many (queue_1, video_sink_1, NULL) != TRUE) {
-    g_printerr ("Elements of Video Display-1 could not be linked.\n");
-    gst_object_unref (pipeline);
-
-    destroy_wayland(wayland_handler);
-    return -1;
-  }
-  if (gst_element_link_many (queue_2, video_sink_2, NULL) != TRUE) {
-    g_printerr ("Elements of Video Display-2 could not be linked.\n");
-    gst_object_unref (pipeline);
-
-    destroy_wayland(wayland_handler);
-    return -1;
-  }
-
-  /* Get a src pad template of Tee */
-  tee_src_pad_template =
-      gst_element_class_get_pad_template (GST_ELEMENT_GET_CLASS (tee),
-      "src_%u");
-
-  /* Get request pad and manually link for Video Display 1 */
-  req_pad_1 = gst_element_request_pad (tee, tee_src_pad_template, NULL, NULL);
-  sink_pad = gst_element_get_static_pad (queue_1, "sink");
-  if (gst_pad_link (req_pad_1, sink_pad) != GST_PAD_LINK_OK) {
-    g_print ("tee link failed!\n");
-  }
-  gst_object_unref (sink_pad);
-
-  /* Get request pad and manually link for Video Display 2 */
-  req_pad_2 = gst_element_request_pad (tee, tee_src_pad_template, NULL, NULL);
-  sink_pad = gst_element_get_static_pad (queue_2, "sink");
-  if (gst_pad_link (req_pad_2, sink_pad) != GST_PAD_LINK_OK) {
-    g_print ("tee link failed!\n");
-  }
-  gst_object_unref (sink_pad);
 
   /* Set the pipeline to "playing" state */
   g_print ("Now playing:\n");
-  if (gst_element_set_state (pipeline,
+  if (gst_element_set_state (user_data.pipeline,
           GST_STATE_PLAYING) == GST_STATE_CHANGE_FAILURE) {
     g_printerr ("Unable to set the pipeline to the playing state.\n");
-    gst_object_unref (pipeline);
+    gst_object_unref (user_data.pipeline);
 
-    destroy_wayland(wayland_handler);
+    destroy_wayland (wayland_handler);
     return -1;
   }
 
   /* Iterate */
   g_print ("Running...\n");
-  bus = gst_element_get_bus (pipeline);
+  bus = gst_element_get_bus (user_data.pipeline);
   msg =
       gst_bus_timed_pop_filtered (bus, GST_CLOCK_TIME_NONE,
       GST_MESSAGE_ERROR | GST_MESSAGE_EOS);
   gst_object_unref (bus);
 
-  /* Note that because input timeout is GST_CLOCK_TIME_NONE, 
-     the gst_bus_timed_pop_filtered() function will block forever until a 
-     matching message was posted on the bus (GST_MESSAGE_ERROR or 
+  /* Note that because input timeout is GST_CLOCK_TIME_NONE,
+     the gst_bus_timed_pop_filtered() function will block forever until a
+     matching message was posted on the bus (GST_MESSAGE_ERROR or
      GST_MESSAGE_EOS). */
 
-  /* Playback end. Handle the message */
-  if (msg != NULL) {
-    GError *err;
-    gchar *debug_info;
+  /* Seek to start and flush all old data */
+  gst_element_seek_simple (user_data.pipeline, GST_FORMAT_TIME,
+      GST_SEEK_FLAG_FLUSH, 0);
 
-    switch (GST_MESSAGE_TYPE (msg)) {
-      case GST_MESSAGE_ERROR:
-        gst_message_parse_error (msg, &err, &debug_info);
-        g_printerr ("Error received from element %s: %s.\n",
-            GST_OBJECT_NAME (msg->src), err->message);
-        g_printerr ("Debugging information: %s.\n",
-            debug_info ? debug_info : "none");
-        g_clear_error (&err);
-        g_free (debug_info);
-        break;
-      case GST_MESSAGE_EOS:
-        g_print ("End-Of-Stream reached.\n");
-        break;
-      default:
-        /* We should not reach here because we only asked for ERRORs and EOS */
-        g_printerr ("Unexpected message received.\n");
-        break;
-    }
+  /* Clean up "wayland_t" structure */
+  destroy_wayland (wayland_handler);
+
+  if (msg != NULL) {
+    parse_message (msg);
     gst_message_unref (msg);
   }
 
-  /* Seek to start and flush all old data */
-  gst_element_seek_simple (pipeline, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH, 0);
-
-  /* Clean up "wayland_t" structure */
-  destroy_wayland(wayland_handler);
-
-  /* Clean up nicely */
-  gst_element_release_request_pad (tee, req_pad_1);
-  gst_element_release_request_pad (tee, req_pad_2);
-  gst_object_unref (req_pad_1);
-  gst_object_unref (req_pad_2);
-
   g_print ("Returned, stopping playback\n");
-  gst_element_set_state (pipeline, GST_STATE_NULL);
-
+  gst_element_set_state (user_data.pipeline, GST_STATE_NULL);
   g_print ("Deleting pipeline\n");
-  gst_object_unref (GST_OBJECT (pipeline));
+  gst_object_unref (GST_OBJECT (user_data.pipeline));
 
   return 0;
 }

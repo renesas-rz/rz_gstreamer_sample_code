@@ -11,7 +11,8 @@
 #define ARG_INPUT 1
 #define ARG_COUNT 2
 
-/* These structs contain information needed to get a list of available screens */
+/* These structs contain information needed to get a list of available
+ * screens */
 struct screen_t
 {
   uint16_t x;
@@ -31,6 +32,18 @@ struct wayland_t
 
   struct wl_list screens;
 };
+
+typedef struct tag_user_data
+{
+  GstElement *pipeline;
+  GstElement *source;
+  GstElement *parser;
+  GstElement *decoder;
+  GstElement *sink;
+
+  const gchar *input_file;
+  struct screen_t *main_screen;
+} UserData;
 
 /*
  *
@@ -188,7 +201,8 @@ global_handler(void *data, struct wl_registry *registry, uint32_t id,
 
     if (screen != NULL)
     {
-      handler->output = wl_registry_bind(handler->registry, id, &wl_output_interface, MIN(version, 2));
+      handler->output = wl_registry_bind(handler->registry, id,
+                            &wl_output_interface, MIN(version, 2));
       wl_output_add_listener(handler->output, &output_listener, screen);
 
       /* Wait until all screen's data members are filled */
@@ -228,10 +242,10 @@ static const struct wl_registry_listener registry_listener =
 };
 
 /*
- * 
+ *
  * name: get_available_screens
  * Get a list of available screens
- * 
+ *
  */
 struct wayland_t*
 get_available_screens()
@@ -255,7 +269,8 @@ get_available_screens()
     return NULL;
   }
 
-  /* Obtain wl_registry from Wayland compositor to access public object "wl_output" */
+  /* Obtain wl_registry from Wayland compositor to access public object
+   * "wl_output" */
   handler->registry = wl_display_get_registry(handler->display);
   wl_registry_add_listener(handler->registry, &registry_listener, handler);
 
@@ -329,13 +344,69 @@ const char* get_filename_ext (const char *filename) {
   }
 }
 
+void
+set_element_properties (UserData *data)
+{
+  /* Set position for displaying (0, 0) */
+  g_object_set (G_OBJECT (data->sink), "position-x", data->main_screen->x,
+      "position-y", data->main_screen->y, NULL);
+
+  /* Set input video file for source element */
+  g_object_set (G_OBJECT (data->source), "location", data->input_file,
+      NULL);
+}
+
+int
+setup_pipeline (UserData *data)
+{
+  /* set element properties */
+  set_element_properties (data);
+
+  /* Add the elements into the pipeline and link them together */
+  /* file-src -> h264-parser -> omxh264-decoder -> video-output */
+  gst_bin_add_many (GST_BIN (data->pipeline), data->source,
+      data->parser, data->decoder, data->sink, NULL);
+
+  if (gst_element_link_many (data->source, data->parser,
+          data->decoder, data->sink, NULL) != TRUE) {
+    g_printerr ("Elements could not be linked.\n");
+    return FALSE;
+  }
+  return TRUE;
+}
+
+void
+parse_message (GstMessage *msg)
+{
+  GError *error;
+  gchar  *dbg_inf;
+
+  switch (GST_MESSAGE_TYPE (msg)) {
+    case GST_MESSAGE_EOS:
+      g_print ("End of stream !\n");
+      break;
+    case GST_MESSAGE_ERROR:
+      gst_message_parse_error (msg, &error, &dbg_inf);
+      g_printerr (" Element error %s: %s.\n",
+          GST_OBJECT_NAME (msg->src), error->message);
+      g_printerr ("Debugging information: %s.\n",
+          dbg_inf ? dbg_inf : "none");
+      g_clear_error (&error);
+      g_free (dbg_inf);
+      break;
+    default:
+      /* We don't care other message */
+      g_printerr ("Undefined message.\n");
+      break;
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
   struct wayland_t *wayland_handler = NULL;
-  struct screen_t *main_screen = NULL;
+  UserData user_data;
 
-  GstElement *pipeline, *source, *parser, *decoder, *sink;
   GstBus *bus;
   GstMessage *msg;
   const char* ext;
@@ -351,129 +422,94 @@ main (int argc, char *argv[])
   wayland_handler = get_available_screens();
 
   /* Get main screen */
-  main_screen = get_main_screen(wayland_handler);
-  if (main_screen == NULL)
+  user_data.main_screen = get_main_screen(wayland_handler);
+  if (user_data.main_screen == NULL)
   {
     g_printerr("Cannot find any available screens. Exiting.\n");
-    destroy_wayland(wayland_handler);
+    destroy_wayland (wayland_handler);
     return -1;
   }
 
   /* Initialization */
   gst_init (&argc, &argv);
 
-  const gchar *input_file = argv[ARG_INPUT];
-
-  if (!is_file_exist(input_file))
+  user_data.input_file = argv[ARG_INPUT];
+  if (!is_file_exist(user_data.input_file))
   {
-    g_printerr("Cannot find input file: %s. Exiting.\n", input_file);
-    destroy_wayland(wayland_handler);
+    g_printerr("Cannot find input file: %s. Exiting.\n", user_data.input_file);
+    destroy_wayland (wayland_handler);
     return -1;
   }
 
-  file_name = basename ((char*) input_file);
+  file_name = basename ((char*) user_data.input_file);
   ext = get_filename_ext (file_name);
 
   /* Check the extension and create parser, decoder */
   if ((strcasecmp ("264", ext) == 0) || (strcasecmp ("h264", ext) == 0)) {
-    parser = gst_element_factory_make ("h264parse", "h264-parser");
-    decoder = gst_element_factory_make ("omxh264dec", "h264-decoder");
+    user_data.parser = gst_element_factory_make ("h264parse", "h264-parser");
+    user_data.decoder = gst_element_factory_make ("omxh264dec",
+                            "h264-decoder");
   }
   else
   {
     g_print ("Unsupported video type. H264 format is required.\n");
-    destroy_wayland(wayland_handler);
+    destroy_wayland (wayland_handler);
     return -1;
   }
 
   /* Create gstreamer elements */
-  pipeline = gst_pipeline_new ("video-play");
-  source = gst_element_factory_make ("filesrc", "file-source");
-  sink = gst_element_factory_make ("waylandsink", "video-output");
+  user_data.pipeline = gst_pipeline_new ("video-play");
+  user_data.source = gst_element_factory_make ("filesrc", "file-source");
+  user_data.sink = gst_element_factory_make ("waylandsink", "video-output");
 
-  if (!pipeline || !source || !parser || !decoder || !sink) {
+  if (!user_data.pipeline || !user_data.source || !user_data.parser ||
+          !user_data.decoder || !user_data.sink) {
     g_printerr ("One element could not be created. Exiting.\n");
-    destroy_wayland(wayland_handler);
+    destroy_wayland (wayland_handler);
     return -1;
   }
 
-  /* Add all elements into the pipeline */
-  gst_bin_add_many (GST_BIN (pipeline), source,
-      parser, decoder, sink, NULL);
-
-  /* Set input video file for source element */
-  g_object_set (G_OBJECT (source), "location", input_file, NULL);
-
-  /* Set position for displaying (0, 0) */
-  g_object_set (G_OBJECT (sink), "position-x", main_screen->x, "position-y",
-      main_screen->y, NULL);
-
-  /* Link the elements together */
-  if (gst_element_link_many (source, parser,
-          decoder, sink, NULL) != TRUE) {
-    g_printerr ("Elements could not be linked.\n");
-    gst_object_unref (pipeline);
-    destroy_wayland(wayland_handler);
+  if (setup_pipeline (&user_data) != TRUE) {
+    gst_object_unref (user_data.pipeline);
+    destroy_wayland (wayland_handler);
     return -1;
   }
 
   /* Set the pipeline to "playing" state */
-  g_print ("Now playing: %s\n", input_file);
-  if (gst_element_set_state (pipeline,
+  g_print ("Now playing: %s\n", user_data.input_file);
+  if (gst_element_set_state (user_data.pipeline,
           GST_STATE_PLAYING) == GST_STATE_CHANGE_FAILURE) {
     g_printerr ("Unable to set the pipeline to the playing state.\n");
-    gst_object_unref (pipeline);
-    destroy_wayland(wayland_handler);
+    gst_object_unref (user_data.pipeline);
+    destroy_wayland (wayland_handler);
     return -1;
   }
 
   g_print ("Running...\n");
 
   /* Wait until error or EOS */
-  bus = gst_element_get_bus (pipeline);
-  msg =
-      gst_bus_timed_pop_filtered (bus, GST_CLOCK_TIME_NONE,
-      GST_MESSAGE_ERROR | GST_MESSAGE_EOS);
+  bus = gst_element_get_bus (user_data.pipeline);
+  msg = gst_bus_timed_pop_filtered (bus, GST_CLOCK_TIME_NONE,
+            GST_MESSAGE_ERROR | GST_MESSAGE_EOS);
+  gst_object_unref (bus);
 
-  /* Note that because input timeout is GST_CLOCK_TIME_NONE, 
-     the gst_bus_timed_pop_filtered() function will block forever until a 
-     matching message was posted on the bus (GST_MESSAGE_ERROR or 
+  /* Note that because input timeout is GST_CLOCK_TIME_NONE,
+     the gst_bus_timed_pop_filtered() function will block forever until a
+     matching message was posted on the bus (GST_MESSAGE_ERROR or
      GST_MESSAGE_EOS). */
 
-  if (msg != NULL) {
-    GError *err;
-    gchar *debug_info;
+  /* Clean up "wayland_t" structure */
+  destroy_wayland (wayland_handler);
 
-    switch (GST_MESSAGE_TYPE (msg)) {
-      case GST_MESSAGE_ERROR:
-        gst_message_parse_error (msg, &err, &debug_info);
-        g_printerr ("Error received from element %s: %s.\n",
-            GST_OBJECT_NAME (msg->src), err->message);
-        g_printerr ("Debugging information: %s.\n",
-            debug_info ? debug_info : "none");
-        g_clear_error (&err);
-        g_free (debug_info);
-        break;
-      case GST_MESSAGE_EOS:
-        g_print ("End-Of-Stream reached.\n");
-        break;
-      default:
-        /* We should not reach here because we only asked for ERRORs and EOS */
-        g_printerr ("Unexpected message received.\n");
-        break;
-    }
+  if (msg != NULL) {
+    parse_message (msg);
     gst_message_unref (msg);
   }
 
-  /* Clean up "wayland_t" structure */
-  destroy_wayland(wayland_handler);
-
-  /* Free resources and change state to NULL */
-  gst_object_unref (bus);
   g_print ("Returned, stopping playback...\n");
-  gst_element_set_state (pipeline, GST_STATE_NULL);
+  gst_element_set_state (user_data.pipeline, GST_STATE_NULL);
   g_print ("Freeing pipeline...\n");
-  gst_object_unref (GST_OBJECT (pipeline));
+  gst_object_unref (GST_OBJECT (user_data.pipeline));
   g_print ("Completed. Goodbye!\n");
 
   return 0;

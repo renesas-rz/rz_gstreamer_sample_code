@@ -16,7 +16,8 @@ typedef struct _CustomData
   GMutex mutex;
 } CustomData;
 
-/* These structs contain information needed to get a list of available screens */
+/* These structs contain information needed to get a list of available
+ * screens */
 struct screen_t
 {
   uint16_t x;
@@ -193,7 +194,8 @@ global_handler(void *data, struct wl_registry *registry, uint32_t id,
 
     if (screen != NULL)
     {
-      handler->output = wl_registry_bind(handler->registry, id, &wl_output_interface, MIN(version, 2));
+      handler->output = wl_registry_bind(handler->registry, id,
+                            &wl_output_interface, MIN(version, 2));
       wl_output_add_listener(handler->output, &output_listener, screen);
 
       /* Wait until all screen's data members are filled */
@@ -260,7 +262,8 @@ get_available_screens()
     return NULL;
   }
 
-  /* Obtain wl_registry from Wayland compositor to access public object "wl_output" */
+  /* Obtain wl_registry from Wayland compositor to access public object
+   * "wl_output" */
   handler->registry = wl_display_get_registry(handler->display);
   wl_registry_add_listener(handler->registry, &registry_listener, handler);
 
@@ -350,8 +353,8 @@ bus_call (GstBus * bus, GstMessage * msg, gpointer data)
 }
 
 guint
-create_video_pipeline (GstElement ** p_video_pipeline, const gchar * input_file,
-    struct screen_t * screen, CustomData * data)
+create_video_pipeline (GstElement ** p_video_pipeline,
+    const gchar * input_file, struct screen_t * screen, CustomData * data)
 {
   GstBus *bus;
   guint video_bus_watch_id;
@@ -492,20 +495,21 @@ main (int argc, char *argv[])
   if (main_screen == NULL)
   {
     g_printerr("Cannot find any available screens. Exiting.\n");
-    destroy_wayland(wayland_handler);
+    destroy_wayland (wayland_handler);
     return -1;
   }
 
   /* Check input file */
-  if (!is_file_exist(input_video_file_1) || !is_file_exist(input_video_file_2) ||
-      !is_file_exist(input_video_file_3))
+  if (!is_file_exist(input_video_file_1) ||
+          !is_file_exist(input_video_file_2) ||
+          !is_file_exist(input_video_file_3))
   {
     g_printerr("Make sure the following (H264-encoded) files exist:\n");
     g_printerr("  %s\n", input_video_file_1);
     g_printerr("  %s\n", input_video_file_2);
     g_printerr("  %s\n", input_video_file_3);
 
-    destroy_wayland(wayland_handler);
+    destroy_wayland (wayland_handler);
     return -1;
   }
 
@@ -528,7 +532,7 @@ main (int argc, char *argv[])
 
   if (video_bus_watch_id_1 == 0)
   {
-    destroy_wayland(wayland_handler);
+    destroy_wayland (wayland_handler);
     return -1;
   }
 
@@ -541,7 +545,7 @@ main (int argc, char *argv[])
 
   if (video_bus_watch_id_2 == 0)
   {
-    destroy_wayland(wayland_handler);
+    destroy_wayland (wayland_handler);
     return -1;
   }
 
@@ -554,7 +558,7 @@ main (int argc, char *argv[])
 
   if (video_bus_watch_id_3 == 0)
   {
-    destroy_wayland(wayland_handler);
+    destroy_wayland (wayland_handler);
     return -1;
   }
 
@@ -567,7 +571,7 @@ main (int argc, char *argv[])
   {
     g_printerr("Unable to play video file: %s\n", input_video_file_1);
 
-    destroy_wayland(wayland_handler);
+    destroy_wayland (wayland_handler);
     return -1;
   }
 
@@ -580,7 +584,7 @@ main (int argc, char *argv[])
   {
     g_printerr("Unable to play video file: %s\n", input_video_file_2);
 
-    destroy_wayland(wayland_handler);
+    destroy_wayland (wayland_handler);
     return -1;
   }
 
@@ -593,7 +597,7 @@ main (int argc, char *argv[])
   {
     g_printerr("Unable to play video file: %s\n", input_video_file_3);
 
-    destroy_wayland(wayland_handler);
+    destroy_wayland (wayland_handler);
     return -1;
   }
 
@@ -602,7 +606,7 @@ main (int argc, char *argv[])
   g_main_loop_run (shared_data.loop);
 
   /* Clean up "wayland_t" structure */
-  destroy_wayland(wayland_handler);
+  destroy_wayland (wayland_handler);
 
   /* Out of loop. Clean up nicely */
   g_source_remove (video_bus_watch_id_1);

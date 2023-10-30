@@ -38,7 +38,6 @@ typedef struct tag_user_data
   GstElement *video_sink;
   gint64 media_length;
   struct screen_t *main_screen;
-  bool fullscreen;
 } UserData;
 ```
 This structure contains:
@@ -58,62 +57,46 @@ This structure contains:
 -	 Variable `video_sink (GstElement)`: A GStreamer element to create its own window and renders the decoded video frames to that.
 -	 Variable `media_length (qint64)`: An 8-byte integer variable to represent video duration.
 -	 Variable `main_screen (screen_t)`: A pointer to screen_t structure to contain monitor information, such as: (x, y), width, and height.
--	 Variable `fullscreen (bool)`: A boolean variable to enable full-screen mode.
 
 #### Video pipeline
 ```c
-source = gst_element_factory_make ("filesrc", "file-source");
-demuxer = gst_element_factory_make ("qtdemux", "qt-demuxer");
-video_queue = gst_element_factory_make ("queue", "video-queue");
-video_sink = NULL;
+user_data.source = gst_element_factory_make ("filesrc", "file-source");
+user_data.demuxer = gst_element_factory_make ("qtdemux", "qt-demuxer");
+user_data.video_queue = gst_element_factory_make ("queue", "video-queue");
+user_data.video_sink = NULL;
+user_data.audio_queue = gst_element_factory_make ("queue", "audio-queue");
+user_data.audio_decoder = gst_element_factory_make ("faad", "aac-decoder");
+user_data.audio_resample = gst_element_factory_make("audioresample",
+                               "audio-resample");
+user_data.audio_capsfilter = gst_element_factory_make ("capsfilter",
+                                 "audio-capsfilter");
+user_data.audio_sink = gst_element_factory_make ("alsasink", "audio-output");
 
-audio_queue = gst_element_factory_make ("queue", "audio-queue");
-audio_decoder = gst_element_factory_make ("faad", "aac-decoder");
-audio_resample = gst_element_factory_make("audioresample", "audio-resample");
-audio_capsfilter = gst_element_factory_make ("capsfilter", "audio-capsfilter");
-audio_sink = gst_element_factory_make ("alsasink", "audio-output");
-
-caps = gst_caps_new_simple ("audio/x-raw", "rate", G_TYPE_INT, AUDIO_SAMPLE_RATE, NULL);
+caps = gst_caps_new_simple ("audio/x-raw",
+    "rate", G_TYPE_INT, AUDIO_SAMPLE_RATE, NULL);
 
 g_object_set (G_OBJECT (audio_capsfilter), "caps", caps, NULL);
 gst_caps_unref (caps);
 
-gst_bin_add_many (GST_BIN (pipeline), source, demuxer,
-    video_queue, audio_queue, audio_decoder,
-    audio_resample, audio_capsfilter, audio_sink, NULL);
+gst_bin_add_many (GST_BIN (user_data.pipeline),
+    user_data.source, user_data.demuxer, user_data.video_queue,
+    user_data.audio_queue, user_data.audio_decoder, user_data.audio_resample,
+    user_data.audio_capsfilter, user_data.audio_sink, NULL);
 
 gst_element_link (source, demuxer)
 
-/* Construct user data */
-user_data.loop = loop;
-user_data.pipeline = pipeline;
-user_data.source = source;
-user_data.demuxer = demuxer;
-user_data.audio_queue = audio_queue;
-user_data.audio_decoder = audio_decoder;
-user_data.audio_resample = audio_resample;
-user_data.audio_capsfilter = audio_capsfilter;
-user_data.audio_sink = audio_sink;
-user_data.video_queue = video_queue;
 user_data.video_parser = NULL;
 user_data.video_decoder = NULL;
-user_data.video_sink = video_sink;
 user_data.media_length = 0;
-user_data.main_screen = &main_screen;
 
-if (user_data.fullscreen) {
-  user_data.video_filter = NULL;
-  user_data.video_capsfilter = NULL;
-}
-
-/* Set up the pipeline */
-/* we add a message handler */
-bus = gst_pipeline_get_bus (GST_PIPELINE (pipeline));
+bus = gst_pipeline_get_bus (GST_PIPELINE (user_data.pipeline));
 bus_watch_id = gst_bus_add_watch (bus, bus_call, &user_data);
 gst_object_unref (bus);
 
-g_signal_connect (demuxer, "pad-added", G_CALLBACK (on_pad_added), &user_data);
-g_signal_connect (demuxer, "no-more-pads", G_CALLBACK (no_more_pads), NULL);
+g_signal_connect (user_data.demuxer, "pad-added", G_CALLBACK (on_pad_added),
+    &user_data);
+g_signal_connect (user_data.demuxer, "no-more-pads",
+    G_CALLBACK (no_more_pads), NULL);
 ```
 Basically, this pipeline is just like File Play except it uses `gst_bus_add_watch()` instead of `gst_bus_timed_pop_filtered()` to receive messages (such as: error or EOS (End-of-Stream)) from `bus_call()` asynchronously.
 
@@ -124,7 +107,8 @@ That’s why they are not created in `main()`.
 #### Function on_pad_added()
 ```c
 static void on_pad_added (GstElement * element, GstPad * pad, gpointer data)
-{  if (g_str_has_prefix (new_pad_type, "audio")) {
+{
+  if (g_str_has_prefix (new_pad_type, "audio")) {
     gst_element_set_state (puser_data->audio_queue, GST_STATE_PAUSED);
     gst_element_set_state (puser_data->audio_decoder, GST_STATE_PAUSED);
     gst_element_set_state (puser_data->audio_resample, GST_STATE_PAUSED);
@@ -182,49 +166,21 @@ static void on_pad_added (GstElement * element, GstPad * pad, gpointer data)
       g_main_loop_quit (puser_data->loop);
   }
 
-  /* Recreate vspmfilter and capsfilter in case of scaling full screen */
-  if (puser_data->fullscreen) {
-    puser_data->video_filter = gst_element_factory_make ("vspmfilter", "video-filter");
-    g_object_set (G_OBJECT (puser_data->video_filter), "dmabuf-use", TRUE, NULL);
-
-    puser_data->video_capsfilter = gst_element_factory_make ("capsfilter", "video-capsfilter");
-    video_caps = gst_caps_new_simple ("video/x-raw",
-         "width", G_TYPE_INT, main_screen->width,
-         "height", G_TYPE_INT, main_screen->height, NULL);    g_object_set (G_OBJECT (puser_data->video_capsfilter), "caps", video_caps, NULL);
-    gst_caps_unref (video_caps);
-  }
-
   /* Need to set Gst State to PAUSED before change state from NULL to PLAYING */
   gst_element_set_state (puser_data->video_queue, GST_STATE_PAUSED);
   gst_element_set_state (puser_data->video_parser, GST_STATE_PAUSED);
   gst_element_set_state (puser_data->video_decoder, GST_STATE_PAUSED);
-  if (puser_data->fullscreen) {
-    gst_element_set_state (puser_data->video_filter, GST_STATE_PAUSED);
-    gst_element_set_state (puser_data->video_capsfilter, GST_STATE_PAUSED);
-  }
   gst_element_set_state (puser_data->video_sink, GST_STATE_PAUSED);
 
   gst_bin_add_many (GST_BIN (puser_data->pipeline), puser_data->video_queue,
     puser_data->video_parser, puser_data->video_decoder, puser_data->video_sink, NULL);
 
-  /* Add back video_filter and video_capsfilter in case of scaling full screen */
-  if (puser_data->fullscreen) {
-    gst_bin_add_many (GST_BIN (puser_data->pipeline),
-        puser_data->video_filter, puser_data->video_capsfilter, NULL);
-  }
 
-  if (puser_data->fullscreen) {
-    if (gst_element_link_many (puser_data->video_queue, puser_data->video_parser,
-            puser_data->video_decoder, puser_data->video_filter, puser_data->video_capsfilter,
-            puser_data->video_sink, NULL) != TRUE) {
-      g_print ("video_queue, video_parser, video_decoder, video_filter, video_capsfilter, and "q
-                 "video_sink could not be linked.\n");
-    }
-  } else {
-    if (gst_element_link_many (puser_data->video_queue, puser_data->video_parser,
-            puser_data->video_decoder, puser_data->video_sink, NULL) != TRUE) {
-      g_print ("video_queue, video_parser, video_decoder and video_sink could not be linked.\n");
-    }
+  if (gst_element_link_many (puser_data->video_queue,
+          puser_data->video_parser, puser_data->video_decoder,
+          puser_data->video_sink, NULL) != TRUE) {
+    g_print ("video_queue, video_parser, video_decoder and video_sink " \
+        "could not be linked.\n");
   }
 
   /* In case link this pad with the decoder sink pad */
@@ -301,7 +257,7 @@ $   scp -r $WORK/12_gst-videoplayer/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
 
-- Download the input files `sintel_trailer-720p.mp4` as described in _Sintel_trailer/README.md_ and `renesas-bigideasforeveryspace.mp4` from _Renesas/videos_ in media repository and then place all of them in _/home/media/videos_.\
+- Download the input files `sintel_trailer-720p.mp4` as described in _Sintel_trailer/README.md_ and `renesas-bigideasforeveryspace.mp4` from _Renesas/videos_ in media repository [(github.com/renesas-rz/media)](https://github.com/renesas-rz/media) and then place all of them in _/home/media/videos_.\
 ```sh
 $   /usr/share/12_gst-videoplayer/gst-videoplayer /home/media/videos
 ```
