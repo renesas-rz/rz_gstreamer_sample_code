@@ -6,11 +6,11 @@
 #include <string.h>
 #include <libgen.h>
 
-#define FORMAT           "S16LE"
-#define ARG_PROGRAM_NAME 0
-#define ARG_INPUT_AUDIO  1
-#define ARG_INPUT_VIDEO  2
-#define ARG_COUNT        3
+#define AUDIO_SAMPLE_RATE 44100
+#define ARG_PROGRAM_NAME  0
+#define ARG_INPUT_AUDIO   1
+#define ARG_INPUT_VIDEO   2
+#define ARG_COUNT         3
 
 typedef struct _CustomData
 {
@@ -358,43 +358,29 @@ bus_call (GstBus * bus, GstMessage * msg, gpointer data)
   return TRUE;
 }
 
-static void
-on_pad_added (GstElement * element, GstPad * pad, gpointer data)
-{
-  GstPad *sinkpad;
-  GstElement *decoder = (GstElement *) data;
-
-  /* We can now link this pad with the vorbis-decoder sink pad */
-  g_print ("Dynamic pad created, linking demuxer/decoder\n");
-
-  sinkpad = gst_element_get_static_pad (decoder, "sink");
-
-  gst_pad_link (pad, sinkpad);
-
-  gst_object_unref (sinkpad);
-}
-
 guint
 create_audio_pipeline (GstElement ** p_audio_pipeline,
     const gchar * input_file, CustomData * data)
 {
   GstBus *bus;
   guint audio_bus_watch_id;
-  GstElement *audio_source, *audio_demuxer, *audio_decoder, *audio_converter,
+  GstElement *audio_source, *audio_parser, *audio_decoder, *audio_resample,
       *audio_capsfilter, *audio_sink;
   GstCaps *capsfilter;
 
   /* Create GStreamer elements for audio play */
   *p_audio_pipeline = gst_pipeline_new ("audio-play");
   audio_source = gst_element_factory_make ("filesrc", "audio-file-source");
-  audio_demuxer = gst_element_factory_make ("oggdemux", "ogg-demuxer");
-  audio_decoder = gst_element_factory_make ("vorbisdec", "vorbis-decoder");
-  audio_converter = gst_element_factory_make ("audioconvert", "converter");
-  audio_capsfilter = gst_element_factory_make ("capsfilter", "convert_caps");
+  audio_parser = gst_element_factory_make ("mpegaudioparse", "mp3-parser");
+  audio_decoder = gst_element_factory_make ("mpg123audiodec", "mp3-decoder");
+  audio_resample = gst_element_factory_make ("audioresample",
+                       "audio-resample");
+  audio_capsfilter = gst_element_factory_make ("capsfilter",
+                         "resample_capsfilter");
   audio_sink = gst_element_factory_make ("alsasink", "audio-output");
 
-  if (!*p_audio_pipeline || !audio_source || !audio_demuxer || !audio_decoder
-      || !audio_converter || !audio_capsfilter || !audio_sink) {
+  if (!*p_audio_pipeline || !audio_source || !audio_parser || !audio_decoder
+      || !audio_resample || !audio_capsfilter || !audio_sink) {
     g_printerr ("One audio element could not be created. Exiting.\n");
     return 0;
   }
@@ -405,10 +391,10 @@ create_audio_pipeline (GstElement ** p_audio_pipeline,
   gst_object_unref (bus);
 
   /* Add all elements into the audio pipeline */
-  /* file-source | ogg-demuxer | vorbis-decoder | converter | capsfilter |
+  /* file-source | mp3-parser | mp3-decoder | audioresample | capsfilter |
    * alsa-output */
   gst_bin_add_many (GST_BIN (*p_audio_pipeline),
-      audio_source, audio_demuxer, audio_decoder, audio_converter,
+      audio_source, audio_parser, audio_decoder, audio_resample,
       audio_capsfilter, audio_sink, NULL);
 
   /* Set up for the audio pipeline */
@@ -416,30 +402,20 @@ create_audio_pipeline (GstElement ** p_audio_pipeline,
   g_object_set (G_OBJECT (audio_source), "location", input_file, NULL);
 
   /* we set the caps option to the caps-filter element */
-  capsfilter =
-      gst_caps_new_simple ("audio/x-raw", "format", G_TYPE_STRING, FORMAT,
-      NULL);
+  capsfilter = gst_caps_new_simple ("audio/x-raw", "rate", G_TYPE_INT,
+                   AUDIO_SAMPLE_RATE, NULL);
   g_object_set (G_OBJECT (audio_capsfilter), "caps", capsfilter, NULL);
   gst_caps_unref (capsfilter);
 
   /* we link the elements together */
-  /* file-source -> ogg-demuxer ~> vorbis-decoder -> converter -> capsfilter ->
-   *  alsa-output */
-  if (!gst_element_link (audio_source, audio_demuxer)) {
+  /* file-source -> mp3-parser -> mp3-decoder -> audioresample -> capsfilter
+   * -> alsa-output */
+  if (!gst_element_link_many (audio_source, audio_parser, audio_decoder,
+          audio_resample, audio_capsfilter, audio_sink, NULL)) {
     g_printerr ("Audio elements could not be linked.\n");
     gst_object_unref (*p_audio_pipeline);
     return 0;
   }
-
-  if (!gst_element_link_many (audio_decoder, audio_converter, audio_capsfilter,
-          audio_sink, NULL)) {
-    g_printerr ("Audio elements could not be linked.\n");
-    gst_object_unref (*p_audio_pipeline);
-    return 0;
-  }
-
-  g_signal_connect (audio_demuxer, "pad-added", G_CALLBACK (on_pad_added),
-      audio_decoder);
 
   return audio_bus_watch_id;
 }
@@ -566,7 +542,7 @@ main (int argc, char *argv[])
 
   if (argc != ARG_COUNT) {
     g_printerr ("Error: Invalid arugments.\n");
-    g_printerr ("Usage: %s <OGG file> <H264 file> \n", argv[ARG_PROGRAM_NAME]);
+    g_printerr ("Usage: %s <MP3 file> <H264 file> \n", argv[ARG_PROGRAM_NAME]);
     return -1;
   }
 
@@ -603,11 +579,11 @@ main (int argc, char *argv[])
   video_ext = get_filename_ext (file_name);
 
   /* Check extension of input file */
-  if ((strcasecmp ("ogg", audio_ext) != 0)
+  if ((strcasecmp ("mp3", audio_ext) != 0)
       || ((strcasecmp ("h264", video_ext) != 0)
       && (strcasecmp ("264", video_ext) != 0))) {
     g_printerr ("Error: Unsupported input type.\n");
-    g_printerr ("OGG audio format and H264 video format are required.\n");
+    g_printerr ("MP3 audio format and H264 video format are required.\n");
     return -1;
   }
 

@@ -1,6 +1,6 @@
 # Audio Video Play
 
-Play H.264 video and Ogg/Vorbis audio file independently.
+Play H.264 video and MP3 audio file independently.
 
 ![Figure Audio Video Play pipeline](figure.png)
 
@@ -20,11 +20,11 @@ GStreamer: 1.16.3 (edited by Renesas).
 ```c
   if (argc != ARG_COUNT){
     g_printerr ("Error: Invalid arugments.\n");
-    g_printerr ("Usage: %s <OGG file> <H264 file> \n", argv[ARG_PROGRAM_NAME]);
+    g_printerr ("Usage: %s <MP3 file> <H264 file> \n", argv[ARG_PROGRAM_NAME]);
     return -1;
   }
 ```
-This application accepts 2 command-line arguments which point to an Ogg/Vorbis file and a H.264 file.
+This application accepts 2 command-line arguments which point to an MP3 file and a H.264 file.
 
 #### CustomData structure
 ```c
@@ -52,7 +52,7 @@ shared_data.loop = g_main_loop_new (NULL, FALSE);
 ```
 This function creates a new [GMainLoop](https://docs.gtk.org/glib/main-loop.html) structure with default (NULL) context `(GMainContext)`.\
 Basically, the main event loop manages all the available sources of events. To allow multiple independent sets of sources to be handled in different threads, each source is associated with a `GMainContext`. A `GMainContext` can only be running in a single thread, but sources can be added to it and removed from it from other threads.\
-The application will use GMainLoop to catch events and signals from 2 independent GStreamer pipelines. One plays a video and the other plays an Ogg/Vorbis audio file.
+The application will use GMainLoop to catch events and signals from 2 independent GStreamer pipelines. One plays a video and the other plays an MP3 audio file.
 ```c
 shared_data.loop_reference = 0;
 ```
@@ -112,7 +112,7 @@ try_to_quit_loop ((CustomData *) data);
 create_audio_pipeline (&audio_pipeline, input_audio_file, &shared_data);
 create_video_pipeline (&video_pipeline, input_video_file, &shared_data);
 ```
-Above lines of code create 2 pipelines, one plays Ogg/Vorbis audio and the other displays MP4.
+Above lines of code create 2 pipelines, one plays MP3 audio and the other displays H.264.
 
 #### Play pipelines
 ```c
@@ -201,9 +201,10 @@ $   scp -r $WORK/13_gst-audiovideoplay/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
 
--  Download the input files `Rondo_Alla_Turka.ogg` from _Renesas/audios_ and `vga1.h264` from _Renesas/videos_ in media repository [(github.com/renesas-rz/media)](https://github.com/renesas-rz/media) then place all of them in _/home/media/audios_.
+-  Download the audio input file `renesas-bigideasforeveryspace.mp3` from _Renesas/audios_ in media repository [(github.com/renesas-rz/media)](https://github.com/renesas-rz/media) then place it in _/home/media/audios_.
+-  In the same way, download the video input file `vga1.h264` from _Renesas/videos_ in media repository [(github.com/renesas-rz/media)](https://github.com/renesas-rz/media) then place it in _/home/media/videos_.
 ```sh
-$   /usr/share/13_gst-audiovideoplay/gst-audiovideoplay /home/media/audios/Rondo_Alla_Turka.ogg /home/media/videos/vga1.h264
+$   /usr/share/13_gst-audiovideoplay/gst-audiovideoplay /home/media/audios/renesas-bigideasforeveryspace.mp3 /home/media/videos/vga1.h264
 ```
 ### Special instruction:
 To set the playback volume: please use the alsamixer or amixer tool. Reference https://en.wikipedia.org/wiki/Alsamixer

@@ -46,7 +46,7 @@ The following table shows multimedia applications in RZ/G2 platform ranging from
 | [Video Scale](10_gst-videoscale) | Scale down an H.264 video, then store it in MP4 container. |
 | [Audio Player](11_gst-audioplayer) | A simple text-based MP3 audio player. |
 | [Video Player](12_gst-videoplayer) | A simple text-based MP4 video player. |
-| [Audio Video Play](13_gst-audiovideoplay) | Play H.264 video and Ogg/Vorbis audio file independently. |
+| [Audio Video Play](13_gst-audiovideoplay) | Play H.264 video and MP3 audio file independently. |
 | [File Play](14_gst-fileplay) | Play an MP4 file. |
 | [Multiple Displays 1](15_gst-multipledisplays1) | Display 1 H.264 video simultaneously on HDMI monitors. |
 | [Multiple Displays 2](16_gst-multipledisplays2) | Display 2 H.264 videos simultaneously on HDMI monitors. |
