@@ -1,3 +1,6 @@
+/* Copyright (c) 2023 Renesas Electronics Corporation and/or its affiliates */
+/* SPDX-License-Identifier: MIT-0 */
+
 #include "player.h"             /* player UI APIs */
 
 static gchar dir_path[PATH_MAX];

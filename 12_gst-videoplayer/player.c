@@ -1,3 +1,6 @@
+/* Copyright (c) 2023 Renesas Electronics Corporation and/or its affiliates */
+/* SPDX-License-Identifier: MIT-0 */
+
 #include "player.h"             /* player UI APIs */
 
 static gchar dir_path[PATH_MAX];
@@ -228,7 +231,7 @@ get_file_path (const char *path, const char *suffix, const guint32 file_no)
 }
 
 /* Function will base on the wait_for_file_no flag to request user input command or file number to play.
-This function will block until the user input command or type enter after input the file number*/ 
+This function will block until the user input command or type enter after input the file number*/
 UserCommand
 get_user_command (void)
 {

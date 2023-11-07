@@ -14,7 +14,7 @@ GStreamer: 1.16.3 (edited by Renesas).
 + [`Makefile`](Makefile)
 
 ### Walkthrough: [`main.c`](main.c)
->Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](/01_gst-audioplay/README.md) and section [Video Play](/02_gst-videoplay/README.md)
+>Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](../01_gst-audioplay/README.md) and section [Video Play](../02_gst-videoplay/README.md)
 
 #### UserData structure
 ```c
@@ -198,4 +198,4 @@ $   ifconfig <Ethernet Interface> <IPv4 address>
 $   /usr/share/08_gst-receivestreamingvideo/gst-receivestreamingvideo
 ```
 ### Special instruction:
->The application might drop frames when receiving high-bitrate videos because the decoder (omxh264dec) does not work properly. This issue is being investigated.
+>The application might drop frames when receiving high-bitrate videos.

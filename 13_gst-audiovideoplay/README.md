@@ -14,7 +14,7 @@ GStreamer: 1.16.3 (edited by Renesas).
 + [`Makefile`](Makefile)
 
 ### Walkthrough: [`main.c`](main.c)
->Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](/01_gst-audioplay/README.md) and [Video Play](/02_gst-videoplay/README.md).
+>Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](../01_gst-audioplay/README.md) and [Video Play](../02_gst-videoplay/README.md).
 
 #### Command-line argument
 ```c
@@ -76,7 +76,7 @@ guint
 create_audio_pipeline (GstElement ** p_audio_pipeline,
     const gchar * input_file, CustomData * data)
 ```
-Basically, the audio pipeline is just like [Audio Play](/01_gst-audioplay/README.md) except it uses `gst_bus_add_watch()` instead of `gst_bus_timed_pop_filtered()` to receive messages (such as: error or EOS (End-of-Stream)) from `bus_call()` asynchronously.
+Basically, the audio pipeline is just like [Audio Play](../01_gst-audioplay/README.md) except it uses `gst_bus_add_watch()` instead of `gst_bus_timed_pop_filtered()` to receive messages (such as: error or EOS (End-of-Stream)) from `bus_call()` asynchronously.
 ```c
 bus = gst_pipeline_get_bus (GST_PIPELINE (*p_audio_pipeline));
 audio_bus_watch_id = gst_bus_add_watch (bus, bus_call, data);

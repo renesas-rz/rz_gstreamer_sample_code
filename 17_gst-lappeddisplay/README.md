@@ -14,7 +14,7 @@ GStreamer: 1.16.3 (edited by Renesas).
 + [`Makefile`](Makefile)
 
 ### Walkthrough: [`main.c`](main.c)
->Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](/01_gst-audioplay/README.md), [Audio Video play](/13_gst-audiovideoplay/README.md) and [Multiple Display 1](/15_gst-multipledisplays1/README.md)
+>Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](../01_gst-audioplay/README.md), [Audio Video play](../13_gst-audiovideoplay/README.md) and [Multiple Display 1](../15_gst-multipledisplays1/README.md)
 #### Input location
 ```c
 #define INPUT_VIDEO_FILE_1         "/home/media/videos/vga1.h264"
@@ -29,7 +29,7 @@ guint
 create_video_pipeline (GstElement ** p_video_pipeline,
     const gchar * input_file, struct screen_t * screen, CustomData * data)
 ```
-Basically, the pipeline is just like [Video Play](/02_gst-videoplay/README.md) except it uses `gst_bus_add_watch()` instead of `gst_bus_timed_pop_filtered()` to receive messages (such as: error or EOS (End-of-Stream)) from `bus_call()` asynchronously.
+Basically, the pipeline is just like [Video Play](../02_gst-videoplay/README.md) except it uses `gst_bus_add_watch()` instead of `gst_bus_timed_pop_filtered()` to receive messages (such as: error or EOS (End-of-Stream)) from `bus_call()` asynchronously.
 
 #### Create elements
 ```c

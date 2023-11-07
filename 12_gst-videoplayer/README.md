@@ -16,7 +16,7 @@ GStreamer: 1.16.3 (edited by Renesas).
 + [`player.h`](player.h)
 
 ### Walkthrough: [`main.c`](main.c)
->Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Player](/11_gst-audioplayer/README.md) and [File Play](/14_gst-fileplay/README.md).
+>Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Player](../11_gst-audioplayer/README.md) and [File Play](../14_gst-fileplay/README.md).
 #### User data structure
 ```c
 typedef struct tag_user_data
@@ -143,7 +143,7 @@ static void on_pad_added (GstElement * element, GstPad * pad, gpointer data)
 }
 ```
 If the pad is an audio pad, the application will set all audio elements, such as: `audio_queue` (queue), `audio_decoder` (faad), `audio_resample` (audioresample), `audio_capsfilter` (capsfilter), and `audio_sink` (alsasink) to PAUSED state, then link, and add them to the pipeline.
->Note that we have to link `demuxer` (qtdemux) to `audio_queue` (queue) manually (gst_pad_link) just like [File Play](/14_gst-fileplay/README.md).
+>Note that we have to link `demuxer` (qtdemux) to `audio_queue` (queue) manually (gst_pad_link) just like [File Play](../14_gst-fileplay/README.md).
 
 Finally, the application sets the pipeline to PLAYING state.
 ```c
@@ -201,12 +201,12 @@ static void on_pad_added (GstElement * element, GstPad * pad, gpointer data)
 ```
 If the pad is a video pad, the application will create and configure `video_parser (h264parse)`, `video_decoder (omxh264dec)`, `video_filter (vspmfilter)`, `video_capsfilter (capsfilter)` (`video_filter` and `video_capsfilter` are optional) for the new video file. Then, it sets them along with other video elements, such as: `video_queue` (queue), and `video_sink` (waylandsink) to PAUSED state. Next, it will link and add these elements to the pipeline.
 
->Note that we have to link `demuxer` (qtdemux) to `video_queue` (queue) manually (gst_pad_link) just like [File Play](/14_gst-fileplay/README.md).
+>Note that we have to link `demuxer` (qtdemux) to `video_queue` (queue) manually (gst_pad_link) just like [File Play](../14_gst-fileplay/README.md).
 
 Finally, the application sets the pipeline to PLAYING state.
 
 ### Walkthrough: [`player.c`](player.c) and [`player.h`](player.h)
->Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Player](/11_gst-audioplayer/README.md).
+>Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Player](../11_gst-audioplayer/README.md).
 #### Macro
 ```c
 #define FILE_SUFFIX		  ".mp4"

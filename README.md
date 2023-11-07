@@ -7,7 +7,7 @@ This is a GStreamer Sample Code that provided for the RZ/G2L Group and RZ/V2L Gr
 Renesas evaluates all source codes here in the environment as below:
 
 1. Verified Linux Package (VLP)
-    * [RZ/G Verified Linux Package [5.10-CIP]](https://www.renesas.com/us/en/products/microcontrollers-microprocessors/rz-mpus/rzg-linux-platform/rzg-marketplace/verified-linux-package/rzg-verified-linux-package) Version 3.0.3
+    * [RZ/G Verified Linux Package [5.10-CIP]](https://www.renesas.com/us/en/products/microcontrollers-microprocessors/rz-mpus/rzg-linux-platform/rzg-marketplace/verified-linux-package/rzg-verified-linux-package) Version 3.0.5
     * [RZ/V Verified Linux Package [5.10-CIP]](https://www.renesas.com/us/en/software-tool/rzv-verified-linux-package) Version 3.0.4
 
 2. Boards and MPUs
@@ -30,7 +30,7 @@ Before you proceed to [Application Samples](#application-samples) section, pleas
 
 ## Application Samples
 
-The following table shows multimedia applications in RZ/G2 platform ranging from playing, recording, scaling, streaming audio/video, to displaying multiple videos on multiple monitors.
+The following table shows multimedia applications in RZ/G2L and RZ/V2L platforms ranging from playing, recording, scaling, streaming audio/video, to displaying multiple videos on multiple monitors.
 
 | Application Name | Description |
 | ---------------- | ----------- |
@@ -40,7 +40,7 @@ The following table shows multimedia applications in RZ/G2 platform ranging from
 | [Video Encode](04_gst-videoencode) | Encode video data from NV12 raw format to H.264 format. |
 | [Audio Record](05_gst-audiorecord) | Record raw data from USB microphone, then store it in Ogg container. |
 | [Video Record](06_gst-videorecord) | Display and record raw video from USB/MIPI camera, then store it in MP4 container. |
-| [Audio Video Record](07_gst-audiovideorecord) | T.B.D |
+| [Audio Video Record](07_gst-audiovideorecord) | *T.B.D* |
 | [Receive Streaming Video](08_gst-receivestreamingvideo) | Receive and display streaming video. |
 | [Send Streaming Video](09_gst-sendstreamingvideo) | Send streaming video. |
 | [Video Scale](10_gst-videoscale) | Scale down an H.264 video, then store it in MP4 container. |
@@ -48,6 +48,6 @@ The following table shows multimedia applications in RZ/G2 platform ranging from
 | [Video Player](12_gst-videoplayer) | A simple text-based MP4 video player. |
 | [Audio Video Play](13_gst-audiovideoplay) | Play H.264 video and MP3 audio file independently. |
 | [File Play](14_gst-fileplay) | Play an MP4 file. |
-| [Multiple Displays 1](15_gst-multipledisplays1) | Display 1 H.264 video simultaneously on HDMI monitors. |
-| [Multiple Displays 2](16_gst-multipledisplays2) | Display 2 H.264 videos simultaneously on HDMI monitors. |
+| [Multiple Displays 1](15_gst-multipledisplays1) | Display 1 H.264 video simultaneously on HDMI monitor. |
+| [Multiple Displays 2](16_gst-multipledisplays2) | Display 2 H.264 videos simultaneously on HDMI monitor. |
 | [Overlapped Display](17_gst-lappeddisplay) | Display 3 overlapping H.264 videos. |

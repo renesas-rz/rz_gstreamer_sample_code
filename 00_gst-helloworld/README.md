@@ -36,7 +36,7 @@ The first thing that always needs to do is initializing GStreamer library by cal
 ```c
 pipeline = gst_parse_launch ("audiotestsrc num-buffers=100 ! autoaudiosink", NULL);
 ```
-In GStreamer, you usually build the pipeline by manually assembling the individual elements like the [sample applications](/README.md#application-samples). For this application, the pipeline is simple and you do not need any advanced features. Therefore, you can take the shortcut: `gst_parse_launch()`. This function takes a textual representation of a pipeline and turns it into an actual pipeline.
+In GStreamer, you usually build the pipeline by manually assembling the individual elements like the [sample applications](../README.md#application-samples). For this application, the pipeline is simple and you do not need any advanced features. Therefore, you can take the shortcut: `gst_parse_launch()`. This function takes a textual representation of a pipeline and turns it into an actual pipeline.
 The element audiotestsrc generates basic audio signals. It supports several different waveforms and allows to set the frequency and volume. The number of buffers to output before sending EOS (End-of-Stream) signal is set to 100. If not, the audio will not stop unless you press Ctrl-C to terminate the program.\
 The element autoaudiosink is an audio sink that automatically detects an appropriate audio sink to use. In RZ/G2L platform, the audio sink is alsasink.
 

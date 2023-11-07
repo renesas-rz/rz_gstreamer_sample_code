@@ -1,3 +1,6 @@
+# Copyright (c) 2023 Renesas Electronics Corporation and/or its affiliates
+# SPDX-License-Identifier: MIT-0
+
 PROGRAM = gst-multipledisplays2
 
 DEPENDENCY = gstreamer-1.0 wayland-client

@@ -15,7 +15,7 @@ GStreamer: 1.16.3 (edited by Renesas).
 + [`player.h`](player.h)
 
 ### Walkthrough: [`main.c`](main.c)
-> Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [File Play](/14_gst-fileplay/README.md) and [Audio Play](/01_gst-audioplay/README.md).
+> Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [File Play](../14_gst-fileplay/README.md) and [Audio Play](../01_gst-audioplay/README.md).
 
 #### Include player.h
 ```c

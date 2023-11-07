@@ -33,7 +33,7 @@ This structure contains:
 - Gstreamer element variables: `pipeline`, `source`, `parser`, `decoder`, `audioresample`, `capsfilter`, `sink`. These variables will be used to create pipeline and elements as sections [Create new pipeline](#create-new-pipeline) and [Create elements](#create-elements).
 - Variable `input_file (const gchar)` to represent MP3 audio input file.
 
-#### Input location
+#### Command-line argument
 ```c
 if (argc != ARG_COUNT)
 {
@@ -46,7 +46,7 @@ This application accepts one command-line argument which points to an MP3 file.
 
 #### Create new pipeline
 ```c
-user_data->pipeline = gst_pipeline_new ("audio-play");
+user_data.pipeline = gst_pipeline_new ("audio-play");
 ```
 The `gst_pipeline_new()` function creates a new empty pipeline which is the top-level container with clocking and bus management functionality.
 
@@ -82,7 +82,7 @@ if (!user_data.pipeline || !user_data.source ||
 }
 ```
 
-If either `gst_element_factory_make()` `or gst_pipeline_new()` is unable to create an element, NULL will be returned. Next, the application prints error and exit.
+If either `gst_element_factory_make()` or `gst_pipeline_new()` is unable to create an element, NULL will be returned. Next, the application prints error and exit.
 >Note that this statement is used for reference purpose only. If an element cannot be created, the application should use `gst_object_unref()` to free all created elements.
 
 #### Set element’s properties
@@ -125,7 +125,7 @@ msg = gst_bus_timed_pop_filtered (bus, GST_CLOCK_TIME_NONE,
           GST_MESSAGE_ERROR | GST_MESSAGE_EOS);
 gst_object_unref (bus);
 ```
-Now, the pipeline is running. gst_bus_timed_pop_filtered() waits for execution to end and returns a GstMessage which is either an error or an EOS (End-of-Stream) message.\
+Now, the pipeline is running. `gst_bus_timed_pop_filtered()` waits for execution to end and returns a GstMessage which is either an error or an EOS (End-of-Stream) message.\
 The `gst_element_get_bus()` function added the bus that must be freed with `gst_object_unref()`.
 
 #### Handle messages

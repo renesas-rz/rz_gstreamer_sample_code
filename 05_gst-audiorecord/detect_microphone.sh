@@ -8,7 +8,8 @@
 #*   This script can be used in combination with gst-audiorecord application
 #*   Example: ./gst-audiorecord $( ./detect_microphone.sh )
 #*
-#* AUTHOR: RVC       START DATE: 07/18/2023
+#* AUTHOR: Renesas Electronics Corporation and/or its affiliate       START DATE: 07/18/2023
+#* SPDX-License-Identifier: MIT-0
 #*
 #* CHANGES:
 #*

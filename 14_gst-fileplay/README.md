@@ -14,7 +14,7 @@ GStreamer: 1.16.3 (edited by Renesas).
 + [`Makefile`](Makefile)
 
 ### Walkthrough: [`main.c`](main.c)
->Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Video Play](/02_gst-videoplay/README.md) and [Audio Play](/01_gst-audioplay/README.md).
+>Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Video Play](../02_gst-videoplay/README.md) and [Audio Play](../01_gst-audioplay/README.md).
 
 #### Command-line argument
 ```c

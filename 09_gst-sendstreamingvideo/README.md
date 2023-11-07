@@ -14,7 +14,7 @@ GStreamer: 1.16.3 (edited by Renesas).
 + [`Makefile`](Makefile)
 
 ### Walkthrough: [`main.c`](main.c)
->Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](/01_gst-audioplay/README.md).
+>Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Audio Play](../01_gst-audioplay/README.md).
 
 #### UserData structure
 ```c
@@ -85,7 +85,7 @@ g_object_set (G_OBJECT (data->sink),
 The `g_object_set()` function is used to set some element’s properties, such as:
 -	 The `location` property of filesrc element which points to an MP4 file.
 -	 The `pt` property of rtph264pay element which is the payload type of the packets. Because the input stream is H.264 AVC, this property must be in dynamic range from 96 to 127. For reference purpose, it is set to 96.
--	 The `config-interval` property of rtph264pay element which is the interval time to insert [SPS and PPS](https://www.quora.com/What-are-SPS-and-PPS-in-video-codecs). They contain data that are required by H.264 decoder. If lost, the receiver (such as: [Receive Streaming Video](/08_gst-receivestreamingvideo/README.md)) cannot reconstruct video frames. To avoid this issue, SPS and PPS will be sent for every 3 seconds.
+-	 The `config-interval` property of rtph264pay element which is the interval time to insert [SPS and PPS](https://www.quora.com/What-are-SPS-and-PPS-in-video-codecs). They contain data that are required by H.264 decoder. If lost, the receiver (such as: [Receive Streaming Video](../08_gst-receivestreamingvideo/README.md)) cannot reconstruct video frames. To avoid this issue, SPS and PPS will be sent for every 3 seconds.
 -	 The host and port properties of udpsink element which are the IPv4 address and port to send the packets to. In this application, the port is hard-coded to 5000 while the address is provided by users.
 
 ```c
@@ -156,4 +156,4 @@ $   /usr/share/09_gst-sendstreamingvideo/gst-sendstreamingvideo <IP address> <pa
    ```sh
    $   /usr/share/09_gst-sendstreamingvideo/gst-sendstreamingvideo 192.168.5.237 /home/media/videos/sintel_trailer-720p.mp4
    ```
-  Download the input file `sintel_trailer-720p.mp4` as described in _Sintel_trailer/README.md_ file in media repository [(github.com/renesas-rz/media)](https://github.com/renesas-rz/media) and then place it in _/home/media/videos_.\
+  Download the input file `sintel_trailer-720p.mp4` as described in _Sintel_trailer/README.md_ file in media repository [(github.com/renesas-rz/media)](https://github.com/renesas-rz/media) and then place it in _/home/media/videos_.

@@ -1,3 +1,6 @@
+/* Copyright (c) 2023 Renesas Electronics Corporation and/or its affiliates */
+/* SPDX-License-Identifier: MIT-0 */
+
 #include <gst/gst.h>
 
 int
@@ -24,9 +27,9 @@ main (int argc, char *argv[])
       gst_bus_timed_pop_filtered (bus, GST_CLOCK_TIME_NONE,
       GST_MESSAGE_ERROR | GST_MESSAGE_EOS);
 
-  /* Note that because input timeout is GST_CLOCK_TIME_NONE, 
-     the gst_bus_timed_pop_filtered() function will block forever until a 
-     matching message was posted on the bus (GST_MESSAGE_ERROR or 
+  /* Note that because input timeout is GST_CLOCK_TIME_NONE,
+     the gst_bus_timed_pop_filtered() function will block forever until a
+     matching message was posted on the bus (GST_MESSAGE_ERROR or
      GST_MESSAGE_EOS). */
   if (msg != NULL) {
     gst_message_unref (msg);

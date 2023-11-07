@@ -14,7 +14,7 @@ GStreamer: 1.16.3 (edited by Renesas).
 + [`Makefile`](Makefile)
 
 ### Walkthrough: [`main.c`](main.c)
->Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Video Play](/02_gst-videoplay/README.md).
+>Note that this tutorial only discusses the important points of this application. For the rest of source code, please refer to section [Video Play](../02_gst-videoplay/README.md).
 
 #### UserData structure
 ```c
@@ -24,7 +24,7 @@ typedef struct tag_user_data
   GstElement *source;
   GstElement *capsfilter;
   GstElement *encoder;
-  GstElement *sink;
+GstElement *sink;
 } UserData;
 ```
 This structure contains:

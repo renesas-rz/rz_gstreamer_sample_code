@@ -12,10 +12,11 @@
 #*   This script can be used in combination with gst-videorecord application
 #*   Example: ./gst-videorecord $( ./detect_camera.sh )
 #*
-#* AUTHOR: RVC       START DATE: 07/18/2023
+#* AUTHOR: Renesas Electronics Corporation and/or its affiliates       START DATE: 07/18/2023
+#* SPDX-License-Identifier: MIT-0
 #*
 #* CHANGES:
-#* 
+#*
 #*******************************************************************************************
 
 # ---------- Define error code global variables ----------

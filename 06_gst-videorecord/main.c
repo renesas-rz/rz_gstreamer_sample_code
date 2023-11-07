@@ -1,3 +1,6 @@
+/* Copyright (c) 2023 Renesas Electronics Corporation and/or its affiliates */
+/* SPDX-License-Identifier: MIT-0 */
+
 #include <gst/gst.h>
 #include <stdlib.h>
 #include <stdio.h>

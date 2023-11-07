@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright (c) 2023 Renesas Electronics Corporation and/or its affiliates
+# SPDX-License-Identifier: MIT-0
+
 [ -z $1 ] && echo -e "Please input resolution !\nTry: ./setup_MIPI_camera.sh 1920x1080 " && exit -1
 if [[ $1 != "1280x960" ]] && [[ $1 != "1920x1080" ]]; then
   echo "RZG2L and RZV2L only support 2 camera resolutions"
