@@ -190,7 +190,7 @@ In case of not displaying video on monitor, these lines of code adds elements to
 -	 Group #1: `source, camera_capsfilter, converter, convert_capsfilter, queue1, encoder and parser`.
 -	 Group #2: `muxer and filesink`.
 
-The reason for the separation is that the sink pad of qtmux `(muxer)` cannot be created automatically but is only created on demand. This application uses self-defined function `link_to_multiplexer()` to link the sink pad to source pad of h264parse `(parser)`. That’s why its sink pad is called Request Pad.
+The reason for the separation is that the sink pad of qtmux `(muxer)` cannot be created automatically but is only created on demand. This application uses self-defined function `link_to_muxer()` to link the sink pad to source pad of h264parse `(parser)`. That’s why its sink pad is called Request Pad.
 >Note that the order counts, because links must follow the data flow (this is, from source elements to sink elements).
 
 In case of displaying video on monitor, this lines of code adds elements to pipeline and then links them into separated groups as below:
@@ -202,25 +202,28 @@ In case of displaying video on monitor, this lines of code adds elements to pipe
 
 ### Link request pads
 ```c
-srcpad = gst_element_get_static_pad (data->parser, "src");
-link_to_multiplexer (srcpad, data->muxer);
-gst_object_unref (srcpad);
-```
-This block gets the source pad (srcpad) of h264parse `(parser)`, then calls `link_to_multiplexer()` to link it to the sink pad of qtmux `(muxer)`.
-
->Note that the `srcpad` should be freed with `gst_object_unref()` if it is not used anymore.
-```c
-static void link_to_multiplexer (GstPad * tolink_pad, GstElement * mux)
-{
-  pad = gst_element_get_compatible_pad (mux, tolink_pad, NULL);
-  gst_pad_link (tolink_pad, pad);
-
-  gst_object_unref (GST_OBJECT (pad));
+if (link_to_muxer (data->parser, data->muxer) != TRUE) {
+  g_printerr ("Failed to link to muxer.\n");
+  return FALSE;
 }
 ```
-This function uses `gst_element_get_compatible_pad()` to request a sink pad `(pad)` which is compatible with the source pad `(tolink_pad)` of qtmux `(mux)`, then calls `gst_pad_link()` to link them together.
+This block calls `link_to_muxer()` to link the source pad of h264parse `(parser)` to the sink pad of oggmux `(muxer)`.
 
->Note that the _pad_ should be freed with `gst_object_unref()` if it is not used anymore.
+```c
+static int
+link_to_muxer (GstElement *up_element, GstElement *muxer)
+{
+  src_pad = gst_element_get_static_pad (up_element, "src");
+
+  req_pad = gst_element_get_compatible_pad (muxer, src_pad, NULL);
+  gst_pad_link (src_pad, req_pad);
+
+  gst_object_unref (GST_OBJECT (src_pad));
+  gst_object_unref (GST_OBJECT (req_pad));
+}
+```
+This function gets the source pad `(src_pad)` of upstream element (parser) then calls `gst_element_get_compatible_pad()` to request a sink pad `(req_pad)` which is compatible with the source pad `(src_pad)` of oggmux `(muxer)`, then calls `gst_pad_link()` to link them together.
+>Note that the pads should be freed with `gst_object_unref()` if they are not used anymore.
 
 ### Play pipeline
 ```c

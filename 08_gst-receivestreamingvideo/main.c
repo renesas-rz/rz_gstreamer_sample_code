@@ -168,9 +168,7 @@ output_handle_scale(void *data, struct wl_output *wl_output,
 static void
 output_handle_done(void *data, struct wl_output *wl_output)
 {
-  /* Don't bother waiting for this; there's no good reason a
-   * compositor will wait more than one roundtrip before sending
-   * these initial events. */
+  /* Do nothing */
 }
 
 /* This variable is used to get information from global object "wl_outout" */

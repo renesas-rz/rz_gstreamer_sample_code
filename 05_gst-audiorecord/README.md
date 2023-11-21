@@ -108,30 +108,34 @@ if (gst_element_link (data->muxer, data->sink) != TRUE) {
   return FALSE;
 }
 ```
-The reason for the separation is that the sink pad of oggmux `(muxer)` cannot be created automatically but is only created on demand. This application uses self-defined function `link_to_multiplexer()` to link the sink pad to source pad of vorbisenc `(encoder)`. That’s why its sink pad is called Request Pad.
+The reason for the separation is that the sink pad of oggmux `(muxer)` cannot be created automatically but is only created on demand. This application uses self-defined function `link_to_muxer()` to link the sink pad to source pad of vorbisenc `(encoder)`. That’s why its sink pad is called Request Pad.
 >Note that the order counts, because links must follow the data flow (this is, from source elements to sink elements).
 
 #### Link request pads
 
 ```c
-srcpad = gst_element_get_static_pad (data->encoder, "src");
-link_to_multiplexer (srcpad, data->muxer);
-gst_object_unref (srcpad);
-```
-This block gets the source pad `(srcpad)` of 1, then calls `link_to_multiplexer()` to link it to (the sink pad of) oggmux `(muxer)`.
->Note that the srcpad should be freed with `gst_object_unref()` if it is not used anymore.
-
-```c
-static void link_to_multiplexer (GstPad * tolink_pad, GstElement * mux)
-{
-  pad = gst_element_get_compatible_pad (mux, tolink_pad, NULL);
-  gst_pad_link (tolink_pad, pad);
-
-  gst_object_unref (GST_OBJECT (pad));
+if (link_to_muxer (data->encoder, data->muxer) != TRUE){
+  g_printerr ("Failed to link to muxer.\n");
+  return FALSE;
 }
 ```
-This function uses `gst_element_get_compatible_pad()` to request a sink pad `(pad)` which is compatible with the source pad `(tolink_pad)` of oggmux `(mux)`, then calls `gst_pad_link()` to link them together.
->Note that the pad should be freed with `gst_object_unref()` if it is not used anymore.
+This block calls `link_to_muxer()` to link the source pad of vorbisenc `(encoder)` to the sink pad of oggmux `(muxer)`.
+
+```c
+static int
+link_to_muxer (GstElement *up_element, GstElement *muxer)
+{
+  src_pad = gst_element_get_static_pad (up_element, "src");
+
+  req_pad = gst_element_get_compatible_pad (muxer, src_pad, NULL);
+  gst_pad_link (src_pad, req_pad);
+
+  gst_object_unref (GST_OBJECT (src_pad));
+  gst_object_unref (GST_OBJECT (req_pad));
+}
+```
+This function gets the source pad `(src_pad)` of upstream element (encoder) then calls `gst_element_get_compatible_pad()` to request a sink pad `(req_pad)` which is compatible with the source pad `(src_pad)` of oggmux `(muxer)`, then calls `gst_pad_link()` to link them together.
+>Note that the pads should be freed with `gst_object_unref()` if they are not used anymore.
 
 ### Play pipeline
 ```c

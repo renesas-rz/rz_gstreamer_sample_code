@@ -112,22 +112,31 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
 }
 
 /* Function is used to link request pad and a static pad */
-static void
-link_to_multiplexer (GstPad * tolink_pad, GstElement * mux)
+static int
+link_to_muxer (GstElement *up_element, GstElement *muxer)
 {
-  GstPad *pad;
-  gchar *srcname, *sinkname;
+  gchar *src_name, *sink_name;
+  GstPad *src_pad, *req_pad;
 
-  srcname = gst_pad_get_name (tolink_pad);
-  pad = gst_element_get_compatible_pad (mux, tolink_pad, NULL);
-  /* Link the input pad and the new request pad */
-  gst_pad_link (tolink_pad, pad);
-  sinkname = gst_pad_get_name (pad);
-  gst_object_unref (GST_OBJECT (pad));
+  src_pad = gst_element_get_static_pad (up_element, "src");
 
-  g_print ("A new pad %s was created and linked to %s\n", sinkname, srcname);
-  g_free (sinkname);
-  g_free (srcname);
+  src_name = gst_pad_get_name (src_pad);
+  req_pad = gst_element_get_compatible_pad (muxer, src_pad, NULL);
+  if (!req_pad) {
+    g_print ("Request pad can not be found.\n");
+    return FALSE;
+  }
+  sink_name = gst_pad_get_name (req_pad);
+  /* Link the source pad and the new request pad */
+  gst_pad_link (src_pad, req_pad);
+  g_print ("Request pad %s was created and linked to %s\n", sink_name, src_name);
+
+  gst_object_unref (GST_OBJECT (src_pad));
+  gst_object_unref (GST_OBJECT (req_pad));
+  g_free (src_name);
+  g_free (sink_name);
+
+  return TRUE;
 }
 
 /*
@@ -249,7 +258,6 @@ main (int argc, char *argv[])
   UserData user_data;
   GstBus *bus;
   GstMessage *msg;
-  GstPad *srcpad;
   const char* ext;
   char* file_name;
 
@@ -314,10 +322,11 @@ main (int argc, char *argv[])
   g_signal_connect (user_data.demuxer, "pad-added", G_CALLBACK (on_pad_added),
       &user_data);
 
-  /* link srcpad of h264parse to request pad of qtmuxer */
-  srcpad = gst_element_get_static_pad (user_data.parser2, "src");
-  link_to_multiplexer (srcpad, user_data.muxer);
-  gst_object_unref (srcpad);
+  /* link source pad of h264parse to request pad of qtmuxer */
+  if (link_to_muxer (user_data.parser2, user_data.muxer) != TRUE) {
+    g_printerr ("Failed to link to muxer.\n");
+    return -1;
+  }
 
   /* Set the pipeline to "playing" state */
   g_print ("Running...\n");

@@ -226,9 +226,7 @@ output_handle_scale(void *data, struct wl_output *wl_output,
 static void
 output_handle_done(void *data, struct wl_output *wl_output)
 {
-  /* Don't bother waiting for this; there's no good reason a
-   * compositor will wait more than one roundtrip before sending
-   * these initial events. */
+  /* Do nothing */
 }
 
 /* This variable is used to get information from global object "wl_outout" */
@@ -480,21 +478,31 @@ signalHandler (int signal)
   }
 }
 
-static void
-link_to_multiplexer (GstPad * tolink_pad, GstElement * mux)
+static int
+link_to_muxer (GstElement *up_element, GstElement *muxer)
 {
-  GstPad *pad;
-  gchar *srcname, *sinkname;
+  gchar *src_name, *sink_name;
+  GstPad *src_pad, *req_pad;
 
-  srcname = gst_pad_get_name (tolink_pad);
-  pad = gst_element_get_compatible_pad (mux, tolink_pad, NULL);
-  gst_pad_link (tolink_pad, pad);
-  sinkname = gst_pad_get_name (pad);
-  gst_object_unref (GST_OBJECT (pad));
+  src_pad = gst_element_get_static_pad (up_element, "src");
 
-  g_print ("A new pad %s was created and linked to %s\n", sinkname, srcname);
-  g_free (sinkname);
-  g_free (srcname);
+  src_name = gst_pad_get_name (src_pad);
+  req_pad = gst_element_get_compatible_pad (muxer, src_pad, NULL);
+  if (!req_pad) {
+    g_print ("Request pad can not be found.\n");
+    return FALSE;
+  }
+  sink_name = gst_pad_get_name (req_pad);
+  /* Link the source pad and the new request pad */
+  gst_pad_link (src_pad, req_pad);
+  g_print ("Request pad %s was created and linked to %s\n", sink_name, src_name);
+
+  gst_object_unref (GST_OBJECT (src_pad));
+  gst_object_unref (GST_OBJECT (req_pad));
+  g_free (src_name);
+  g_free (sink_name);
+
+  return TRUE;
 }
 
 void
@@ -554,7 +562,6 @@ int
 setup_pipeline (UserData *data)
 {
   bool display_video = data->display_video;
-  GstPad *srcpad;
 
   /* set element properties */
   set_element_properties (data);
@@ -625,10 +632,11 @@ setup_pipeline (UserData *data)
     return FALSE;
   }
 
-  /* link srcpad of h264parse to request pad of qtmuxer */
-  srcpad = gst_element_get_static_pad (data->parser, "src");
-  link_to_multiplexer (srcpad, data->muxer);
-  gst_object_unref (srcpad);
+  /* link source pad of h264parse to request pad of qtmuxer */
+  if (link_to_muxer (data->parser, data->muxer) != TRUE) {
+    g_printerr ("Failed to link to muxer.\n");
+    return FALSE;
+  }
 
   return TRUE;
 }

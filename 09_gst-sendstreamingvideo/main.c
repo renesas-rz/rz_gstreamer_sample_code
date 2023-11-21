@@ -34,19 +34,21 @@ typedef struct tag_user_data
 } UserData;
 
 static void
-on_pad_added (GstElement * element, GstPad * pad, gpointer data)
+callback_pad_added (GstElement * element, GstPad * src_pad, gpointer data)
 {
-  GstPad *sinkpad;
-  GstElement *decoder = (GstElement *) data;
+  GstPad *sink_pad;
+  GstElement *parser = (GstElement *) data;
 
-  /* We can now link this pad with the H.264-decoder sink pad */
-  g_print ("Dynamic pad created, linking demuxer/decoder\n");
+  sink_pad = gst_element_get_static_pad (parser, "sink");
 
-  sinkpad = gst_element_get_static_pad (decoder, "sink");
+  /* Link the new dynamic pad with the source pad */
+  if (gst_pad_link (src_pad, sink_pad) != GST_PAD_LINK_OK) {
+    g_print ("Warning: Can not link demuxer and parser.\n");
+  }
 
-  gst_pad_link (pad, sinkpad);
+  g_print ("A new dynamic pad was created, linking demuxer and parser\n");
 
-  gst_object_unref (sinkpad);
+  gst_object_unref (sink_pad);
 }
 
 /*
@@ -243,7 +245,7 @@ main (int argc, char *argv[])
   }
 
   /* Dynamic link */
-  g_signal_connect (user_data.demuxer, "pad-added", G_CALLBACK (on_pad_added),
+  g_signal_connect (user_data.demuxer, "pad-added", G_CALLBACK (callback_pad_added),
       user_data.parser);
 
   /* Set the pipeline to "playing" state */
