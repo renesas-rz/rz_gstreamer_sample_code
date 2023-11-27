@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright (c) 2023 Renesas Electronics Corporation and/or its affiliates
+# SPDX-License-Identifier: MIT-0
+
 #*******************************************************************************************
 #* FILENAME: detect_microphone.sh
 #*
@@ -9,7 +12,6 @@
 #*   Example: ./gst-audiorecord $( ./detect_microphone.sh )
 #*
 #* AUTHOR: Renesas Electronics Corporation and/or its affiliate       START DATE: 07/18/2023
-#* SPDX-License-Identifier: MIT-0
 #*
 #* CHANGES:
 #*

@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright (c) 2023 Renesas Electronics Corporation and/or its affiliates
+# SPDX-License-Identifier: MIT-0
+
 #*******************************************************************************************
 #* FILENAME: detect_camera.sh
 #*
@@ -13,7 +16,6 @@
 #*   Example: ./gst-videorecord $( ./detect_camera.sh )
 #*
 #* AUTHOR: Renesas Electronics Corporation and/or its affiliates       START DATE: 07/18/2023
-#* SPDX-License-Identifier: MIT-0
 #*
 #* CHANGES:
 #*
