@@ -7,8 +7,8 @@ This is a GStreamer Sample Code that provided for the RZ/G2L Group and RZ/V2L Gr
 Renesas evaluates all source codes here in the environment as below:
 
 1. Verified Linux Package (VLP)
-    * [RZ/G Verified Linux Package [5.10-CIP]](https://www.renesas.com/us/en/products/microcontrollers-microprocessors/rz-mpus/rzg-linux-platform/rzg-marketplace/verified-linux-package/rzg-verified-linux-package) Version 3.0.5
-    * [RZ/V Verified Linux Package [5.10-CIP]](https://www.renesas.com/us/en/software-tool/rzv-verified-linux-package) Version 3.0.4
+    * [RZ/G Verified Linux Package [5.10-CIP]](https://www.renesas.com/us/en/products/microcontrollers-microprocessors/rz-mpus/rzg-linux-platform/rzg-marketplace/verified-linux-package/rzg-verified-linux-package) Version 3.0.6-update3
+    * [RZ/V Verified Linux Package [5.10-CIP]](https://www.renesas.com/us/en/software-tool/rzv-verified-linux-package) Version 3.0.6
 
 2. Boards and MPUs
     * Board: RZG2L SMARC Evaluation Kit / MPU: R9A07G044L (RZ/G2L)
