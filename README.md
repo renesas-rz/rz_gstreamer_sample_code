@@ -11,7 +11,8 @@ To get Sample Code for your boards and MPUs, please access specific link below:
     * Board: RZV2L SMARC Evaluation Kit / MPU: R9A07G054L (RZ/V2L)
 2. [RZ/V2N Group](../ai-sdk-5.xx_rz-v2n)
     * Board: RZ/V2N Evaluation Board Kit / MPU: R9A09G056N44 (RZ/V2N)
-
+3. [RZ/V2H Group](../ai-sdk-5.xx_rz-v2h)
+    * Board: RZ/V2H Evaluation Board Kit / MPU: R9A09G057H4 (RZ/V2H)
 ## Layout
 
 This GStreamer Sample Code provided as:
