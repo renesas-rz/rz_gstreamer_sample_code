@@ -1,4 +1,4 @@
-# Copyright (c) 2023 Renesas Electronics Corporation and/or its affiliates
+# Copyright (c) 2023-2025 Renesas Electronics Corporation and/or its affiliates
 # SPDX-License-Identifier: MIT-0
 
 PROGRAM = gst-videoscale
@@ -6,7 +6,7 @@ PROGRAM = gst-videoscale
 DEPENDENCY = gstreamer-1.0
 
 CFLAGS = -Wall -g $(shell pkg-config $(DEPENDENCY) --cflags)
-LIBS = $(shell pkg-config $(DEPENDENCY) --libs) -lm
+LIBS = $(shell pkg-config $(DEPENDENCY) --libs) -lm -pthread -lomxr_core
 CC ?= gcc
 
 SRC_FILES = main.c

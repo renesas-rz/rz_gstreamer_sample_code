@@ -27,7 +27,7 @@ GStreamer: 1.22.12 (edited by Renesas).
 ```c
 if (argc != ARG_COUNT) {
     g_print ("Error: Invalid arugments.\n");
-    g_print ("Usage: %s <path to the first H264/H265 file> <path to the second H264/H265 file> \n", argv[ARG_PROGRAM_NAME]);
+    g_print ("Usage: %s <path to the first H.264/H.265 file> <path to the second H.264/H.265 file> \n", argv[ARG_PROGRAM_NAME]);
     return -1;
 }
 ```
@@ -75,6 +75,8 @@ This section shows how to cross-compile and deploy GStreamer _multiple displays 
   ```sh
   $   sudo sh ./poky-glibc-x86_64-core-image-weston-aarch64-rzv2n-evk-toolchain-*.sh
   ```
+  Note:
+  > This step installs the RZ/V2N toolchain in the environment AI SDK 5.xx. If you want to install the RZ/V2N toolchain in the environment AI SDK 6.xx, please use `./rz-vlp-glibc-x86_64-core-image-weston-cortexa55-rzv2n-evk-toolchain-*.sh` instead.
 
 * RZ/V2H Evaluation Board Kit:
   ```sh

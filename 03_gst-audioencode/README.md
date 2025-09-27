@@ -108,6 +108,8 @@ This section shows how to cross-compile and deploy GStreamer _audio encode_ appl
   ```sh
   $   sudo sh ./poky-glibc-x86_64-core-image-weston-aarch64-rzv2n-evk-toolchain-*.sh
   ```
+  Note:
+  > This step installs the RZ/V2N toolchain in the environment AI SDK 5.xx. If you want to install the RZ/V2N toolchain in the environment AI SDK 6.xx, please use `./rz-vlp-glibc-x86_64-core-image-weston-cortexa55-rzv2n-evk-toolchain-*.sh` instead.
 
 * RZ/V2H Evaluation Board Kit:
   ```sh

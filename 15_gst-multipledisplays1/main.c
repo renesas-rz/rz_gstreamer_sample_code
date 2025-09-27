@@ -28,6 +28,12 @@ enum board_name {
   RZG3E = 4
 };
 
+/* H.264 supported extensions */
+static const char *H264_supported_exts[] = {"264", "h264", "avc", NULL};
+
+/* H.265 supported extensions */
+static const char *H265_supported_exts[] = {"265", "h265", "hevc", NULL};
+
 /* These structs contain information needed to get a list of available
  * screens */
 struct screen_t
@@ -365,6 +371,24 @@ const char* get_filename_ext (const char *filename) {
   }
 }
 
+/* Check input video extension is supported or not */
+bool
+check_video_extension (const char *ext, const char *supported_exts[]) {
+  int index = 0;
+  bool ret = false;
+
+  while (supported_exts[index] != NULL) {
+    if (strcmp (supported_exts[index], ext) == 0) {
+      ret = true;
+      break;
+    } else {
+      index++;
+    }
+  }
+
+  return ret;
+}
+
 void
 set_element_properties (UserData *data)
 {
@@ -531,7 +555,7 @@ main (int argc, char *argv[])
 
   if (argc != ARG_COUNT) {
     g_print ("Error: Invalid arugments.\n");
-    g_print ("Usage: %s <path to H264/H265 file> \n", argv[ARG_PROGRAM_NAME]);
+    g_print ("Usage: %s <path to H.264/H.265 file> \n", argv[ARG_PROGRAM_NAME]);
     return -1;
   }
 
@@ -577,18 +601,18 @@ main (int argc, char *argv[])
   gst_init (&argc, &argv);
 
   /* Check the extension and create parser, decoder */
-  if (strcasecmp("264", ext) == 0 || strcasecmp("h264", ext) == 0) {
+  if (check_video_extension(ext, H264_supported_exts)) {
     user_data.parser = gst_element_factory_make("h264parse", "h264-parser");
     user_data.decoder = gst_element_factory_make("omxh264dec", "h264-decoder");
-  } else if ((strcasecmp("265", ext) == 0 || strcasecmp("h265", ext) == 0) &&
-          (board == RZV2N_RZV2H || board == RZG3E)) {
+  } else if ((check_video_extension(ext, H265_supported_exts)) &&
+      (board == RZV2N_RZV2H || board == RZG3E)) {
     user_data.parser = gst_element_factory_make("h265parse", "h265-parser");
     user_data.decoder = gst_element_factory_make("omxh265dec", "h265-decoder");
   } else {
     if (board == RZG2L_RZV2L) {
-      g_print("Unsupported video type. H264 format is required.\n");
+      g_print("Unsupported video type. H.264 format is required.\n");
     } else if (board == RZV2N_RZV2H || board == RZG3E) {
-      g_print("Unsupported video type. H264/H265 format is required.\n");
+      g_print("Unsupported video type. H.264/H.265 format is required.\n");
     }
     destroy_wayland(wayland_handler);
     return -1;

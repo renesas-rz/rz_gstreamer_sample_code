@@ -1,4 +1,4 @@
-/* Copyright (c) 2023 Renesas Electronics Corporation and/or its affiliates */
+/* Copyright (c) 2023-2025 Renesas Electronics Corporation and/or its affiliates */
 /* SPDX-License-Identifier: MIT-0 */
 
 #include <gst/gst.h>
@@ -9,6 +9,8 @@
 #include <strings.h>
 #include <libgen.h>
 #include <math.h>
+#include <OMX_Core.h>
+#include <OMX_Component.h>
 
 #define BITRATE_OMXH264ENC 40000000 /* Target bitrate of the encoder element - omxh264enc */
 #define OUTPUT_FILE        "SCALE_video.mp4"
@@ -17,6 +19,13 @@
 #define ARG_WIDTH          2
 #define ARG_HEIGHT         3
 #define ARG_COUNT          4
+
+enum board_name {
+  INVALID_BOARD = -1,
+  RZG2L_RZV2L = 1,
+  RZV2N_RZV2H = 3,
+  RZG3E = 4
+};
 
 typedef struct tag_user_data
 {
@@ -35,6 +44,7 @@ typedef struct tag_user_data
   const gchar *input_file;
   int scaled_width;
   int scaled_height;
+  enum board_name board;
 } UserData;
 
 static void
@@ -79,8 +89,10 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
 
     g_print ("Now scaling video to resolution %dx%d...\n", scaled_width, scaled_height);
 
-    if ((scaled_width > width) || (scaled_height > height)) {
+    if ((puser_data->board != RZG3E) &&
+        ((scaled_width > width) || (scaled_height > height))) {
       g_printerr ("Do not support scale up. Exiting... \n");
+      return;
     }
 
     /* create simple caps */
@@ -252,6 +264,52 @@ parse_message (GstMessage *msg)
   }
 }
 
+OMX_ERRORTYPE
+event_handler(OMX_HANDLETYPE hComponent, OMX_PTR pAppData,
+              OMX_EVENTTYPE eEvent,OMX_U32 nData1, OMX_U32 nData2,
+              OMX_PTR pEventData) {
+  return OMX_ErrorNone;
+}
+
+enum board_name get_board_name() {
+  OMX_STRING cComponentName = malloc(OMX_MAX_STRINGNAME_SIZE);
+  OMX_HANDLETYPE hComponent;
+  OMX_VERSIONTYPE pComponentVersion;
+  OMX_VERSIONTYPE pSpecVersion;
+  OMX_UUIDTYPE pComponentUUID;
+  OMX_CALLBACKTYPE pCallBacks = {.EventHandler = event_handler};
+  enum board_name board = INVALID_BOARD;
+
+  if (OMX_Init() != OMX_ErrorNone) {
+    goto ret;
+  }
+
+  if (OMX_ComponentNameEnum(cComponentName,
+                            OMX_MAX_STRINGNAME_SIZE, 0) != OMX_ErrorNone) {
+    goto cleanup;
+  }
+
+  if (OMX_GetHandle(&hComponent, cComponentName, NULL,
+                    &pCallBacks) != OMX_ErrorNone) {
+    goto cleanup;
+  }
+
+  if (OMX_GetComponentVersion(hComponent, cComponentName, &pComponentVersion,
+                              &pSpecVersion,
+                              &pComponentUUID) == OMX_ErrorNone) {
+    board = (enum board_name)pComponentVersion.s.nVersionMajor;
+  }
+
+  OMX_FreeHandle(hComponent);
+
+cleanup:
+    OMX_Deinit();
+
+ret:
+    free(cComponentName);
+    return board;
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -285,6 +343,8 @@ main (int argc, char *argv[])
     g_print ("Unsupported video type. MP4 format is required.\n");
     return -1;
   }
+
+  user_data.board = get_board_name();
 
   /* Initialization */
   gst_init (&argc, &argv);
@@ -351,6 +411,12 @@ main (int argc, char *argv[])
 
   if (msg != NULL) {
     parse_message (msg);
+    if (GST_MESSAGE_TYPE (msg) != GST_MESSAGE_EOS) {
+      gst_message_unref (msg);
+      gst_element_set_state (user_data.pipeline, GST_STATE_NULL);
+      gst_object_unref (GST_OBJECT (user_data.pipeline));
+      return -1;
+    }
     gst_message_unref (msg);
   }
 

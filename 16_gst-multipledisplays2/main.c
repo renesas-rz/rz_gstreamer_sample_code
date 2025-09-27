@@ -29,6 +29,12 @@ enum board_name {
   RZG3E = 4
 };
 
+/* H.264 supported extensions */
+static const char *H264_supported_exts[] = {"264", "h264", "avc", NULL};
+
+/* H.265 supported extensions */
+static const char *H265_supported_exts[] = {"265", "h265", "hevc", NULL};
+
 typedef struct _CustomData
 {
   GMainLoop *loop;
@@ -373,6 +379,24 @@ bus_call (GstBus * bus, GstMessage * msg, gpointer data)
   return TRUE;
 }
 
+/* Check input video extension is supported or not */
+bool
+check_video_extension (const char *ext, const char *supported_exts[]) {
+  int index = 0;
+  bool ret = false;
+
+  while (supported_exts[index] != NULL) {
+    if (strcmp (supported_exts[index], ext) == 0) {
+      ret = true;
+      break;
+    } else {
+      index++;
+    }
+  }
+
+  return ret;
+}
+
 guint
 create_video_pipeline (GstElement ** p_video_pipeline,
     const gchar * input_file, struct screen_t * screen, CustomData * data)
@@ -388,8 +412,7 @@ create_video_pipeline (GstElement ** p_video_pipeline,
   video_source = gst_element_factory_make ("filesrc", NULL);
   video_sink = gst_element_factory_make ("waylandsink", NULL);
 
-  if ((strcasecmp ("h264", data->video_ext) == 0) || (strcasecmp ("264",
-          data->video_ext) == 0)) {
+  if (check_video_extension(data->video_ext, H264_supported_exts)) {
     video_parser = gst_element_factory_make ("h264parse", "h264-parser");
     video_decoder = gst_element_factory_make ("omxh264dec", "h264-decoder");
   } else {
@@ -549,8 +572,8 @@ main (int argc, char *argv[])
 
   if (argc != ARG_COUNT) {
     g_print ("Error: Invalid arugments.\n");
-    g_print ("Usage: %s <path to the first H264/H265 file> <path to the second " \
-        "H264/H265 file> \n", argv[ARG_PROGRAM_NAME]);
+    g_print ("Usage: %s <path to the first H.264/H.265 file> <path to the " \
+        "second H.264/H.265 file> \n", argv[ARG_PROGRAM_NAME]);
     return -1;
   }
 
@@ -560,32 +583,18 @@ main (int argc, char *argv[])
   file_name_2 = basename ((char*) input_video_file_2);
   video1_ext = get_filename_ext (file_name_1);
   video2_ext = get_filename_ext (file_name_2);
-  if(board == RZG2L_RZV2L) {
-    if ((strcasecmp ("h264", video1_ext) != 0) && (strcasecmp ("264",
-            video1_ext) != 0)) {
-      g_print ("Unsupported video type. H264 format is required\n");
+  if ((board == RZG2L_RZV2L) &&
+      (!check_video_extension(video1_ext, H264_supported_exts)) &&
+      (!check_video_extension(video2_ext, H264_supported_exts))) {
+      g_print ("Unsupported video type. H.264 format is required\n");
       return -1;
-    }
-
-    if ((strcasecmp ("h264", video2_ext) != 0) && (strcasecmp ("264",
-            video2_ext) != 0)) {
-      g_print ("Unsupported video type. H264 format is required\n");
+  } else if (((board == RZV2N_RZV2H) || (board == RZG3E)) &&
+      (!check_video_extension(video1_ext, H264_supported_exts)) &&
+      (!check_video_extension(video2_ext, H264_supported_exts)) &&
+      (!check_video_extension(video1_ext, H265_supported_exts)) &&
+      (!check_video_extension(video2_ext, H265_supported_exts))) {
+      g_print ("Unsupported video type. H.264/H.265 format is required\n");
       return -1;
-    }
-  } else if (board == RZV2N_RZV2H || board == RZG3E) {
-    if (((strcasecmp ("h264", video1_ext) != 0) && (strcasecmp ("264",
-            video1_ext) != 0)) && ((strcasecmp ("h265", video1_ext) != 0) &&
-            (strcasecmp ("265", video1_ext) != 0))) {
-      g_print ("Unsupported video type. H264/H265 format is required\n");
-      return -1;
-    }
-
-    if (((strcasecmp ("h264", video2_ext) != 0) && (strcasecmp ("264",
-            video2_ext) != 0)) && ((strcasecmp ("h265", video2_ext) != 0) &&
-            (strcasecmp ("265", video2_ext) != 0))) {
-      g_print ("Unsupported video type. H264/H265 format is required\n");
-      return -1;
-    }
   }
 
   /* Get a list of available screen */

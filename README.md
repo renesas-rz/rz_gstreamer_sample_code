@@ -8,12 +8,14 @@ Renesas evaluates all source codes here in the environment as below:
 
 | Index | Board | MPU | BSP/VLP/SDK |
 |-------|-------|-----|-------------|
-| 1 | RZ/G2L SMARC Evaluation Kit | R9A07G044L (RZ/G2L) | [RZ/G Verified Linux Package [6.1-CIP]](https://www.renesas.com/en/software-tool/rz-mpu-verified-linux-package-61-cip) Version 4.0.0<br>[RZ/G Verified Linux Package [5.10-CIP]](https://www.renesas.com/us/en/products/microcontrollers-microprocessors/rz-mpus/rzg-linux-platform/rzg-marketplace/verified-linux-package/rzg-verified-linux-package) Version 3.0.6-update3 |
-| 2 | RZ/V2L SMARC Evaluation Kit | R9A07G054L (RZ/V2L) | [RZ/V Verified Linux Package [5.10-CIP]](https://www.renesas.com/us/en/software-tool/rzv-verified-linux-package) Version 3.0.6 |
-| 3 | RZ/V2N Evaluation Board Kit | R9A09G056N44 (RZ/V2N) | [RZ/V2N AI SDK v5.00](https://renesas-rz.github.io/rzv_ai_sdk/5.10/getting_started.html) |
-| 4 | RZ/V2H Evaluation Board Kit | R9A09G057H4 (RZ/V2H) | [RZ/V2H AI SDK v5.20](https://renesas-rz.github.io/rzv_ai_sdk/5.10/getting_started.html) |
-| 5 | RZ/G3E SMARC Evaluation Kit | R9A09G047E57 (RZ/G3E) | [RZ/G3E Board Support Package](https://www.renesas.com/en/software-tool/rzg3e-board-support-package) Version 1.0.0 |
+| 1 | RZ/G2L SMARC Evaluation Kit | R9A07G044L (RZ/G2L) | [RZ/G Verified Linux Package [5.10-CIP]](https://www.renesas.com/us/en/products/microcontrollers-microprocessors/rz-mpus/rzg-linux-platform/rzg-marketplace/verified-linux-package/rzg-verified-linux-package) Version 3.0.6-update3 <sup>[1]</sup> <br>[RZ MPU Verified Linux Package [6.1-CIP]](https://www.renesas.com/en/software-tool/rz-mpu-verified-linux-package-61-cip) Version 4.0.0 <sup>[2]</sup> |
+| 2 | RZ/V2L SMARC Evaluation Kit | R9A07G054L (RZ/V2L) | [RZ/V Verified Linux Package [5.10-CIP]](https://www.renesas.com/us/en/software-tool/rzv-verified-linux-package) Version 3.0.6 <sup>[1]</sup> |
+| 3 | RZ/V2N Evaluation Board Kit | R9A09G056N44 (RZ/V2N) | [RZ/V2N AI SDK v5.00](https://renesas-rz.github.io/rzv_ai_sdk/5.10/getting_started.html) <sup>[1]</sup><br>[RZ/V2N AI SDK v6.00](https://renesas-rz.github.io/rzv_ai_sdk/6.00/getting_started.html) <sup>[2]</sup> |
+| 4 | RZ/V2H Evaluation Board Kit | R9A09G057H4 (RZ/V2H) | [RZ/V2H AI SDK v5.20](https://renesas-rz.github.io/rzv_ai_sdk/5.10/getting_started.html) <sup>[1]</sup> |
+| 5 | RZ/G3E SMARC Evaluation Kit | R9A09G047E57 (RZ/G3E) | [RZ/G3E Board Support Package](https://www.renesas.com/en/software-tool/rzg3e-board-support-package) Version 1.0.0 <sup>[2]</sup> |
 
+<sup>[1]</sup> Linux kernel version 5.10 and Yocto version 3.1 (Dunfell)\
+<sup>[2]</sup> Linux kernel version 6.1 and Yocto version 5.0 (Scrathgap)
 ## LICENSE
 
 Each [Application Samples](#application-samples) (including [Hello World](00_gst-helloworld)) covered by respective LICENSE.
@@ -48,7 +50,7 @@ The following table shows multimedia applications in supported MPUs ranging from
 | [Audio Video Record](07_gst-audiovideorecord) | Record raw data from microphone and MIPI camera or USB webcam at the same time, then store them in MKV container. |
 | [Receive Streaming Video](08_gst-receivestreamingvideo) | Receive and display streaming video. |
 | [Send Streaming Video](09_gst-sendstreamingvideo) | Send streaming video. |
-| [Video Scale](10_gst-videoscale) | Scale down an H.264 video, then store it in MP4 container. |
+| [Video Scale](10_gst-videoscale) | Scale an H.264 video, then store it in MP4 container. |
 | [Audio Player](11_gst-audioplayer) | A simple text-based MP3 audio player. |
 | [Video Player](12_gst-videoplayer) | A simple text-based MP4 video player. |
 | [Audio Video Play](13_gst-audiovideoplay) | Play H.264 video and MP3 audio file independently. |

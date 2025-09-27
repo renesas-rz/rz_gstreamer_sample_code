@@ -46,7 +46,7 @@ This structure contains:
 ```c
 if ((argc > ARG_COUNT) || (argc == 1)) {
   g_print ("Error: Invalid arugments.\n");
-  g_print ("Usage: %s <path to H264/H265 file> \n", argv[ARG_PROGRAM_NAME]);
+  g_print ("Usage: %s <path to H.264/H.265 file> \n", argv[ARG_PROGRAM_NAME]);
   return -1;
 }
 ```
@@ -54,16 +54,13 @@ This application accepts a command-line argument which points to an H.264/H.265 
 
 #### Create elements
 ```c
-if ((strcasecmp ("264", ext) == 0) || (strcasecmp ("h264", ext) == 0)) {
+if (check_video_extension (ext, H264_supported_exts)) {
   user_data.parser = gst_element_factory_make ("h264parse", "h264-parser");
-  user_data.decoder = gst_element_factory_make ("omxh264dec",
-                          "h264-decoder");
-}
-else if ((strcasecmp ("265", ext) == 0) || (strcasecmp ("h265", ext) == 0))
-{
+  user_data.decoder = gst_element_factory_make ("omxh264dec", "h264-decoder");
+} else if ((check_video_extension (ext, H265_supported_exts)) &&
+    ((board == RZV2N_RZV2H) || (board == RZG3E))) {
   user_data.parser = gst_element_factory_make ("h265parse", "h265-parser");
-  user_data.decoder = gst_element_factory_make ("omxh265dec",
-                          "h265-decoder");
+  user_data.decoder = gst_element_factory_make ("omxh265dec", "h265-decoder");
 }
 
 user_data.source = gst_element_factory_make ("filesrc", "file-source");
@@ -124,6 +121,8 @@ This section shows how to cross-compile and deploy GStreamer _video play_ applic
   ```sh
   $   sudo sh ./poky-glibc-x86_64-core-image-weston-aarch64-rzv2n-evk-toolchain-*.sh
   ```
+  Note:
+  > This step installs the RZ/V2N toolchain in the environment AI SDK 5.xx. If you want to install the RZ/V2N toolchain in the environment AI SDK 6.xx, please use `./rz-vlp-glibc-x86_64-core-image-weston-cortexa55-rzv2n-evk-toolchain-*.sh` instead.
 
 * RZ/V2H Evaluation Board Kit:
   ```sh

@@ -1,6 +1,6 @@
 # Video Scale
 
-Scale down an H.264 video, then store it in MP4 container.
+Scale an H.264 video, then store it in MP4 container.
 
 ![Figure video scale pipeline](figure.png)
 
@@ -41,12 +41,14 @@ typedef struct tag_user_data
   const gchar *input_file;
   int scaled_width;
   int scaled_height;
+  enum board_name board;
 } UserData;
 ```
 This structure contains:
 - Gstreamer element variables: `pipeline`, `source`, `demuxer`, `parser1`, `decoder`, `filter`, `capsfilter`, `encoder`, `parser2`, `muxer`, `sink`. These variables will be used to create pipeline and elements as section [Create elements](#create-elements).
 - Variable `input_file (const gchar)` to represent MP4 video input file.
 - Variable `scaled_width (int)` and `scaled_height (int)` are width and height of video after scale down.
+- Variable `board (enum board_name)` represents the MPU in use.
 
 #### Command-line argument
 ```c
@@ -143,6 +145,8 @@ This section shows how to cross-compile and deploy GStreamer _video scale_ appli
   ```sh
   $   sudo sh ./poky-glibc-x86_64-core-image-weston-aarch64-rzv2n-evk-toolchain-*.sh
   ```
+  Note:
+  > This step installs the RZ/V2N toolchain in the environment AI SDK 5.xx. If you want to install the RZ/V2N toolchain in the environment AI SDK 6.xx, please use `./rz-vlp-glibc-x86_64-core-image-weston-cortexa55-rzv2n-evk-toolchain-*.sh` instead.
 
 * RZ/V2H Evaluation Board Kit:
   ```sh
@@ -184,7 +188,7 @@ $   make
 $   scp -r $WORK/10_gst-videoscale/ <username>@<board IP>:/usr/share/
 ```
 ***Step 4***.	Run the application:
-> RZ/G2L, RZ/V2L, RZ/V2N and RZ/V2H MPUs do not support scale up.
+> Since the RZ/G2L, RZ/V2L, RZ/V2N, and RZ/V2H MPUs do not support scale up, the application will terminate and an error message will be shown if a scaling-up operation is attempted.
 ```sh
 $   /usr/share/10_gst-videoscale/gst-videoscale <MP4 file> <width> <height>
 ```

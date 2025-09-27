@@ -276,6 +276,8 @@ This section shows how to cross-compile and deploy GStreamer _video record_ appl
   ```sh
   $   sudo sh ./poky-glibc-x86_64-core-image-weston-aarch64-rzv2n-evk-toolchain-*.sh
   ```
+  Note:
+  > This step installs the RZ/V2N toolchain in the environment AI SDK 5.xx. If you want to install the RZ/V2N toolchain in the environment AI SDK 6.xx, please use `./rz-vlp-glibc-x86_64-core-image-weston-cortexa55-rzv2n-evk-toolchain-*.sh` instead.
 
 * RZ/V2H Evaluation Board Kit:
   ```sh
@@ -386,62 +388,66 @@ For further information on how this script is implemented, please refer to the f
 ```sh
 #!/bin/bash
 
-BOARD_NAME=$(uname -n)
-CODENAME=$(grep ^VERSION /etc/os-release | sed -n 's/.*(\(.*\)).*/\1/p')
+board=$(uname -n)
+case "$board" in
+  *rzg2l*|*rzv2l*|*rzg3e*) valid_resolutions=("1280x960" "1920x1080");;
+  *rzv2n*|*rzv2h*)         valid_resolutions=("640x480" "1280x720" "1920x1080");;
+  *) echo "This script it not supported on ${board}"; exit 1;;
+esac
 
-if [[ $# -ne 1 ]]; then
+if [ $# -ne 1 ]; then
   echo "Invalid or missing argument!"
-  echo -e "Usage:\n\t./setup_MIPI_camera.sh <resolution>"
-  if [[ "$BOARD_NAME" == *g2l* ]] || [[ "$BOARD_NAME" == *v2l* ]] || [[ "$BOARD_NAME" == *g3e* ]]; then
-    echo -e "\n\tValid resolutions: 1280x960 and 1920x1080"
-  elif [[ "$BOARD_NAME" == *v2n* || "$BOARD_NAME" == *v2h* ]]; then
-    echo -e "\n\tValid resolutions: 640x480, 1280x720 and 1920x1080"
-  fi
-  echo -e "Example:\n\t./setup_MIPI_camera.sh 1920x1080"
-  exit -1
+  echo "Please try: ${0} -h (or --help) for more details!"
+  exit 1
 fi
 
-if [[ "$BOARD_NAME" == *g2l* ]] || [[ "$BOARD_NAME" == *v2l* ]] || [[ "$BOARD_NAME" == *g3e* ]]; then
-  if [[ $1 != "1280x960" ]] && [[ $1 != "1920x1080" ]]; then
-    echo "$BOARD_NAME board only support 2 camera resolutions"
-    echo -e "1. 1920x1080\n2. 1280x960"
-  else
-    if [[ "$BOARD_NAME" == *g2l* && "$CODENAME" == *scarthgap* ]] || [[ "$BOARD_NAME" == *g3e* ]]; then
-      csi2=$(cat /sys/class/video4linux/v4l-subdev*/name | grep "csi2" | head -n 1)
-      ip=$(cat /sys/class/video4linux/v4l-subdev*/name | grep "cru-ip" | head -n 1)
+if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+  echo -e "Usage: ${0} <resolution>\n"
+  echo -e "Example: ${0} 1920x1080\n"
+  echo -e "Valid resolutions for ${board}: ${valid_resolutions[@]}"
+  exit 0
+fi
 
-      media-ctl -d /dev/media0 -r
-      media-ctl -d /dev/media0 -l "'${csi2}':1 -> '${ip}':0 [1]"
-      media-ctl -d /dev/media0 -V "'${csi2}':1 [fmt:UYVY8_2X8/$1 field:none]"
-      media-ctl -d /dev/media0 -V "'ov5645 0-003c':0 [fmt:UYVY8_2X8/$1 field:none]"
-      media-ctl -d /dev/media0 -V "'${ip}':0 [fmt:UYVY8_2X8/$1 field:none]"
-    elif [[ "$BOARD_NAME" == *g2l* && "$CODENAME" == *dunfell* ]] || [[ "$BOARD_NAME" == *v2l* ]]; then
-      media-ctl -d /dev/media0 -r
-      media-ctl -d /dev/media0 -V "'ov5645 0-003c':0 [fmt:UYVY8_2X8/$1 field:none]"
-      media-ctl -d /dev/media0 -l "'rzg2l_csi2 10830400.csi2':1 -> 'CRU output':0 [1]"
-      media-ctl -d /dev/media0 -V "'rzg2l_csi2 10830400.csi2':1 [fmt:UYVY8_2X8/$1 field:none]"
-    fi
-    echo "/dev/video0 is configured successfully with resolution "$1""
-  fi
-elif [[ "$BOARD_NAME" == *v2n* || "$BOARD_NAME" == *v2h* ]]; then
-  if [[ $1 != "640x480" ]] && [[ $1 != "1280x720" ]] && [[ $1 != "1920x1080" ]]; then
-    echo "$BOARD_NAME board only support 3 camera resolutions with MIPI camera"
-    echo -e "1. 640x480\n2. 1280x720\n3. 1920x1080"
-  else
-    media=$(ls /sys/class/video4linux/video*/device/ | grep -m1 "media")
-    cru=$(cat /sys/class/video4linux/video*/name | grep -m1 "CRU")
-    csi2=$(cat /sys/class/video4linux/v4l-subdev*/name | grep -m1 "csi2")
-    imx462=$(cat /sys/class/video4linux/v4l-subdev*/name | grep -m1 "imx462")
+if [[ ! "${valid_resolutions[@]}" =~ "$1" ]]; then
+  echo "Invalid or unsupport resolution: ${1}"
+  echo "Please try: ${0} -h (or --help) for more details!"
+  exit 1
+fi
 
-    media-ctl -d /dev/$media -r
-    media-ctl -d /dev/$media -l "'$csi2':1 -> '$cru':0 [1]"
-    media-ctl -d /dev/$media -V "'$csi2':1 [fmt:UYVY8_2X8/$1 field:none]"
-    media-ctl -d /dev/$media -V "'$imx462':0 [fmt:UYVY8_2X8/$1 field:none]"
-    echo "/dev/$media is configured successfully with resolution "$1""
-  fi
+video4linux="/sys/class/video4linux"
+if ! grep -q 'CRU' ${video4linux}/video*/name &> /dev/null; then
+  echo "No CRU video device found!"
+  exit 1
+fi
+
+media=$(ls ${video4linux}/video*/device/ | grep -m1 "media")
+csi2=$(cat ${video4linux}/v4l-subdev*/name | grep -m1 "csi2")
+sensor="$(grep -h -m1 -E 'imx462|ov5645' ${video4linux}/v4l-subdev*/name)"
+if [ $(printf '%s\n' "$sensor" | sed '/^$/d' | wc -l) -gt 1 ]; then
+  echo "Only one MIPI camera can be used at once"
+  exit 1
+fi
+
+yocto_ver=$(grep ^VERSION /etc/os-release | sed -n 's/.*(\(.*\)).*/\1/p')
+if [[ ${yocto_ver} == 'scarthgap' ]]; then
+  ip=$(cat ${video4linux}/v4l-subdev*/name | grep -m1 "cru-ip")
+  media-ctl -d /dev/${media} -r
+  media-ctl -d /dev/${media} -l "'${csi2}':1 -> '${ip}':0 [1]"
+  media-ctl -d /dev/${media} -V "'${csi2}':1 [fmt:UYVY8_2X8/${1} field:none]"
+  media-ctl -d /dev/${media} -V "'${sensor}':0 [fmt:UYVY8_2X8/${1} field:none]"
+  media-ctl -d /dev/${media} -V "'${ip}':0 [fmt:UYVY8_2X8/${1} field:none]"
+elif [[ ${yocto_ver} == 'dunfell' ]]; then
+  cru=$(cat ${video4linux}/video*/name | grep -m1 "CRU")
+  media-ctl -d /dev/${media} -r
+  media-ctl -d /dev/${media} -l "'${csi2}':1 -> '${cru}':0 [1]"
+  media-ctl -d /dev/${media} -V "'${csi2}':1 [fmt:UYVY8_2X8/${1} field:none]"
+  media-ctl -d /dev/${media} -V "'${sensor}':0 [fmt:UYVY8_2X8/${1} field:none]"
 else
-    echo "This script is not supported for $BOARD_NAME board on $CODENAME."
+  echo -e "Not supported version ${yocto_ver}!"
+  exit 1
 fi
+
+echo "/dev/${media} is configured successfully with resolution ${1}"
 ```
 #### To check the output file:
 
