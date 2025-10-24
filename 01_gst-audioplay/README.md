@@ -244,8 +244,9 @@ Download the input file `renesas-bigideasforeveryspace.mp3` from _Renesas/audios
 ```sh
 $   /usr/share/01_gst-audioplay/gst-audioplay /home/media/audios/renesas-bigideasforeveryspace.mp3
 ```
-### Special instruction for RZ/V2H and RZ/V2N:
+### Special instruction:
 To set the playback volume: please use the alsamixer or amixer tool. Reference: https://en.wikipedia.org/wiki/Alsamixer
 > A short guide that how to use alsamixer (https://wiki.ubuntu.com/Audio/Alsamixer).
 
+#### For RZ/V2H and RZ/V2N:
 > Please refer to **Appendix F How to Configure and Utilize Audio** in the **RZ/V2H Group and RZ/V2N Group Linux Interface Specification GStreamer User's Manual: Software, Revision 2.00** (r01us0653ej0200-rzv2h_rzv2n_GStreamer_UME.pdf) (or later)

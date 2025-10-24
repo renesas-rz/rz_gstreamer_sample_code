@@ -1,6 +1,6 @@
 # Audio Record
 
-Record raw data from USB microphone, then store it in Ogg container.
+Record raw data from microphone, then store it in Ogg container.
 
 ![Figure audio record pipeline](figure.png)
 

@@ -1,6 +1,9 @@
 # Audio Video Record
 
-Record raw data from USB microphone and MIPI camera or USB webcam at the same time, then store them in MKV container.
+Record raw data from microphone and MIPI camera or USB webcam at the same time, then store them in MKV container.
+
+> Note:
+> At the moment, **Audio Video Record** for RZ/G2L and RZ/V2L is only properly supported for USB webcam (video) and 3.5mm microphone (audio).
 
 ![Figure audio video record pipeline](figure.png)
 
@@ -321,7 +324,10 @@ $   scp -r $WORK/07_gst-audiovideorecord/ <username>@<board IP>:/usr/share/
 $   /usr/share/07_gst-audiovideorecord/setup_MIPI_camera.sh <width>x<height>
 ```
 For more detail about `setup_MIPI_camera.sh` script at [Initialize MIPI camera](#run-the-following-script-to-initialize-mipi-camera).
->Note: Only 3 resolutions are supported by MIPI camera (e-CAM22_CURZH camera): 640x480, 1280x720, 1920x1080.
+
+> Note: 
+>* For RZ/V2H, RZ/V2N, only 3 resolutions are supported by MIPI camera (e-CAM22_CURZH camera): 640x480, 1280x720, 1920x1080.
+>* For RZ/G2L, RZ/V2L or RZ/G3E, only 2 resolutions are supported by MIPI camera (OV5645 camera): 1920x1080, 1280x960
 
 ***Step 5***.	Run the application:
 ```sh
@@ -511,28 +517,23 @@ fi
 media=$(ls ${video4linux}/video*/device/ | grep -m1 "media")
 csi2=$(cat ${video4linux}/v4l-subdev*/name | grep -m1 "csi2")
 sensor="$(grep -h -m1 -E 'imx462|ov5645' ${video4linux}/v4l-subdev*/name)"
+ip=$(cat ${video4linux}/v4l-subdev*/name | grep "cru-ip" | head -n 1)
 if [ $(printf '%s\n' "$sensor" | sed '/^$/d' | wc -l) -gt 1 ]; then
   echo "Only one MIPI camera can be used at once"
   exit 1
 fi
 
-yocto_ver=$(grep ^VERSION /etc/os-release | sed -n 's/.*(\(.*\)).*/\1/p')
-if [[ ${yocto_ver} == 'scarthgap' ]]; then
-  ip=$(cat ${video4linux}/v4l-subdev*/name | grep -m1 "cru-ip")
-  media-ctl -d /dev/${media} -r
-  media-ctl -d /dev/${media} -l "'${csi2}':1 -> '${ip}':0 [1]"
-  media-ctl -d /dev/${media} -V "'${csi2}':1 [fmt:UYVY8_2X8/${1} field:none]"
-  media-ctl -d /dev/${media} -V "'${sensor}':0 [fmt:UYVY8_2X8/${1} field:none]"
-  media-ctl -d /dev/${media} -V "'${ip}':0 [fmt:UYVY8_2X8/${1} field:none]"
-elif [[ ${yocto_ver} == 'dunfell' ]]; then
-  cru=$(cat ${video4linux}/video*/name | grep -m1 "CRU")
-  media-ctl -d /dev/${media} -r
-  media-ctl -d /dev/${media} -l "'${csi2}':1 -> '${cru}':0 [1]"
-  media-ctl -d /dev/${media} -V "'${csi2}':1 [fmt:UYVY8_2X8/${1} field:none]"
-  media-ctl -d /dev/${media} -V "'${sensor}':0 [fmt:UYVY8_2X8/${1} field:none]"
+if [ -z "$ip" ]; then
+    media-ctl -d /dev/${media} -r
+    media-ctl -d /dev/${media} -l "'${csi2}':1 -> 'CRU output':0 [1]"
+    media-ctl -d /dev/${media} -V "'${csi2}':1 [fmt:UYVY8_2X8/${1} field:none]"
+    media-ctl -d /dev/${media} -V "'${sensor}':0 [fmt:UYVY8_2X8/${1} field:none]"
 else
-  echo -e "Not supported version ${yocto_ver}!"
-  exit 1
+    media-ctl -d /dev/${media} -r
+    media-ctl -d /dev/${media} -l "'${csi2}':1 -> '${ip}':0 [1]"
+    media-ctl -d /dev/${media} -V "'${csi2}':1 [fmt:UYVY8_2X8/${1} field:none]"
+    media-ctl -d /dev/${media} -V "'${sensor}':0 [fmt:UYVY8_2X8/${1} field:none]"
+    media-ctl -d /dev/${media} -V "'${ip}':0 [fmt:UYVY8_2X8/${1} field:none]"
 fi
 
 echo "/dev/${media} is configured successfully with resolution ${1}"

@@ -234,8 +234,9 @@ $   scp -r $WORK/13_gst-audiovideoplay/ <username>@<board IP>:/usr/share/
 ```sh
 $   /usr/share/13_gst-audiovideoplay/gst-audiovideoplay /home/media/audios/renesas-bigideasforeveryspace.mp3 /home/media/videos/vga1.h264
 ```
-### Special instruction for RZ/V2H and RZ/V2N:
-To set the playback volume: please use the alsamixer or amixer tool. Reference https://en.wikipedia.org/wiki/Alsamixer
+### Special instruction:
+To set the playback volume: please use the alsamixer or amixer tool. Reference: https://en.wikipedia.org/wiki/Alsamixer
 > A short guide that how to use alsamixer (https://wiki.ubuntu.com/Audio/Alsamixer).
 
+#### For RZ/V2H and RZ/V2N:
 > Please refer to **Appendix F How to Configure and Utilize Audio** in the **RZ/V2H Group and RZ/V2N Group Linux Interface Specification GStreamer User's Manual: Software, Revision 2.00** (r01us0653ej0200-rzv2h_rzv2n_GStreamer_UME.pdf) (or later)
