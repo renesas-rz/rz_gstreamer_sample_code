@@ -34,8 +34,9 @@ typedef struct tag_user_data
   GstElement *demuxer;
   GstElement *parser1;
   GstElement *decoder;
+  GstElement *decoder_capsfilter;
   GstElement *filter;
-  GstElement *capsfilter;
+  GstElement *filter_capsfilter;
   GstElement *encoder;
   GstElement *parser2;
   GstElement *muxer;
@@ -55,6 +56,7 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
   GstStructure *new_pad_struct = NULL;
   const gchar *new_pad_type = NULL;
   UserData *puser_data = (UserData *) data;
+  GstCaps *decode_caps;
   GstCaps *scale_caps;
   int width;
   int height;
@@ -96,15 +98,21 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
     }
 
     /* create simple caps */
+    decode_caps =
+        gst_caps_new_simple ("video/x-raw", "width", G_TYPE_INT, width,
+        "height", G_TYPE_INT, height, NULL);
     scale_caps =
-        gst_caps_new_simple ("video/x-raw", "width", G_TYPE_INT, scaled_width, "height",
-        G_TYPE_INT, scaled_height, NULL);
+        gst_caps_new_simple ("video/x-raw", "width", G_TYPE_INT, scaled_width,
+        "height", G_TYPE_INT, scaled_height, NULL);
 
-    /* set caps property for capsfilters */
-    g_object_set (G_OBJECT (puser_data->capsfilter), "caps", scale_caps, NULL);
+    /* set caps properties for decoder and filter capsfilters */
+    g_object_set (G_OBJECT (puser_data->decoder_capsfilter), "caps", decode_caps, NULL);
+    g_object_set (G_OBJECT (puser_data->filter_capsfilter), "caps", scale_caps, NULL);
 
     /* unref caps after usage */
+    gst_caps_unref (decode_caps);
     gst_caps_unref (scale_caps);
+
     /* We can now link this pad with the H.264 parser sink pad */
     g_print ("Dynamic pad created, linking demuxer/parser\n");
 
@@ -215,8 +223,9 @@ setup_pipeline (UserData *data)
 
   /* Add the elements into the pipeline and link them together */
   gst_bin_add_many (GST_BIN (data->pipeline),
-      data->source, data->demuxer, data->parser1, data->decoder,data->filter,
-      data->capsfilter, data->encoder, data->parser2, data->muxer, data->sink,
+      data->source, data->demuxer, data->parser1, data->decoder,
+      data->decoder_capsfilter, data->filter, data->filter_capsfilter,
+      data->encoder, data->parser2, data->muxer, data->sink,
       NULL);
   /* file-src -> mp4-demuxer */
   if (gst_element_link (data->source, data->demuxer) != TRUE) {
@@ -225,8 +234,9 @@ setup_pipeline (UserData *data)
   }
   /* h264-parser-1 -> video-decoder -> video-filter -> video-encoder
    * -> h264-parser-2 */
-  if (gst_element_link_many (data->parser1, data->decoder, data->filter,
-          data->capsfilter, data->encoder, data->parser2, NULL) != TRUE) {
+  if (gst_element_link_many (data->parser1, data->decoder,
+          data->decoder_capsfilter, data->filter, data->filter_capsfilter,
+          data->encoder, data->parser2, NULL) != TRUE) {
     g_printerr ("Elements could not be linked.\n");
     return FALSE;
   }
@@ -355,16 +365,21 @@ main (int argc, char *argv[])
   user_data.demuxer = gst_element_factory_make ("qtdemux", "mp4-demuxer");
   user_data.parser1 = gst_element_factory_make ("h264parse", "h264-parser-1");
   user_data.decoder = gst_element_factory_make ("omxh264dec", "video-decoder");
+  user_data.decoder_capsfilter =
+      gst_element_factory_make ("capsfilter", "decoder-capsfilter");
   user_data.filter = gst_element_factory_make ("vspmfilter", "video-filter");
-  user_data.capsfilter = gst_element_factory_make ("capsfilter", "capsfilter");
+  user_data.filter_capsfilter =
+      gst_element_factory_make ("capsfilter", "filter-capsfilter");
   user_data.encoder = gst_element_factory_make ("omxh264enc", "video-encoder");
   user_data.parser2 = gst_element_factory_make ("h264parse", "h264-parser-2");
   user_data.muxer = gst_element_factory_make ("qtmux", "mp4-muxer");
   user_data.sink = gst_element_factory_make ("filesink", "file-output");
 
   if (!user_data.pipeline || !user_data.source || !user_data.demuxer ||
-          !user_data.parser1 || !user_data.decoder || !user_data.filter ||
-          !user_data.capsfilter || !user_data.encoder || !user_data.parser2 ||
+          !user_data.parser1 || !user_data.decoder ||
+          !user_data.decoder_capsfilter ||
+          !user_data.filter || !user_data.filter_capsfilter ||
+          !user_data.encoder || !user_data.parser2 ||
           !user_data.muxer || !user_data.sink) {
     g_printerr ("One element could not be created. Exiting.\n");
     return -1;

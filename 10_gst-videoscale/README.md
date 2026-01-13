@@ -31,8 +31,9 @@ typedef struct tag_user_data
   GstElement *demuxer;
   GstElement *parser1;
   GstElement *decoder;
+  GstElement *decoder_capsfilter;
   GstElement *filter;
-  GstElement *capsfilter;
+  GstElement *filter_capsfilter;
   GstElement *encoder;
   GstElement *parser2;
   GstElement *muxer;
@@ -45,7 +46,7 @@ typedef struct tag_user_data
 } UserData;
 ```
 This structure contains:
-- Gstreamer element variables: `pipeline`, `source`, `demuxer`, `parser1`, `decoder`, `filter`, `capsfilter`, `encoder`, `parser2`, `muxer`, `sink`. These variables will be used to create pipeline and elements as section [Create elements](#create-elements).
+- Gstreamer element variables: `pipeline`, `source`, `demuxer`, `parser1`, `decoder`, `decoder_capsfilter`, `filter`, `filter_capsfilter`, `encoder`, `parser2`, `muxer`, `sink`. These variables will be used to create pipeline and elements as section [Create elements](#create-elements).
 - Variable `input_file (const gchar)` to represent MP4 video input file.
 - Variable `scaled_width (int)` and `scaled_height (int)` are width and height of video after scale down.
 - Variable `board (enum board_name)` represents the MPU in use.
@@ -69,8 +70,9 @@ user_data.source = gst_element_factory_make ("filesrc", "video-src");
 user_data.demuxer = gst_element_factory_make ("qtdemux", "mp4-demuxer");
 user_data.parser1 = gst_element_factory_make ("h264parse", "h264-parser-1");
 user_data.decoder = gst_element_factory_make ("omxh264dec", "video-decoder");
+user_data.decoder_capsfilter = gst_element_factory_make ("capsfilter", "decoder-capsfilter");
 user_data.filter = gst_element_factory_make ("vspmfilter", "video-filter");
-user_data.capsfilter = gst_element_factory_make ("capsfilter", "capsfilter");
+user_data.filter_capsfilter = gst_element_factory_make ("capsfilter", "filter-capsfilter");
 user_data.encoder = gst_element_factory_make ("omxh264enc", "video-encoder");
 user_data.parser2 = gst_element_factory_make ("h264parse", "h264-parser-2");
 user_data.muxer = gst_element_factory_make ("qtmux", "mp4-muxer");
@@ -81,7 +83,7 @@ To scale down an H.264 video and store it in MP4 container, the following elemen
 -	 Element `qtdemux` de-multiplexes an MP4 file into audio and video stream.
 -	 Element `omxh264dec` decompresses H.264 stream to raw NV12-formatted video.
 -	 Element `vspmfilter` handles video scaling.
--	 Element `capsfilter` contains resolution so that vspfilter will scale video frames based on this value.
+-	 Element `capsfilter` contains decode resolution and scale resolution that decoder and vspmfilter use based on these values.
 -	 Element `omxh264enc` encodes raw video into H.264 compressed data.
 -	 Element `h264parse` parses H.264 video from byte stream format to AVC format which `omxh264dec` can process.
 -	 Element `qtmux` merges H.264 byte stream to MP4 container.
@@ -102,17 +104,23 @@ The `g_object_set()` function is used to set some element’s properties, such a
 -	 The `control-rate` property of omxh264enc element is used to specify birate control method which is variable bitrate method in this case.
 -	 The `location` property of filesink element which points to MP4 output file.
 ```c
+decode_caps =
+    gst_caps_new_simple ("video/x-raw", "width", G_TYPE_INT, width,
+    "height", G_TYPE_INT, height, NULL);
 scale_caps =
-    gst_caps_new_simple ("video/x-raw", "width", G_TYPE_INT, scaled_width, "height",
-    G_TYPE_INT, scaled_height, NULL);
+    gst_caps_new_simple ("video/x-raw", "width", G_TYPE_INT, scaled_width,
+    "height", G_TYPE_INT, scaled_height, NULL);
 
-g_object_set (G_OBJECT (puser_data->capsfilter), "caps", scale_caps, NULL);
+g_object_set (G_OBJECT (puser_data->decoder_capsfilter), "caps", decode_caps, NULL);
+g_object_set (G_OBJECT (puser_data->filter_capsfilter), "caps", scale_caps, NULL);
+
+gst_caps_unref (decode_caps);
 gst_caps_unref (scale_caps);
 ```
 Capabilities (short: `caps`) describe the type of data which is streamed between two pads. This data includes raw video format, resolution, and framerate.\
-The `gst_caps_new_simple()` function creates a new cap (scale_caps) which holds output’s resolution. This cap is then added to caps property of capsfilter `(g_object_set)` so that vspfilter will use these values to resize video frames.
+The `gst_caps_new_simple()` function creates new caps (decode_caps and scale_caps) which hold output’s resolutions. These caps are then added to caps property of decode_capsfilter and filter_capsfilter `(g_object_set)` so that decoder and vspmfilter will use these values to decode and resize video frames.
 
->Note that the `scale_caps` should be freed with `gst_caps_unref()` if it is not used anymore.
+>Note that the `decode_caps` and `scale_caps` should be freed with `gst_caps_unref()` if it is not used anymore.
 #### Get input file’s information
 ```c
 new_pad_caps = gst_pad_query_caps (pad, NULL);
@@ -152,6 +160,8 @@ This section shows how to cross-compile and deploy GStreamer _video scale_ appli
   ```sh
   $   sudo sh ./poky-glibc-x86_64-core-image-weston-aarch64-rzv2h-evk-ver1-toolchain-*.sh
   ```
+  Note:
+  > This step installs the RZ/V2H toolchain in the environment AI SDK 5.xx. If you want to install the RZ/V2H toolchain in the environment AI SDK 6.xx, please use `./rz-vlp-glibc-x86_64-core-image-weston-cortexa55-rzv2h-evk-toolchain-*.sh` instead.
 
 * RZ/G3E SMARC Evaluation Kit:
   ```sh

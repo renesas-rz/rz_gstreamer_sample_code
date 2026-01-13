@@ -208,6 +208,8 @@ This section shows how to cross-compile and deploy GStreamer _multiple displays 
   ```sh
   $   sudo sh ./poky-glibc-x86_64-core-image-weston-aarch64-rzv2h-evk-ver1-toolchain-*.sh
   ```
+  Note:
+  > This step installs the RZ/V2H toolchain in the environment AI SDK 5.xx. If you want to install the RZ/V2H toolchain in the environment AI SDK 6.xx, please use `./rz-vlp-glibc-x86_64-core-image-weston-cortexa55-rzv2h-evk-toolchain-*.sh` instead.
 
 * RZ/G3E SMARC Evaluation Kit:
   ```sh

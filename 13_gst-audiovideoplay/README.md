@@ -192,6 +192,8 @@ This section shows how to cross-compile and deploy GStreamer _audio video play_ 
   ```sh
   $   sudo sh ./poky-glibc-x86_64-core-image-weston-aarch64-rzv2h-evk-ver1-toolchain-*.sh
   ```
+  Note:
+  > This step installs the RZ/V2H toolchain in the environment AI SDK 5.xx. If you want to install the RZ/V2H toolchain in the environment AI SDK 6.xx, please use `./rz-vlp-glibc-x86_64-core-image-weston-cortexa55-rzv2h-evk-toolchain-*.sh` instead.
 
 * RZ/G3E SMARC Evaluation Kit:
   ```sh
@@ -239,4 +241,4 @@ To set the playback volume: please use the alsamixer or amixer tool. Reference: 
 > A short guide that how to use alsamixer (https://wiki.ubuntu.com/Audio/Alsamixer).
 
 #### For RZ/V2H and RZ/V2N:
-> Please refer to **Appendix F How to Configure and Utilize Audio** in the **RZ/V2H Group and RZ/V2N Group Linux Interface Specification GStreamer User's Manual: Software, Revision 2.00** (r01us0653ej0200-rzv2h_rzv2n_GStreamer_UME.pdf) (or later)
+> Please refer to **Appendix F How to Configure and Utilize Audio** in the **RZ/V2H Group and RZ/V2N Group Linux Interface Specification GStreamer User's Manual: Software, Revision 2.01** (r01us0653ej0201-rzv2h_rzv2n_GStreamer_UME.pdf) (or later)
