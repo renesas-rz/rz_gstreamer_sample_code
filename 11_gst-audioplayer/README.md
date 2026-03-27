@@ -491,6 +491,8 @@ This section shows how to cross-compile and deploy GStreamer _audio player_ appl
   ```sh
   $   sudo sh ./poky-glibc-x86_64-core-image-weston-aarch64-smarc-rzv2l-toolchain-*.sh
   ```
+  Note:
+  > This step installs the RZ/V2L toolchain in the environment VLP 3.0.x. If you want to install the RZ/V2L toolchain in the environment AI SDK 7.xx, please use `./rz-vlp-glibc-x86_64-core-image-weston-cortexa55-smarc-rzv2l-toolchain-*.sh` instead.
 
 * RZ/V2N Evaluation Board Kit:
   ```sh

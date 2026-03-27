@@ -165,6 +165,8 @@ This section shows how to cross-compile and deploy GStreamer _receive streaming 
   ```sh
   $   sudo sh ./poky-glibc-x86_64-core-image-weston-aarch64-smarc-rzv2l-toolchain-*.sh
   ```
+  Note:
+  > This step installs the RZ/V2L toolchain in the environment VLP 3.0.x. If you want to install the RZ/V2L toolchain in the environment AI SDK 7.xx, please use `./rz-vlp-glibc-x86_64-core-image-weston-cortexa55-smarc-rzv2l-toolchain-*.sh` instead.
 
 * RZ/V2N Evaluation Board Kit:
   ```sh
@@ -229,4 +231,6 @@ $   ifconfig <Ethernet Interface> <IPv4 address>
 $   /usr/share/08_gst-receivestreamingvideo/gst-receivestreamingvideo
 ```
 ### Special instruction:
->The application might drop frames when receiving high-bitrate videos.
+
+- The application might drop frames when receiving high-bitrate videos.
+- This application works as a receiver. For the sender, please refer to [09_gst-sendstreamingvideo](../09_gst-sendstreamingvideo/).

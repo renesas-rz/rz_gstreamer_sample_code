@@ -124,6 +124,8 @@ This section shows how to cross-compile and deploy GStreamer _send streaming vid
   ```sh
   $   sudo sh ./poky-glibc-x86_64-core-image-weston-aarch64-smarc-rzv2l-toolchain-*.sh
   ```
+  Note:
+  > This step installs the RZ/V2L toolchain in the environment VLP 3.0.x. If you want to install the RZ/V2L toolchain in the environment AI SDK 7.xx, please use `./rz-vlp-glibc-x86_64-core-image-weston-cortexa55-smarc-rzv2l-toolchain-*.sh` instead.
 
 * RZ/V2N Evaluation Board Kit:
   ```sh
@@ -186,4 +188,6 @@ $   /usr/share/09_gst-sendstreamingvideo/gst-sendstreamingvideo <IP address> <pa
    ```sh
    $   /usr/share/09_gst-sendstreamingvideo/gst-sendstreamingvideo 192.168.5.237 /home/media/videos/sintel_trailer-720p.mp4
    ```
-  Download the input file `sintel_trailer-720p.mp4` as described in _Sintel_trailer/README.md_ file in media repository [(github.com/renesas-rz/media)](https://github.com/renesas-rz/media) and then place it in _/home/media/videos_.
+- Note:
+  - Download the input file `sintel_trailer-720p.mp4` as described in _Sintel_trailer/README.md_ file in media repository [(github.com/renesas-rz/media)](https://github.com/renesas-rz/media) and then place it in _/home/media/videos_.
+  - This application works as a sender. For the receiver, please refer to [08_gst-receivestreamingvideo](../08_gst-receivestreamingvideo/).

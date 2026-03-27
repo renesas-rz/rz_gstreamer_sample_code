@@ -106,7 +106,7 @@ user_data.cam_src = gst_element_factory_make ("v4l2src", "cam-src");
   user_data.filesink = gst_element_factory_make ("filesink", "file-output");
 
 ```
-To record raw data from USB microphone and USB webcam or MIPI camera at the same time, then store them in MKV container, the following elements are used:
+To record raw data from microphone and USB webcam or MIPI camera at the same time, then store them in MKV container, the following elements are used:
 -	 Element `v4l2src` captures video from V4L2 devices.
 -	 Element `queue` (`cam_queue` and `audio_queue`) queues data until one of the limits specified by the max-size-buffers, max-size-bytes, and/or max-size-time properties has been reached. Any attempt to push more buffers into the queue will block the pushing thread until more space becomes available.
 -	 Element `capsfilter` specifies raw video format, framerate, and resolution.
@@ -273,6 +273,8 @@ This section shows how to cross-compile and deploy GStreamer _audio video play_ 
   ```sh
   $   sudo sh ./poky-glibc-x86_64-core-image-weston-aarch64-smarc-rzv2l-toolchain-*.sh
   ```
+  Note:
+  > This step installs the RZ/V2L toolchain in the environment VLP 3.0.x. If you want to install the RZ/V2L toolchain in the environment AI SDK 7.xx, please use `./rz-vlp-glibc-x86_64-core-image-weston-cortexa55-smarc-rzv2l-toolchain-*.sh` instead.
 
 * RZ/V2N Evaluation Board Kit:
   ```sh
