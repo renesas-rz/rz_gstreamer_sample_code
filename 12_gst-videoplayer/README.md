@@ -10,7 +10,7 @@ A simple text-based video player that can play MP4 (H.264) files. Supported feat
 
 GStreamer: 1.16.3 (edited by Renesas).
 
-### Linux kernel version 6.1 and Yocto version 5.0 (Scrathgap)
+### Linux kernel version 6.1 and Yocto version 5.0 (Scarthgap)
 
 GStreamer: 1.22.12 (edited by Renesas).
 
@@ -257,6 +257,11 @@ This section shows how to cross-compile and deploy GStreamer _video player_ appl
   ```sh
   $   sudo sh ./rz-vlp-glibc-x86_64-core-image-weston-cortexa55-smarc-rzg3e-toolchain-*.sh
   ```
+
+* RZ/G3L SMARC Evaluation Kit:
+  ```sh
+  $   sudo sh ./rz-vlp-glibc-x86_64-core-image-weston-cortexa55-smarc-rzg3l-toolchain-*.sh
+  ```
 Note:
 > Sudo is optional in case user wants to extract SDK into a restricted directory (such as: _/opt/_)
 
@@ -265,7 +270,7 @@ Note:
   ```sh
   $   source /<Location in which SDK is extracted>/environment-setup-aarch64-poky-linux
   ```
-* Linux kernel version 6.1 and Yocto version 5.0 (Scrathgap):
+* Linux kernel version 6.1 and Yocto version 5.0 (Scarthgap):
   ```sh
   $   source /<Location in which SDK is extracted>/environment-setup-cortexa55-poky-linux
   ```
@@ -295,4 +300,4 @@ $   /usr/share/12_gst-videoplayer/gst-videoplayer /home/media/videos
 ```
 >RZ/V2N, RZ/V2H and RZ/G3E MPUs maximum support 4K video.
 
->RZ/G2L and RZ/V2L MPUs maximum support Full HD video.
+>RZ/G2L, RZ/V2L and RZ/G3L MPUs maximum support Full HD video.

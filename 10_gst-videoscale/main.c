@@ -1,4 +1,4 @@
-/* Copyright (c) 2023-2025 Renesas Electronics Corporation and/or its affiliates */
+/* Copyright (c) 2023-2026 Renesas Electronics Corporation and/or its affiliates */
 /* SPDX-License-Identifier: MIT-0 */
 
 #include <gst/gst.h>
@@ -23,6 +23,7 @@
 enum board_name {
   INVALID_BOARD = -1,
   RZG2L_RZV2L = 1,
+  RZG3L = 1,
   RZV2N_RZV2H = 3,
   RZG3E = 4
 };
@@ -47,6 +48,20 @@ typedef struct tag_user_data
   int scaled_height;
   enum board_name board;
 } UserData;
+
+static gboolean
+is_g3l_soc_id (void)
+{
+  gchar *soc_id = NULL;
+  gboolean ret = FALSE;
+
+  if (g_file_get_contents ("/sys/devices/soc0/soc_id", &soc_id, NULL, NULL)) {
+    ret = (g_strstr_len (soc_id, -1, "r9a08g046") != NULL);
+    g_free (soc_id);
+  }
+
+  return ret;
+}
 
 static void
 on_pad_added (GstElement * element, GstPad * pad, gpointer data)
@@ -91,7 +106,11 @@ on_pad_added (GstElement * element, GstPad * pad, gpointer data)
 
     g_print ("Now scaling video to resolution %dx%d...\n", scaled_width, scaled_height);
 
+    /* Scale up is supported on RZ/G3E and RZ/G3L only. RZ/G3L, RZ/G2L, and
+     * RZ/V2L use the same OMX library version, so an additional check is
+     * required to identify RZ/G3L using its SoC ID (r9a08g046). */
     if ((puser_data->board != RZG3E) &&
+        !((puser_data->board == RZG3L) && is_g3l_soc_id ()) &&
         ((scaled_width > width) || (scaled_height > height))) {
       g_printerr ("Do not support scale up. Exiting... \n");
       return;

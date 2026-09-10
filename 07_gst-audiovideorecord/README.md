@@ -13,7 +13,7 @@ Record raw data from microphone and MIPI camera or USB webcam at the same time, 
 
 GStreamer: 1.16.3 (edited by Renesas).
 
-### Linux kernel version 6.1 and Yocto version 5.0 (Scrathgap)
+### Linux kernel version 6.1 and Yocto version 5.0 (Scarthgap)
 
 GStreamer: 1.22.12 (edited by Renesas).
 
@@ -294,6 +294,11 @@ This section shows how to cross-compile and deploy GStreamer _audio video play_ 
   ```sh
   $   sudo sh ./rz-vlp-glibc-x86_64-core-image-weston-cortexa55-smarc-rzg3e-toolchain-*.sh
   ```
+
+* RZ/G3L SMARC Evaluation Kit:
+  ```sh
+  $   sudo sh ./rz-vlp-glibc-x86_64-core-image-weston-cortexa55-smarc-rzg3l-toolchain-*.sh
+  ```
 Note:
 > Sudo is optional in case user wants to extract SDK into a restricted directory (such as: _/opt/_)
 
@@ -302,7 +307,7 @@ Note:
   ```sh
   $   source /<Location in which SDK is extracted>/environment-setup-aarch64-poky-linux
   ```
-* Linux kernel version 6.1 and Yocto version 5.0 (Scrathgap):
+* Linux kernel version 6.1 and Yocto version 5.0 (Scarthgap):
   ```sh
   $   source /<Location in which SDK is extracted>/environment-setup-cortexa55-poky-linux
   ```
@@ -331,7 +336,7 @@ For more detail about `setup_MIPI_camera.sh` script at [Initialize MIPI camera](
 
 > Note: 
 >* For RZ/V2H, RZ/V2N, only 3 resolutions are supported by MIPI camera (e-CAM22_CURZH camera): 640x480, 1280x720, 1920x1080.
->* For RZ/G2L, RZ/V2L or RZ/G3E, only 2 resolutions are supported by MIPI camera (OV5645 camera): 1920x1080, 1280x960
+>* For RZ/G2L, RZ/V2L, RZ/G3E or RZ/G3L, only 2 resolutions are supported by MIPI camera (OV5645 camera): 1920x1080, 1280x960
 
 ***Step 5***.	Run the application:
 ```sh
@@ -422,6 +427,29 @@ then
                 amixer sset 'Headphone' 100% on > /dev/null
                 amixer sset 'Mixin PGA' 40% on > /dev/null
                 amixer sset 'DVC In',0 10% > /dev/null
+            elif [[ "$BOARD_NAME" == *g3l* ]]; then
+                amixer cset name='Aux Switch' on > /dev/null
+                amixer cset name='Mixin Left Aux Left Switch' on > /dev/null
+                amixer cset name='Mixin Right Aux Right Switch' on > /dev/null
+                amixer cset name='ADC Switch' on > /dev/null
+                amixer cset name='Mixout Right Mixin Right Switch' off > /dev/null
+                amixer cset name='Mixout Left Mixin Left Switch' off > /dev/null
+                amixer cset name='Headphone Volume' 50% > /dev/null
+                amixer cset name='Headphone Switch' on > /dev/null
+                amixer cset name='Mixout Left DAC Left Switch' on > /dev/null
+                amixer cset name='Mixout Right DAC Right Switch' on > /dev/null
+                amixer cset name='DAC Left Source MUX' 'DAI Input Left' > /dev/null
+                amixer cset name='DAC Right Source MUX' 'DAI Input Right' > /dev/null
+                amixer sset 'Mic 1 Amp Source MUX' 'MIC_P' > /dev/null
+                amixer sset 'Mic 2 Amp Source MUX' 'MIC_P' > /dev/null
+                amixer sset 'Mixin Left Mic 1' on > /dev/null
+                amixer sset 'Mixin Right Mic 2' on > /dev/null
+                amixer sset 'Mic 1' 80% on > /dev/null
+                amixer sset 'Mic 2' 80% on > /dev/null
+                amixer sset 'Lineout' 80% on > /dev/null
+                amixer sset 'Mixin PGA' 40% on > /dev/null
+                amixer sset 'ADC' 100% > /dev/null
+                amixer sset 'ADC HPF' off > /dev/null
             fi
             break
         fi
@@ -436,7 +464,7 @@ Option 2: Logitech USB HD 1080p Webcam C930E.
 Option 3: Logitech USB UHD Webcam BRIO.
 
 #### Recommended MIPI camera:
-For RZ/V2H or RZ/V2N, e-CAM22_CURZH camera provided by [e-con Systems](https://www.e-consystems.com/renesas/sony-starvis-imx462-ultra-low-light-camera-for-renesas-rz-v2h.asp). For RZ/G2L, RZ/V2L or RZ/G3E, using the OV5645 camera instead.
+For RZ/V2H or RZ/V2N, e-CAM22_CURZH camera provided by [e-con Systems](https://www.e-consystems.com/renesas/sony-starvis-imx462-ultra-low-light-camera-for-renesas-rz-v2h.asp). For RZ/G2L, RZ/V2L, RZ/G3E or RZ/G3L, using the OV5645 camera instead.
 
 #### Run the following script to find camera device file:
 ```sh
@@ -488,7 +516,7 @@ For further information on how this script is implemented, please refer to the f
 
 board=$(uname -n)
 case "$board" in
-  *rzg2l*|*rzv2l*|*rzg3e*) valid_resolutions=("1280x960" "1920x1080");;
+  *rzg2l*|*rzv2l*|*rzg3e*|*rzg3l*) valid_resolutions=("1280x960" "1920x1080");;
   *rzv2n*|*rzv2h*)         valid_resolutions=("640x480" "1280x720" "1920x1080");;
   *) echo "This script it not supported on ${board}"; exit 1;;
 esac

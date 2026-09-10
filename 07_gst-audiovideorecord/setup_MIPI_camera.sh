@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Copyright (c) 2023-2025 Renesas Electronics Corporation and/or its affiliates
+# Copyright (c) 2023-2026 Renesas Electronics Corporation and/or its affiliates
 # SPDX-License-Identifier: MIT-0
 
 board=$(uname -n)
 case "$board" in
-  *rzg2l*|*rzv2l*|*rzg3e*) valid_resolutions=("1280x960" "1920x1080");;
+  *rzg2l*|*rzv2l*|*rzg3e*|*rzg3l*) valid_resolutions=("1280x960" "1920x1080");;
   *rzv2n*|*rzv2h*)         valid_resolutions=("640x480" "1280x720" "1920x1080");;
   *) echo "This script it not supported on ${board}"; exit 1;;
 esac

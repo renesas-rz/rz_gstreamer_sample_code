@@ -10,7 +10,7 @@ Display and encode raw data from USB/MIPI camera to H.264 format, then store it 
 
 GStreamer: 1.16.3 (edited by Renesas).
 
-### Linux kernel version 6.1 and Yocto version 5.0 (Scrathgap)
+### Linux kernel version 6.1 and Yocto version 5.0 (Scarthgap)
 
 GStreamer: 1.22.12 (edited by Renesas).
 
@@ -292,6 +292,11 @@ This section shows how to cross-compile and deploy GStreamer _video record_ appl
   ```sh
   $   sudo sh ./rz-vlp-glibc-x86_64-core-image-weston-cortexa55-smarc-rzg3e-toolchain-*.sh
   ```
+
+* RZ/G3L SMARC Evaluation Kit:
+  ```sh
+  $   sudo sh ./rz-vlp-glibc-x86_64-core-image-weston-cortexa55-smarc-rzg3l-toolchain-*.sh
+  ```
 Note:
 > Sudo is optional in case user wants to extract SDK into a restricted directory (such as: _/opt/_)
 
@@ -300,7 +305,7 @@ Note:
   ```sh
   $   source /<Location in which SDK is extracted>/environment-setup-aarch64-poky-linux
   ```
-* Linux kernel version 6.1 and Yocto version 5.0 (Scrathgap):
+* Linux kernel version 6.1 and Yocto version 5.0 (Scarthgap):
   ```sh
   $   source /<Location in which SDK is extracted>/environment-setup-cortexa55-poky-linux
   ```
@@ -329,7 +334,7 @@ For more detail about `setup_MIPI_camera.sh` script at [Initialize MIPI camera](
 
 > Note: 
 >* For RZ/V2H, RZ/V2N, only 3 resolutions are supported by MIPI camera (e-CAM22_CURZH camera): 640x480, 1280x720, 1920x1080.
->* For RZ/G2L, RZ/V2L or RZ/G3E, only 2 resolutions are supported by MIPI camera (OV5645 camera): 1920x1080, 1280x960
+>* For RZ/G2L, RZ/V2L, RZ/G3E or RZ/G3L, only 2 resolutions are supported by MIPI camera (OV5645 camera): 1920x1080, 1280x960
 
 ***Step 5***.	Run the application:
 ```sh
@@ -394,7 +399,7 @@ For further information on how this script is implemented, please refer to the f
 
 board=$(uname -n)
 case "$board" in
-  *rzg2l*|*rzv2l*|*rzg3e*) valid_resolutions=("1280x960" "1920x1080");;
+  *rzg2l*|*rzv2l*|*rzg3e*|*rzg3l*) valid_resolutions=("1280x960" "1920x1080");;
   *rzv2n*|*rzv2h*)         valid_resolutions=("640x480" "1280x720" "1920x1080");;
   *) echo "This script it not supported on ${board}"; exit 1;;
 esac

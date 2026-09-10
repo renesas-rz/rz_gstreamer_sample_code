@@ -12,7 +12,7 @@ Let's get started with this application. Instead of printing “hello world”, 
 
 GStreamer: 1.16.3 (edited by Renesas).
 
-### Linux kernel version 6.1 and Yocto version 5.0 (Scrathgap)
+### Linux kernel version 6.1 and Yocto version 5.0 (Scarthgap)
 
 GStreamer: 1.22.12 (edited by Renesas).
 
@@ -117,6 +117,11 @@ This section shows how to cross-compile and deploy GStreamer _hello world_ appli
   ```sh
   $   sudo sh ./rz-vlp-glibc-x86_64-core-image-weston-cortexa55-smarc-rzg3e-toolchain-*.sh
   ```
+
+* RZ/G3L SMARC Evaluation Kit:
+  ```sh
+  $   sudo sh ./rz-vlp-glibc-x86_64-core-image-weston-cortexa55-smarc-rzg3l-toolchain-*.sh
+  ```
 Note:
 > Sudo is optional in case user wants to extract SDK into a restricted directory (such as: _/opt/_)
 
@@ -125,7 +130,7 @@ Note:
   ```sh
   $   source /<Location in which SDK is extracted>/environment-setup-aarch64-poky-linux
   ```
-* Linux kernel version 6.1 and Yocto version 5.0 (Scrathgap):
+* Linux kernel version 6.1 and Yocto version 5.0 (Scarthgap):
   ```sh
   $   source /<Location in which SDK is extracted>/environment-setup-cortexa55-poky-linux
   ```

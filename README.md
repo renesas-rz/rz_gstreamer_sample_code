@@ -15,9 +15,11 @@ Renesas evaluates all source codes here in the environment as below:
 | 3 | RZ/V2N Evaluation Board Kit | R9A09G056N44 (RZ/V2N) | [RZ/V2N AI SDK v5.00](https://renesas-rz.github.io/rzv_ai_sdk/5.10/getting_started.html) <sup>[1]</sup><br>[RZ/V2N AI SDK v6.00](https://renesas-rz.github.io/rzv_ai_sdk/6.00/getting_started.html) <sup>[2]</sup> |
 | 4 | RZ/V2H Evaluation Board Kit | R9A09G057H4 (RZ/V2H) | [RZ/V2H AI SDK v5.20](https://renesas-rz.github.io/rzv_ai_sdk/5.10/getting_started.html) <sup>[1]</sup><br>[RZ/V2H AI SDK v6.00](https://renesas-rz.github.io/rzv_ai_sdk/6.20/getting_started.html) <sup>[2]</sup> |
 | 5 | RZ/G3E SMARC Evaluation Kit | R9A09G047E57 (RZ/G3E) | [RZ/G3E Board Support Package](https://www.renesas.com/en/software-tool/rzg3e-board-support-package) Version 1.0.0 <sup>[2]</sup> |
+| 6 | RZ/G3L SMARC Evaluation Kit | R9A08G046L48 (RZ/G3L) | [RZ/G3L BSP Plus](https://renesas-rz.github.io/rz_linux_bsp_plus/RZG/getting_started/) <sup>[3]</sup> |
 
 <sup>[1]</sup> Linux kernel version 5.10 and Yocto version 3.1 (Dunfell)\
-<sup>[2]</sup> Linux kernel version 6.1 and Yocto version 5.0 (Scrathgap)
+<sup>[2]</sup> Linux kernel version 6.1 and Yocto version 5.0 (Scarthgap)\
+<sup>[3]</sup> Linux kernel version 6.12 and Yocto version 5.0 (Scarthgap)
 ## LICENSE
 
 Each [Application Samples](#application-samples) (including [Hello World](00_gst-helloworld)) covered by respective LICENSE.
@@ -82,7 +84,7 @@ Existing Sample Code branches and/or tags can be accessed as before.
 
 To get Sample Code for your boards and MPUs, please access specific link below:
 
-- Linux kernel version 6.1 and Yocto version 5.0 (Scrathgap):
+- Linux kernel version 6.1 and Yocto version 5.0 (Scarthgap):
     1. [RZ/G2L Group](../vlp-4.0.x_rz-g2l)
         * Board: RZ/G2L SMARC Evaluation Kit / MPU: R9A07G044L (RZ/G2L)
 

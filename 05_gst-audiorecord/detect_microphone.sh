@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (c) 2023-2025 Renesas Electronics Corporation and/or its affiliates
+# Copyright (c) 2023-2026 Renesas Electronics Corporation and/or its affiliates
 # SPDX-License-Identifier: MIT-0
 
 #*******************************************************************************************
@@ -103,6 +103,29 @@ then
                 amixer sset 'Headphone' 100% on > /dev/null
                 amixer sset 'Mixin PGA' 40% on > /dev/null
                 amixer sset 'DVC In',0 10% > /dev/null
+            elif [[ "$BOARD_NAME" == *g3l* ]]; then
+                amixer cset name='Aux Switch' on > /dev/null
+                amixer cset name='Mixin Left Aux Left Switch' on > /dev/null
+                amixer cset name='Mixin Right Aux Right Switch' on > /dev/null
+                amixer cset name='ADC Switch' on > /dev/null
+                amixer cset name='Mixout Right Mixin Right Switch' off > /dev/null
+                amixer cset name='Mixout Left Mixin Left Switch' off > /dev/null
+                amixer cset name='Headphone Volume' 50% > /dev/null
+                amixer cset name='Headphone Switch' on > /dev/null
+                amixer cset name='Mixout Left DAC Left Switch' on > /dev/null
+                amixer cset name='Mixout Right DAC Right Switch' on > /dev/null
+                amixer cset name='DAC Left Source MUX' 'DAI Input Left' > /dev/null
+                amixer cset name='DAC Right Source MUX' 'DAI Input Right' > /dev/null
+                amixer sset 'Mic 1 Amp Source MUX' 'MIC_P' > /dev/null
+                amixer sset 'Mic 2 Amp Source MUX' 'MIC_P' > /dev/null
+                amixer sset 'Mixin Left Mic 1' on > /dev/null
+                amixer sset 'Mixin Right Mic 2' on > /dev/null
+                amixer sset 'Mic 1' 80% on > /dev/null
+                amixer sset 'Mic 2' 80% on > /dev/null
+                amixer sset 'Lineout' 80% on > /dev/null
+                amixer sset 'Mixin PGA' 40% on > /dev/null
+                amixer sset 'ADC' 100% > /dev/null
+                amixer sset 'ADC HPF' off > /dev/null
             fi
             break
         fi

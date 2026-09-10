@@ -10,7 +10,7 @@ Record raw data from microphone, then store it in Ogg container.
 
 GStreamer: 1.16.3 (edited by Renesas).
 
-### Linux kernel version 6.1 and Yocto version 5.0 (Scrathgap)
+### Linux kernel version 6.1 and Yocto version 5.0 (Scarthgap)
 
 GStreamer: 1.22.12 (edited by Renesas).
 
@@ -204,6 +204,11 @@ This section shows how to cross-compile and deploy GStreamer _audio record_ appl
   ```sh
   $   sudo sh ./rz-vlp-glibc-x86_64-core-image-weston-cortexa55-smarc-rzg3e-toolchain-*.sh
   ```
+
+* RZ/G3L SMARC Evaluation Kit:
+  ```sh
+  $   sudo sh ./rz-vlp-glibc-x86_64-core-image-weston-cortexa55-smarc-rzg3l-toolchain-*.sh
+  ```
 Note:
 > Sudo is optional in case user wants to extract SDK into a restricted directory (such as: _/opt/_)
 
@@ -212,7 +217,7 @@ Note:
   ```sh
   $   source /<Location in which SDK is extracted>/environment-setup-aarch64-poky-linux
   ```
-* Linux kernel version 6.1 and Yocto version 5.0 (Scrathgap):
+* Linux kernel version 6.1 and Yocto version 5.0 (Scarthgap):
   ```sh
   $   source /<Location in which SDK is extracted>/environment-setup-cortexa55-poky-linux
   ```
@@ -324,6 +329,29 @@ then
                 amixer sset 'Headphone' 100% on > /dev/null
                 amixer sset 'Mixin PGA' 40% on > /dev/null
                 amixer sset 'DVC In',0 10% > /dev/null
+            elif [[ "$BOARD_NAME" == *g3l* ]]; then
+                amixer cset name='Aux Switch' on > /dev/null
+                amixer cset name='Mixin Left Aux Left Switch' on > /dev/null
+                amixer cset name='Mixin Right Aux Right Switch' on > /dev/null
+                amixer cset name='ADC Switch' on > /dev/null
+                amixer cset name='Mixout Right Mixin Right Switch' off > /dev/null
+                amixer cset name='Mixout Left Mixin Left Switch' off > /dev/null
+                amixer cset name='Headphone Volume' 50% > /dev/null
+                amixer cset name='Headphone Switch' on > /dev/null
+                amixer cset name='Mixout Left DAC Left Switch' on > /dev/null
+                amixer cset name='Mixout Right DAC Right Switch' on > /dev/null
+                amixer cset name='DAC Left Source MUX' 'DAI Input Left' > /dev/null
+                amixer cset name='DAC Right Source MUX' 'DAI Input Right' > /dev/null
+                amixer sset 'Mic 1 Amp Source MUX' 'MIC_P' > /dev/null
+                amixer sset 'Mic 2 Amp Source MUX' 'MIC_P' > /dev/null
+                amixer sset 'Mixin Left Mic 1' on > /dev/null
+                amixer sset 'Mixin Right Mic 2' on > /dev/null
+                amixer sset 'Mic 1' 80% on > /dev/null
+                amixer sset 'Mic 2' 80% on > /dev/null
+                amixer sset 'Lineout' 80% on > /dev/null
+                amixer sset 'Mixin PGA' 40% on > /dev/null
+                amixer sset 'ADC' 100% > /dev/null
+                amixer sset 'ADC HPF' off > /dev/null
             fi
             break
         fi
